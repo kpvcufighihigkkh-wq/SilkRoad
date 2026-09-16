@@ -61,6 +61,6 @@
 | PreToolUse | `encoding-check.sh` | git commit 前校验 UTF-8 编码和行尾 |
 | PreToolUse | `git-danger-warn.sh` | 危险 git 操作前输出安全锚点 |
 | PreToolUse | `git-dirty-remind.sh` | 未提交变更超过 5 个文件时提醒 commit |
-| Stop | `session-archive.sh` | 会话结束归档摘要 + 文档同步检查 |
+| Stop | `session-archive.sh` | 有未提交变更时提醒 + 文档同步检查 |
 
 此外 `.git/hooks/pre-commit` 会在所有 git commit 时（不限于 Claude Code）调用 `encoding-check.sh`。
