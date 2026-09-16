@@ -1,0 +1,38 @@
+# 统一行尾格式：仓库内始终 LF，checkout 时按平台转换
+* text=auto eol=lf
+
+# 明确文本文件
+*.md    text eol=lf encoding=utf-8
+*.txt   text eol=lf encoding=utf-8
+*.json  text eol=lf encoding=utf-8
+*.yml   text eol=lf encoding=utf-8
+*.yaml  text eol=lf encoding=utf-8
+*.sh    text eol=lf encoding=utf-8
+*.js    text eol=lf encoding=utf-8
+*.ts    text eol=lf encoding=utf-8
+*.py    text eol=lf encoding=utf-8
+*.go    text eol=lf encoding=utf-8
+*.html  text eol=lf encoding=utf-8
+*.css   text eol=lf encoding=utf-8
+*.vue   text eol=lf encoding=utf-8
+*.jsx   text eol=lf encoding=utf-8
+*.tsx   text eol=lf encoding=utf-8
+*.toml  text eol=lf encoding=utf-8
+*.cfg   text eol=lf encoding=utf-8
+*.ini   text eol=lf encoding=utf-8
+*.env   text eol=lf encoding=utf-8
+
+# 二进制文件（不转换）
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.pdf   binary
+*.zip   binary
+*.gz    binary
+*.tar   binary

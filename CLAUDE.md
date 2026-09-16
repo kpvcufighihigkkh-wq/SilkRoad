@@ -13,6 +13,14 @@
 
 若 Plane MCP 不可用，先报告连接错误，不要凭记忆修改任务状态；Vikunja 仍可通过 `veans` 使用。
 
+## 编码格式规则
+
+- **统一 UTF-8：** 所有文本文件必须使用 UTF-8 编码（无 BOM）。
+- **统一 LF：** 行尾使用 LF（`\n`），不使用 CRLF（`\r\n`）。`.gitattributes` 已配置自动转换。
+- **写文件后验证中文：** 写入含中文的文件后，必须验证中文字符未被损坏（grep 关键中文字段确认可读）。
+- **禁止乱码提交：** `pre-commit` hook 和 `encoding-check.sh` 会在提交前自动检查编码；检查不通过时禁止提交。
+- **编辑器标准：** `.editorconfig` 定义了编码（UTF-8）、行尾（LF）、缩进（2 空格）等标准，所有编辑器应遵循。
+
 ## Git 安全规则
 
 - **频繁提交：** 每完成一个逻辑单元的工作就 commit，不积累大量未提交变更。
@@ -39,6 +47,9 @@
 | SessionStart | `session-init.sh` | 检查项目任务状态，无任务时引导创建 |
 | SessionStart | `git-session-check.sh` | 报告 git 工作区状态和最近提交 |
 | PreCompact | `veans prime` | 压缩前刷新任务清单 |
+| PreToolUse | `encoding-check.sh` | git commit 前校验 UTF-8 编码和行尾 |
 | PreToolUse | `git-danger-warn.sh` | 危险 git 操作前输出安全锚点 |
 | PreToolUse | `git-dirty-remind.sh` | 未提交变更超过 5 个文件时提醒 commit |
 | Stop | `session-archive.sh` | 会话结束归档摘要 + 文档同步检查 |
+
+此外 `.git/hooks/pre-commit` 会在所有 git commit 时（不限于 Claude Code）调用 `encoding-check.sh`。
