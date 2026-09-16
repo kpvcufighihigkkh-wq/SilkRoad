@@ -32,6 +32,41 @@
 - 汇总 Vikunja 已完成/未完成/阻塞。
 - 汇总 Git 提交数、关联任务数和测试结果。n8n 日报会读取这些数据并写回。
 
+## 自动化集成
+
+### Git → Plane 自动更新
+
+**原则：每个 Git 操作都记录到 Plane，但状态变更仅由人工确认触发**
+
+详细配置见：[docs/automation/n8n-plane-integration.md](docs/automation/n8n-plane-integration.md)
+
+**触发事件：**
+
+| Git 操作 | Webhook 源 | Plane 操作 | 状态变更 |
+|---------|-----------|-----------|---------|
+| `git commit` | post-commit hook | 📝 记录提交信息 | ❌ 不变 |
+| `git push` | GitHub/Gitea | 📝 记录推送详情 | ❌ 不变 |
+| PR created | GitHub/Gitea | 📝 添加 PR 链接 | ❌ 不变 |
+| PR review | GitHub/Gitea | 📝 记录审查结果 | ❌ 不变 |
+| PR merged | GitHub/Gitea | 📝 合并确认 + 提醒验收 | ❌ 不变 |
+| **人工验收** | 手动操作 | 📝 验收记录 + 🔄 状态更新 | ✅ → Done |
+
+**评论格式：**
+- 包含完整的变更信息（文件、行数、作者、时间）
+- 提供远程链接（commit、PR、review）
+- 结构化 HTML 格式，便于 Plane UI 渲染
+
+**实现组件：**
+1. `.git/hooks/post-commit` - 本地提交触发
+2. GitHub/Gitea Webhook - 远程事件触发
+3. n8n Workflow - 处理逻辑和 API 调用
+4. Plane MCP - 添加评论（不改状态）
+
+**严格规则：**
+- ❌ n8n 永不调用状态更新 API
+- ✅ 所有自动化仅记录活动日志
+- 👤 状态变更 100% 由人工确认
+
 ## 服务清单
 
 ### 局域网服务
