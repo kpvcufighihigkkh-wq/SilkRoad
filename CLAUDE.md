@@ -2,6 +2,17 @@
 
 通用流程见同目录的 `WORKFLOW.md`。Claude Code 会在会话开始和压缩前运行 `veans prime`，因此当天 Vikunja 清单会进入上下文。
 
+## 工具链定位
+
+| 工具 | 用途 | 状态 |
+|------|------|------|
+| **Plane** | 项目管理、需求追踪、Sprint 规划 | ✅ 主工作流 |
+| **Vikunja** | 个人任务执行、今日清单 | ✅ 主工作流 |
+| **Git/GitHub/Gitea** | 代码版本控制、协作 | ✅ 主工作流 |
+| **OpenProject** | 历史数据归档 | 📦 只读，不新建任务 |
+
+**说明：** OpenProject 保留用于查询历史数据，但日常工作流使用 Plane + Vikunja。
+
 ## 任务管理
 
 - 用 Plane MCP 查询或创建项目任务和 Bug。
