@@ -31,3 +31,43 @@
 - 汇总 Plane 新增/关闭/逾期/P0-P1 未解决/In Review。
 - 汇总 Vikunja 已完成/未完成/阻塞。
 - 汇总 Git 提交数、关联任务数和测试结果。n8n 日报会读取这些数据并写回。
+
+## 服务清单
+
+### 局域网服务
+
+| 服务 | 地址 | 用途 |
+|------|------|------|
+| **OpenProject** | http://192.168.2.84:8081/ | 项目管理、工作包追踪 |
+| **Gitea** | http://192.168.2.84/ | 内部 Git 仓库托管 |
+| **Vikunja** | http://127.0.0.1:3456 | 当天执行项（通过 `veans` CLI） |
+| **Plane** | 通过环境变量配置 | Bug/任务追踪（MCP 集成） |
+
+### 外部服务
+
+| 服务 | 地址 | 用途 |
+|------|------|------|
+| **GitHub** | https://github.com/kpvcufighihigkkh-wq | 外部代码仓库 |
+
+## MCP 集成
+
+以下 MCP 服务器在 `~/.claude.json` 中配置（注意：是 home 目录下的 `.claude.json`，不是 `.claude/settings.json`），供 Claude Code 直接调用：
+
+| MCP Server | 包 | 凭证来源 |
+|------------|------------|----------|
+| `openproject` | `openproject-mcp` (npx) | 内联 API Key |
+| `gitea` | `gitea-mcp` (npx) | 内联 Token |
+| `github` | `@modelcontextprotocol/server-github` (npx) | 内联 PAT |
+| `plane` | `plane-mcp-server` (uvx) | 环境变量 |
+| `context7` | `@upstash/context7-mcp` | 无需凭证 |
+| `playwright` | `@playwright/mcp` | 无需凭证 |
+| `serena` | `serena` (本地 exe) | 无需凭证 |
+
+## 凭证管理
+
+> ⚠️ 不要将凭证提交到仓库。所有 Token 存储在全局 Claude 配置或 mcp-router 管理文件中。
+
+- OpenProject API Key → `~/.claude.json` → `mcpServers.openproject.env`
+- Gitea Token → `~/.claude.json` → `mcpServers.gitea.env`
+- GitHub PAT → `~/.claude.json` → `mcpServers.github.env` + `~/.mcp-router-managed/github.pat`
+- Plane 凭证 → 系统环境变量 `PLANE_API_KEY`, `PLANE_WORKSPACE_SLUG`, `PLANE_BASE_URL`

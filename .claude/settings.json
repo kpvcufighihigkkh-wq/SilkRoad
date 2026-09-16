@@ -1,21 +1,59 @@
 {
   "hooks": {
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "veans prime",
-            "type": "command"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
           {
-            "command": "veans prime",
-            "type": "command"
+            "type": "command",
+            "command": "veans prime"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-init.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/git-session-check.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "veans prime"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git reset*)|Bash(git push*)|Bash(git checkout -- *)|Bash(git clean*)|Bash(git rebase*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/git-danger-warn.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/git-dirty-remind.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-archive.sh"
           }
         ]
       }

@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "veans prime"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-init.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/git-session-check.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "veans prime"
+          }
+        ]
+      }
+    ]
+  }
+}
