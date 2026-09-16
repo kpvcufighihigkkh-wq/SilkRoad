@@ -40,7 +40,7 @@ graph LR
 
 | 组件 | 地址 | 用途 | 凭证 |
 |------|------|------|------|
-| **n8n** | http://192.168.2.84:5678 (待确认) | 工作流引擎 | Admin Token |
+| **n8n** | http://192.168.2.16:5678 | 工作流引擎 | Admin Token |
 | **GitHub** | https://github.com | 外部代码仓库 | Webhook Secret |
 | **Gitea** | http://192.168.2.84 | 内部代码仓库 | Webhook Secret |
 | **Plane API** | 环境变量配置 | 任务管理 | PLANE_API_KEY |
@@ -73,7 +73,7 @@ graph LR
 
 ```json
 {
-  "url": "http://192.168.2.84:5678/webhook/gitea-plane",
+  "url": "http://192.168.2.16:5678/webhook/gitea-plane",
   "content_type": "application/json",
   "secret": "YOUR_WEBHOOK_SECRET",
   "events": ["push", "pull_request"],
@@ -362,7 +362,7 @@ docker run -d \
 
 ### 2. 导入 Workflow 模板
 
-1. 登录 n8n Web UI: http://192.168.2.84:5678
+1. 登录 n8n Web UI: http://192.168.2.16:5678
 2. 创建新 Workflow
 3. 导入本文档中的节点配置
 4. 配置环境变量和凭证
@@ -488,7 +488,7 @@ COMMIT_MSG=$(git log -1 --pretty=%s)
 TASK_ID=$(echo "$COMMIT_MSG" | grep -oP '\[?(SILKROAD-\d+)\]?' | tr -d '[]')
 
 # 2. 调用 n8n Webhook (本地触发)
-curl -X POST http://192.168.2.84:5678/webhook/git-commit \
+curl -X POST http://192.168.2.16:5678/webhook/git-commit \
   -H "Content-Type: application/json" \
   -d "{
     \"event\": \"commit\",
@@ -529,7 +529,7 @@ while read local_ref local_sha remote_ref remote_sha; do
   TASK_IDS=$(echo "$COMMITS" | grep -oP 'SILKROAD-\d+' | sort -u)
   
   for TASK_ID in $TASK_IDS; do
-    curl -X POST http://192.168.2.84:5678/webhook/git-push \
+    curl -X POST http://192.168.2.16:5678/webhook/git-push \
       -d "{
         \"event\": \"push\",
         \"task_id\": \"$TASK_ID\",
