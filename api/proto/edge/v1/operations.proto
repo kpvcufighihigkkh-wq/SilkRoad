@@ -1,0 +1,500 @@
+syntax = "proto3";
+
+package igh.edge.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/igh/api/edge/v1;edgev1";
+
+// ============================================================================
+// 边端本地操作服务
+// ============================================================================
+
+service DoffingService {
+  // 执行落纱（FDY/POY）
+  rpc ExecuteDoffing(DoffingRequest) returns (DoffingResponse);
+
+  // 执行DTY装载
+  rpc ExecuteDTYLoading(DTYLoadingRequest) returns (DTYLoadingResponse);
+
+  // 负落纱（回滚）
+  rpc RollbackDoffing(RollbackDoffingRequest) returns (RollbackDoffingResponse);
+}
+
+message DoffingRequest {
+  string lot_id = 1;
+  string module_id = 2;
+  int32 doffing_sequence = 3;
+  string operator_id = 4;
+  string shift_id = 5;
+}
+
+message DoffingResponse {
+  string doffing_id = 1;
+  string doffing_number = 2;
+  int32 bobbins_created = 3;
+  repeated string bobbin_codes = 4;
+  common.v1.Timestamp doffed_at = 5;
+  common.v1.ResponseMeta meta = 6;
+}
+
+message DTYLoadingRequest {
+  string lot_id = 1;
+  string module_id = 2;
+  repeated PositionWeight positions = 3;  // 96个位置
+}
+
+message PositionWeight {
+  int32 position = 1;
+  double gross_weight_g = 2;
+}
+
+message DTYLoadingResponse {
+  string doffing_id = 1;
+  int32 bobbins_created = 2;
+  repeated string bobbin_codes = 3;
+  common.v1.ResponseMeta meta = 4;
+}
+
+message RollbackDoffingRequest {
+  string doffing_id = 1;
+  string reason = 2;
+}
+
+message RollbackDoffingResponse {
+  bool success = 1;
+  string message = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+// ============================================================================
+// 质检服务
+// ============================================================================
+
+service InspectionService {
+  // 扫码获取丝锭信息
+  rpc ScanBobbin(ScanBobbinRequest) returns (ScanBobbinResponse);
+
+  // 提交质检结果
+  rpc SubmitInspection(InspectionRequest) returns (InspectionResponse);
+
+  // 批量质检（视觉系统推送）
+  rpc BatchInspection(BatchInspectionRequest) returns (BatchInspectionResponse);
+}
+
+message ScanBobbinRequest {
+  string bobbin_code = 1;
+}
+
+message ScanBobbinResponse {
+  BobbinScanInfo bobbin = 1;
+  common.v1.ResponseMeta meta = 2;
+}
+
+message BobbinScanInfo {
+  string id = 1;
+  string bobbin_code = 2;
+  string lot_number = 3;
+  common.v1.ProductType product_type = 4;
+  int32 position = 5;
+  common.v1.BobbinLifecycle lifecycle = 6;
+  double gross_weight_g = 7;
+  repeated ExistingGrade existing_grades = 8;
+}
+
+message ExistingGrade {
+  string dimension = 1;  // vision/weight/sorting/knitting/final
+  string grade_value = 2;  // AA/B/C/D
+}
+
+message InspectionRequest {
+  string bobbin_id = 1;
+  string dimension = 2;  // vision/weight/sorting/knitting/final
+  string grade_value = 3;
+  double gross_weight_g = 4;  // weight维度必填
+  double net_weight_g = 5;
+  double tube_weight_g = 6;
+  repeated string defect_codes = 7;
+  string inspector_id = 8;
+  string equipment_code = 9;
+}
+
+message InspectionResponse {
+  string grade_id = 1;
+  bool is_qualified = 2;
+  string final_grade = 3;  // 如果是final维度
+  common.v1.ResponseMeta meta = 4;
+}
+
+message BatchInspectionRequest {
+  string dimension = 1;
+  repeated InspectionResult results = 2;
+  string equipment_code = 3;
+}
+
+message InspectionResult {
+  string bobbin_code = 1;
+  string grade_value = 2;
+  repeated string defect_codes = 3;
+}
+
+message BatchInspectionResponse {
+  int32 success_count = 1;
+  int32 failed_count = 2;
+  repeated InspectionError errors = 3;
+  common.v1.ResponseMeta meta = 4;
+}
+
+message InspectionError {
+  string bobbin_code = 1;
+  string error_message = 2;
+}
+
+// ============================================================================
+// 打包服务
+// ============================================================================
+
+service PackingService {
+  // 创建托盘
+  rpc CreatePallet(CreatePalletRequest) returns (CreatePalletResponse);
+
+  // 码盘（丝锭装入托盘）
+  rpc PackBobbin(PackBobbinRequest) returns (PackBobbinResponse);
+
+  // 托盘封装
+  rpc SealPallet(SealPalletRequest) returns (SealPalletResponse);
+
+  // DTY装箱
+  rpc CreateCarton(CreateCartonRequest) returns (CreateCartonResponse);
+  rpc PackCarton(PackCartonRequest) returns (PackCartonResponse);
+  rpc SealCarton(SealCartonRequest) returns (SealCartonResponse);
+
+  // DTY箱子码垛
+  rpc PackCartonsToPallet(PackCartonsToPalletRequest) returns (PackCartonsToPalletResponse);
+}
+
+message CreatePalletRequest {
+  string lot_id = 1;
+  string pallet_type = 2;  // bobbin/carton
+  int32 capacity = 3;
+}
+
+message CreatePalletResponse {
+  string pallet_id = 1;
+  string pallet_code = 2;
+  string lot_number = 3;
+  string status = 4;  // packing
+  int32 capacity = 5;
+  common.v1.ResponseMeta meta = 6;
+}
+
+message PackBobbinRequest {
+  string pallet_id = 1;
+  repeated string bobbin_codes = 2;
+  int32 layer = 3;
+  string operator_id = 4;
+}
+
+message PackBobbinResponse {
+  int32 current_count = 1;
+  int32 capacity = 2;
+  bool is_full = 3;
+  common.v1.ResponseMeta meta = 4;
+}
+
+message SealPalletRequest {
+  string pallet_id = 1;
+  double gross_weight_kg = 2;
+  double tare_weight_kg = 3;
+  string operator_id = 4;
+}
+
+message SealPalletResponse {
+  string pallet_id = 1;
+  string pallet_code = 2;
+  string status = 3;  // sealed
+  int32 bobbin_count = 4;
+  double gross_weight_kg = 5;
+  double net_weight_kg = 6;
+  common.v1.Timestamp sealed_at = 7;
+  bool print_label = 8;  // 触发标签打印
+  common.v1.ResponseMeta meta = 9;
+}
+
+message CreateCartonRequest {
+  string lot_id = 1;
+  int32 capacity = 2;  // DTY: 12个/箱
+}
+
+message CreateCartonResponse {
+  string carton_id = 1;
+  string carton_code = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+message PackCartonRequest {
+  string carton_id = 1;
+  repeated string bobbin_codes = 2;
+}
+
+message PackCartonResponse {
+  int32 current_count = 1;
+  bool is_full = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+message SealCartonRequest {
+  string carton_id = 1;
+  double gross_weight_kg = 2;
+}
+
+message SealCartonResponse {
+  string carton_id = 1;
+  string carton_code = 2;
+  string status = 3;  // sealed
+  common.v1.ResponseMeta meta = 4;
+}
+
+message PackCartonsToPalletRequest {
+  string pallet_id = 1;
+  repeated string carton_codes = 2;
+  int32 layer = 3;
+}
+
+message PackCartonsToPalletResponse {
+  int32 current_count = 1;
+  bool is_full = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+// ============================================================================
+// 仓储服务
+// ============================================================================
+
+service WarehouseService {
+  // 扫描托盘入库
+  rpc ScanForInbound(ScanInboundRequest) returns (ScanInboundResponse);
+
+  // 确认入库
+  rpc ConfirmInbound(ConfirmInboundRequest) returns (ConfirmInboundResponse);
+
+  // PLC回调入库完成
+  rpc CompleteInbound(CompleteInboundRequest) returns (CompleteInboundResponse);
+
+  // 创建出库任务（FIFO）
+  rpc CreateOutboundTask(CreateOutboundRequest) returns (CreateOutboundResponse);
+}
+
+message ScanInboundRequest {
+  string pallet_code = 1;
+}
+
+message ScanInboundResponse {
+  PalletInfo pallet = 1;
+  RecommendedLocation recommended_location = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+message PalletInfo {
+  string id = 1;
+  string pallet_code = 2;
+  string lot_number = 3;
+  int32 bobbin_count = 4;
+  double gross_weight_kg = 5;
+}
+
+message RecommendedLocation {
+  string location_id = 1;
+  string location_code = 2;  // 01-02-03
+  int32 aisle = 3;
+  int32 row = 4;
+  int32 tier = 5;
+  string reason = 6;  // "就近原则+负载均衡"
+}
+
+message ConfirmInboundRequest {
+  string pallet_id = 1;
+  string location_id = 2;
+  string operator_id = 3;
+}
+
+message ConfirmInboundResponse {
+  string inbound_id = 1;
+  string plc_task_id = 2;  // PLC堆垛机任务ID
+  common.v1.ResponseMeta meta = 3;
+}
+
+message CompleteInboundRequest {
+  string inbound_id = 1;
+  string plc_result = 2;  // success/failed
+}
+
+message CompleteInboundResponse {
+  bool success = 1;
+  common.v1.ResponseMeta meta = 2;
+}
+
+message CreateOutboundRequest {
+  string lot_pattern = 1;  // FDY-2026-001%
+  string final_grade = 2;  // AA
+  int32 required_quantity = 3;
+  string operator_id = 4;
+}
+
+message CreateOutboundResponse {
+  string task_id = 1;
+  repeated SelectedPallet selected_pallets = 2;
+  repeated PLCTask plc_tasks = 3;
+  common.v1.ResponseMeta meta = 4;
+}
+
+message SelectedPallet {
+  string stock_id = 1;
+  string pallet_code = 2;
+  string location_code = 3;
+  common.v1.Timestamp inbound_at = 4;
+  int32 storage_days = 5;
+}
+
+message PLCTask {
+  string task_id = 1;
+  string location_code = 2;
+  string action = 3;  // retrieve
+}
+
+// ============================================================================
+// 打印服务
+// ============================================================================
+
+service PrintingService {
+  // 打印托盘标签
+  rpc PrintPalletLabel(PrintPalletLabelRequest) returns (PrintPalletLabelResponse);
+
+  // 查询打印机状态
+  rpc GetPrinterStatus(GetPrinterStatusRequest) returns (GetPrinterStatusResponse);
+}
+
+message PrintPalletLabelRequest {
+  string pallet_id = 1;
+  string printer_code = 2;
+  int32 copies = 3;  // 默认1
+}
+
+message PrintPalletLabelResponse {
+  string print_job_id = 1;
+  string status = 2;  // queued
+  string printer_code = 3;
+  LabelData label_data = 4;
+  common.v1.ResponseMeta meta = 5;
+}
+
+message LabelData {
+  string pallet_code = 1;
+  string lot_number = 2;
+  string product_name = 3;
+  int32 bobbin_count = 4;
+  double gross_weight_kg = 5;
+  bytes qr_code = 6;  // PNG图片二进制
+}
+
+message GetPrinterStatusRequest {
+  string printer_code = 1;
+}
+
+message GetPrinterStatusResponse {
+  string printer_code = 1;
+  string printer_type = 2;  // eidos/macsa/zpl
+  string status = 3;  // online/offline/error
+  string ip_address = 4;
+  int32 queue_length = 5;
+  common.v1.Timestamp last_job_at = 6;
+  common.v1.ResponseMeta meta = 7;
+}
+
+// ============================================================================
+// 边端配置和状态服务
+// ============================================================================
+
+service EdgeConfigService {
+  // 获取边端配置
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+
+  // 查询本地状态
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+}
+
+message GetConfigRequest {
+  // 无参数
+}
+
+message GetConfigResponse {
+  string device_id = 1;
+  string zone_type = 2;  // production/quality/packing/warehouse
+  repeated CenterAddress center_addresses = 3;
+  PLCConfig plc_config = 4;
+  ProductConfig product_config = 5;
+  common.v1.ResponseMeta meta = 6;
+}
+
+message CenterAddress {
+  string host = 1;
+  int32 port = 2;
+  string role = 3;  // primary/standby
+}
+
+message PLCConfig {
+  string address = 1;
+  int32 port = 2;
+  int32 rack = 3;
+  int32 slot = 4;
+}
+
+message ProductConfig {
+  common.v1.ProductType product_type = 1;
+  int32 position_count = 2;  // FDY/POY: 24, DTY: 96
+  GradeSystem grade_system = 3;
+}
+
+message GradeSystem {
+  repeated string dimensions = 1;  // [vision, weight, sorting, knitting, final]
+  repeated string grades = 2;      // [AA, B, C, D]
+}
+
+message GetStatusRequest {
+  // 无参数
+}
+
+message GetStatusResponse {
+  string device_id = 1;
+  string version = 2;
+  int64 uptime_seconds = 3;
+  CenterConnection center_connection = 4;
+  PLCConnection plc_connection = 5;
+  LocalStorage local_storage = 6;
+  SystemHealth system_health = 7;
+  common.v1.ResponseMeta meta = 8;
+}
+
+message CenterConnection {
+  string status = 1;  // connected/disconnected
+  string active_address = 2;
+  common.v1.Timestamp last_heartbeat_at = 3;
+}
+
+message PLCConnection {
+  string status = 1;  // connected/disconnected
+  string address = 2;
+  common.v1.Timestamp last_read_at = 3;
+}
+
+message LocalStorage {
+  double sqlite_size_mb = 1;
+  int32 pending_sync_count = 2;
+  common.v1.Timestamp oldest_unsynced_at = 3;
+}
+
+message SystemHealth {
+  double cpu_usage = 1;
+  double memory_usage = 2;
+  double disk_usage = 3;
+}

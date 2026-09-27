@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package igh.common.v1;
+
+option go_package = "github.com/igh/api/common/v1;commonv1";
+
+// 通用时间戳
+message Timestamp {
+  // ISO 8601 格式：2026-09-24T10:30:00Z
+  string value = 1;
+}
+
+// 通用 UUID
+message UUID {
+  string value = 1;  // 标准 UUID 格式
+}
+
+// 分页请求
+message PageRequest {
+  int32 page = 1;           // 页码（从1开始）
+  int32 page_size = 2;      // 每页数量（默认20，最大100）
+  string sort = 3;          // 排序字段（-created_at 表示降序）
+  string filter = 4;        // 过滤条件
+}
+
+// 分页响应
+message PageResponse {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total = 3;          // 总记录数
+  int32 total_pages = 4;    // 总页数
+}
+
+// 统一响应元数据
+message ResponseMeta {
+  string request_id = 1;
+  Timestamp timestamp = 2;
+}
+
+// 产品类型枚举
+enum ProductType {
+  PRODUCT_TYPE_UNSPECIFIED = 0;
+  PRODUCT_TYPE_FDY = 1;
+  PRODUCT_TYPE_POY = 2;
+  PRODUCT_TYPE_DTY = 3;
+}
+
+// 优先级枚举
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_NONE = 1;
+  PRIORITY_LOW = 2;
+  PRIORITY_MEDIUM = 3;
+  PRIORITY_HIGH = 4;
+  PRIORITY_URGENT = 5;
+}
+
+// 丝锭生命周期枚举
+enum BobbinLifecycle {
+  BOBBIN_LIFECYCLE_UNSPECIFIED = 0;
+  BOBBIN_LIFECYCLE_PRODUCED = 1;      // 已生产
+  BOBBIN_LIFECYCLE_INSPECTED = 2;     // 已质检
+  BOBBIN_LIFECYCLE_ON_CAR = 3;        // 在丝车上
+  BOBBIN_LIFECYCLE_IN_PALLET = 4;     // 在托盘中
+  BOBBIN_LIFECYCLE_IN_WAREHOUSE = 5;  // 在仓库中
+  BOBBIN_LIFECYCLE_OUTBOUND = 6;      // 已出库
+  BOBBIN_LIFECYCLE_SCRAPPED = 7;      // 已报废
+}
+
+// 同步状态枚举
+enum SyncStatus {
+  SYNC_STATUS_UNSPECIFIED = 0;
+  SYNC_STATUS_PENDING = 1;    // 待同步
+  SYNC_STATUS_SYNCING = 2;    // 同步中
+  SYNC_STATUS_SUCCESS = 3;    // 已同步
+  SYNC_STATUS_FAILED = 4;     // 同步失败
+}
+
+// 错误详情
+message ErrorDetail {
+  string field = 1;
+  string message = 2;
+  string value = 3;
+}
+
+// gRPC 错误响应
+message ErrorResponse {
+  int32 code = 1;
+  string message = 2;
+  repeated ErrorDetail details = 3;
+}

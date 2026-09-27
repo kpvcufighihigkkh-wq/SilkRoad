@@ -1,0 +1,399 @@
+syntax = "proto3";
+
+package igh.center.v1;
+
+import "common/v1/common.proto";
+
+option go_package = "github.com/igh/api/center/v1;centerv1";
+
+// ============================================================================
+// 边端数据同步服务（性能关键）
+// ============================================================================
+
+service SyncService {
+  // 批量上传数据（边端 → 中心端）
+  rpc BatchUpload(BatchUploadRequest) returns (BatchUploadResponse);
+
+  // 双向流式同步（心跳 + 增量数据 + 指令下发）
+  rpc StreamSync(stream SyncMessage) returns (stream SyncMessage);
+
+  // 心跳上报（边端 → 中心端）
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// ----------------------------------------------------------------------------
+// 批量上传
+// ----------------------------------------------------------------------------
+
+message BatchUploadRequest {
+  string device_id = 1;                    // 边端设备ID
+  repeated SyncEntity entities = 2;        // 批量实体数据
+  common.v1.Timestamp uploaded_at = 3;     // 上传时间
+}
+
+message SyncEntity {
+  string entity_type = 1;   // BOBBIN/GRADE/DOFFING/PALLET/STOCK
+  string entity_id = 2;     // 实体UUID
+  string operation = 3;     // INSERT/UPDATE/DELETE
+  bytes data = 4;           // JSON序列化后的实体数据
+  common.v1.Timestamp created_at = 5;  // 边端创建时间
+  int32 retry_count = 6;    // 重试次数
+}
+
+message BatchUploadResponse {
+  int32 success_count = 1;
+  int32 failed_count = 2;
+  repeated SyncError errors = 3;
+  common.v1.ResponseMeta meta = 4;
+}
+
+message SyncError {
+  string entity_id = 1;
+  string entity_type = 2;
+  string error_code = 3;
+  string error_message = 4;
+}
+
+// ----------------------------------------------------------------------------
+// 双向流式同步
+// ----------------------------------------------------------------------------
+
+message SyncMessage {
+  oneof payload {
+    // 边端 → 中心端
+    HeartbeatRequest heartbeat = 1;
+    IncrementalData incremental_data = 2;
+    DeviceStatus device_status = 3;
+
+    // 中心端 → 边端
+    HeartbeatResponse heartbeat_ack = 11;
+    ServerCommand command = 12;
+    ConfigUpdate config_update = 13;
+  }
+}
+
+message IncrementalData {
+  repeated SyncEntity entities = 1;
+  common.v1.Timestamp timestamp = 2;
+}
+
+message ServerCommand {
+  string command_type = 1;  // OTA_NOTIFY/CONFIG_UPDATE/FORCE_SYNC
+  bytes payload = 2;        // JSON序列化的指令数据
+  common.v1.Timestamp issued_at = 3;
+}
+
+message ConfigUpdate {
+  string config_key = 1;
+  bytes config_value = 2;   // JSON序列化的配置
+  common.v1.Timestamp updated_at = 3;
+}
+
+// ----------------------------------------------------------------------------
+// 心跳
+// ----------------------------------------------------------------------------
+
+message HeartbeatRequest {
+  string device_id = 1;
+  string version = 2;
+  DeviceHealth health = 3;
+  common.v1.Timestamp timestamp = 4;
+}
+
+message DeviceHealth {
+  float cpu_usage = 1;           // CPU使用率（百分比）
+  float memory_usage = 2;        // 内存使用率（百分比）
+  float disk_usage = 3;          // 磁盘使用率（百分比）
+  float sqlite_size_mb = 4;      // SQLite文件大小（MB）
+  int32 pending_upload_count = 5; // 待上传记录数
+  PLCConnectionStatus plc_status = 6;
+}
+
+message PLCConnectionStatus {
+  string status = 1;  // connected/disconnected
+  string address = 2;
+  common.v1.Timestamp last_read_at = 3;
+}
+
+message HeartbeatResponse {
+  common.v1.Timestamp server_time = 1;
+  repeated ServerCommand commands = 2;  // 下发的指令队列
+  common.v1.ResponseMeta meta = 3;
+}
+
+message DeviceStatus {
+  string device_id = 1;
+  string status = 2;  // active/offline/error
+  common.v1.Timestamp updated_at = 3;
+}
+
+// ============================================================================
+// OTA 更新服务
+// ============================================================================
+
+service OTAService {
+  // 检查更新
+  rpc CheckUpdate(CheckUpdateRequest) returns (CheckUpdateResponse);
+
+  // 下载更新包（服务端流式传输）
+  rpc DownloadPackage(DownloadPackageRequest) returns (stream PackageChunk);
+
+  // 上报下载/安装进度
+  rpc ReportProgress(OTAProgressReport) returns (OTAProgressResponse);
+}
+
+message CheckUpdateRequest {
+  string device_id = 1;
+  string current_version = 2;
+  string component = 3;  // igh-edge/igh-center
+}
+
+message CheckUpdateResponse {
+  bool has_update = 1;
+  OTAPackage package = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+message OTAPackage {
+  string id = 1;
+  string version = 2;
+  string component = 3;
+  int64 file_size_bytes = 4;
+  string sha256_hash = 5;
+  string changelog = 6;
+  string download_url = 7;  // HTTP fallback
+  common.v1.Timestamp released_at = 8;
+}
+
+message DownloadPackageRequest {
+  string package_id = 1;
+  string device_id = 2;
+  int64 offset = 3;  // 断点续传偏移量
+}
+
+message PackageChunk {
+  bytes data = 1;        // 分片数据（1MB/片）
+  int64 offset = 2;      // 当前偏移量
+  int64 total_size = 3;  // 总大小
+  bool is_last = 4;      // 是否最后一片
+}
+
+message OTAProgressReport {
+  string device_id = 1;
+  string package_id = 2;
+  string status = 3;  // downloading/ready/installing/completed/failed
+  int32 progress = 4; // 进度（0-100）
+  string message = 5; // 状态消息
+  common.v1.Timestamp timestamp = 6;
+}
+
+message OTAProgressResponse {
+  bool acknowledged = 1;
+  common.v1.ResponseMeta meta = 2;
+}
+
+// ============================================================================
+// 丝锭查询服务（高频读取场景）
+// ============================================================================
+
+service BobbinService {
+  // 批量查询丝锭（扫码/RFID）
+  rpc BatchQuery(BobbinBatchQueryRequest) returns (BobbinBatchQueryResponse);
+
+  // 查询丝锭详情（含追溯）
+  rpc GetDetail(BobbinDetailRequest) returns (BobbinDetailResponse);
+
+  // 流式查询批次下的所有丝锭
+  rpc StreamByLot(StreamByLotRequest) returns (stream BobbinInfo);
+}
+
+message BobbinBatchQueryRequest {
+  repeated string bobbin_codes = 1;  // 最多100个
+  bool include_tracing = 2;          // 是否包含追溯信息
+}
+
+message BobbinBatchQueryResponse {
+  repeated BobbinInfo bobbins = 1;
+  repeated string not_found_codes = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+message BobbinInfo {
+  string id = 1;
+  string bobbin_code = 2;
+  string lot_id = 3;
+  string lot_number = 4;
+  common.v1.ProductType product_type = 5;
+  int32 position = 6;
+  common.v1.BobbinLifecycle lifecycle = 7;
+
+  // 物理信息
+  double gross_weight_g = 10;
+  double net_weight_g = 11;
+  double tube_weight_g = 12;
+  double length_m = 13;
+
+  // 质量信息
+  string final_grade = 20;
+  bool is_qualified = 21;
+
+  // 时间戳
+  common.v1.Timestamp produced_at = 30;
+  common.v1.Timestamp updated_at = 31;
+}
+
+message BobbinDetailRequest {
+  string bobbin_id = 1;
+  bool include_tracing = 2;
+}
+
+message BobbinDetailResponse {
+  BobbinInfo bobbin = 1;
+  BobbinTracing tracing = 2;
+  common.v1.ResponseMeta meta = 3;
+}
+
+message BobbinTracing {
+  OrderInfo order = 1;
+  LotInfo lot = 2;
+  ModuleInfo module = 3;
+  DoffingInfo doffing = 4;
+  PalletInfo pallet = 5;
+  WarehouseInfo warehouse = 6;
+}
+
+message OrderInfo {
+  string order_number = 1;
+  string product_name = 2;
+}
+
+message LotInfo {
+  string lot_number = 1;
+  string prefix = 2;
+}
+
+message ModuleInfo {
+  string module_code = 1;
+  string spinning_line = 2;
+  string spinning_side = 3;
+}
+
+message DoffingInfo {
+  string doffing_number = 1;
+  common.v1.Timestamp doffed_at = 2;
+  string operator_name = 3;
+}
+
+message PalletInfo {
+  string pallet_code = 1;
+  common.v1.Timestamp packed_at = 2;
+}
+
+message WarehouseInfo {
+  string warehouse_name = 1;
+  string location_code = 2;
+  common.v1.Timestamp inbound_at = 3;
+}
+
+message StreamByLotRequest {
+  string lot_id = 1;
+  common.v1.BobbinLifecycle lifecycle_filter = 2;  // 可选过滤
+}
+
+// ============================================================================
+// 生产数据聚合服务（报表查询）
+// ============================================================================
+
+service ProductionService {
+  // 查询产量统计
+  rpc GetProductionStats(ProductionStatsRequest) returns (ProductionStatsResponse);
+
+  // 查询质量统计
+  rpc GetQualityStats(QualityStatsRequest) returns (QualityStatsResponse);
+
+  // 查询设备OEE
+  rpc GetOEEStats(OEEStatsRequest) returns (OEEStatsResponse);
+}
+
+message ProductionStatsRequest {
+  string date = 1;  // YYYY-MM-DD
+  common.v1.ProductType product_type = 2;
+  repeated string line_ids = 3;  // 可选：按产线过滤
+}
+
+message ProductionStatsResponse {
+  ProductionSummary summary = 1;
+  repeated LineStats by_line = 2;
+  repeated ShiftStats by_shift = 3;
+  common.v1.ResponseMeta meta = 4;
+}
+
+message ProductionSummary {
+  int32 total_bobbins = 1;
+  double total_weight_kg = 2;
+  int32 qualified_count = 3;
+  double qualified_rate = 4;
+}
+
+message LineStats {
+  string spinning_line = 1;
+  int32 bobbin_count = 2;
+  double weight_kg = 3;
+  double qualified_rate = 4;
+}
+
+message ShiftStats {
+  string shift_name = 1;
+  int32 bobbin_count = 2;
+  double weight_kg = 3;
+}
+
+message QualityStatsRequest {
+  string lot_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message QualityStatsResponse {
+  int32 total_count = 1;
+  int32 qualified_count = 2;
+  double qualified_rate = 3;
+  map<string, int32> grade_distribution = 4;   // AA: 180, B: 48
+  map<string, int32> defect_distribution = 5;  // oil_stain: 15
+  common.v1.ResponseMeta meta = 6;
+}
+
+message OEEStatsRequest {
+  string module_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message OEEStatsResponse {
+  string module_code = 1;
+  DateRange period = 2;
+  OEEMetrics oee = 3;
+  OEEDetails details = 4;
+  common.v1.ResponseMeta meta = 5;
+}
+
+message DateRange {
+  string start_date = 1;
+  string end_date = 2;
+}
+
+message OEEMetrics {
+  double availability = 1;   // 可用率%
+  double performance = 2;    // 性能率%
+  double quality = 3;        // 合格率%
+  double overall = 4;        // OEE = availability × performance × quality
+}
+
+message OEEDetails {
+  int32 planned_hours = 1;
+  int32 actual_running_hours = 2;
+  int32 downtime_hours = 3;
+  int32 target_output = 4;
+  int32 actual_output = 5;
+  int32 qualified_output = 6;
+}
