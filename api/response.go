@@ -51,6 +51,7 @@ const (
 
 	// 通用错误 (100xx)
 	CodeParamError        = 10001
+	CodeInvalidParams     = 10001 // 别名，保持兼容
 	CodeMissingParam      = 10002
 	CodeParamFormatError  = 10003
 
@@ -66,11 +67,13 @@ const (
 
 	// 数据错误 (400xx)
 	CodeResourceNotFound  = 40001
+	CodeNotFound          = 40001 // 别名，保持兼容
 	CodeResourceExists    = 40002
 	CodeDataConflict      = 40003
 
 	// 系统错误 (500xx)
 	CodeInternalError     = 50001
+	CodeServerError       = 50001 // 别名，保持兼容
 	CodeDatabaseError     = 50002
 	CodePLCError          = 50003
 )

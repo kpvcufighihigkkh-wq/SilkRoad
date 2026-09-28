@@ -24,6 +24,7 @@ type CenterServer struct {
 	jwtAuth       *middleware.JWTAuth
 	uploadHandler *center.UploadHandler
 	dataProvider  *center.BaseDataProvider
+	userService   *service.UserService
 }
 
 // NewCenterServer 创建中心端服务器
@@ -66,12 +67,16 @@ func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServ
 	uploadHandler := center.NewUploadHandler(client)
 	dataProvider := center.NewBaseDataProvider(client)
 
+	// 用户服务（用于登录验证）
+	userService := service.NewUserService(client)
+
 	s := &CenterServer{
 		router:        router,
 		client:        client,
 		jwtAuth:       jwtAuth,
 		uploadHandler: uploadHandler,
 		dataProvider:  dataProvider,
+		userService:   userService,
 		server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: router,
@@ -110,11 +115,47 @@ func (s *CenterServer) registerRoutes() {
 			orders.DELETE("/:id", orderHandler.DeleteOrder)
 		}
 
-		// TODO: 添加更多资源路由
-		// - /lots (批次管理)
-		// - /bobbins (丝锭管理)
-		// - /projects (项目管理)
-		// - /users (用户管理)
+		// 批次管理
+		lotService := service.NewLotService(s.client)
+		lotHandler := centerv1.NewLotHandler(lotService)
+
+		lots := authorized.Group("/lots")
+		{
+			lots.POST("", lotHandler.CreateLot)
+			lots.GET("", lotHandler.ListLots)
+			lots.GET("/:id", lotHandler.GetLot)
+			lots.PUT("/:id/status", lotHandler.UpdateLotStatus)
+			lots.DELETE("/:id", lotHandler.DeleteLot)
+		}
+
+		// 丝锭管理
+		bobbinService := service.NewBobbinService(s.client)
+		bobbinHandler := centerv1.NewBobbinHandler(bobbinService)
+
+		bobbins := authorized.Group("/bobbins")
+		{
+			bobbins.POST("", bobbinHandler.CreateBobbin)
+			bobbins.GET("", bobbinHandler.ListBobbins)
+			bobbins.GET("/:id", bobbinHandler.GetBobbin)
+			bobbins.PUT("/:id/status", bobbinHandler.UpdateBobbinStatus)
+			bobbins.POST("/:id/print", bobbinHandler.MarkBobbinPrinted)
+			bobbins.DELETE("/:id", bobbinHandler.DeleteBobbin)
+		}
+
+		// 用户管理
+		userService := service.NewUserService(s.client)
+		userHandler := centerv1.NewUserHandler(userService)
+
+		users := authorized.Group("/users")
+		{
+			users.POST("", userHandler.CreateUser)
+			users.GET("", userHandler.ListUsers)
+			users.GET("/me", userHandler.GetCurrentUser)
+			users.GET("/:id", userHandler.GetUser)
+			users.PUT("/:id", userHandler.UpdateUser)
+			users.PUT("/:id/password", userHandler.ChangePassword)
+			users.DELETE("/:id", userHandler.DeleteUser)
+		}
 	}
 
 	// 边端数据同步路由（需要Edge Token）
@@ -164,26 +205,33 @@ func (s *CenterServer) handleLogin(c *gin.Context) {
 		return
 	}
 
-	// TODO: 验证用户名密码
-	// 这里暂时使用简单验证
-	if req.Username == "admin" && req.Password == "admin123" {
-		token, err := s.jwtAuth.GenerateToken("admin-id", req.Username, []string{"admin"})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, api.Error(api.CodeInternalError, "生成token失败"))
+	// 使用UserService验证登录
+	user, err := s.userService.ValidateLogin(c.Request.Context(), req.Username, req.Password)
+	if err != nil {
+		if svcErr, ok := err.(*service.ServiceError); ok {
+			c.JSON(http.StatusUnauthorized, api.Error(svcErr.Code, svcErr.Message))
 			return
 		}
-
-		c.JSON(http.StatusOK, api.Success(gin.H{
-			"token": token,
-			"user": gin.H{
-				"username": req.Username,
-				"roles":    []string{"admin"},
-			},
-		}))
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "用户名或密码错误"))
 		return
 	}
 
-	c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "用户名或密码错误"))
+	// 生成JWT token
+	token, err := s.jwtAuth.GenerateToken(user.ID.String(), user.Username, []string{string(user.Role)})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeInternalError, "生成token失败"))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(gin.H{
+		"token": token,
+		"user": gin.H{
+			"id":        user.ID.String(),
+			"username":  user.Username,
+			"full_name": user.FullName,
+			"role":      string(user.Role),
+		},
+	}))
 }
 
 // handleEdgeUpload 处理边端数据上传
