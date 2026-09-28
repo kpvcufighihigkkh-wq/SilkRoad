@@ -224,6 +224,32 @@ Authorization: Bearer {token}
 
 **结果**: ✅ 通过 - 正确过滤operator角色用户
 
+#### 3.5 获取当前登录用户信息
+**请求**:
+```bash
+GET http://localhost:8080/v1/users/me
+Authorization: Bearer {token}
+```
+
+**响应**:
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": "2e2b70f9-9f0e-4cc2-9ac6-26fa930f73e4",
+    "username": "admin",
+    "real_name": "系统管理员",
+    "role": "admin",
+    "is_active": true,
+    "created_at": "2026-09-28T09:08:33Z",
+    "updated_at": "2026-09-28T09:08:33Z"
+  }
+}
+```
+
+**结果**: ✅ 通过 - 正确返回当前登录用户信息（修复后）
+
 ---
 
 ### ✅ 4. 批次管理 API (Lot Management)
@@ -457,10 +483,10 @@ Authorization: Bearer {token}
 |------|--------|------|------|--------|
 | 健康检查 | 1 | 1 | 0 | 100% |
 | JWT认证 | 2 | 2 | 0 | 100% |
-| 用户管理 | 4 | 4 | 0 | 100% |
+| 用户管理 | 5 | 5 | 0 | 100% |
 | 批次管理 | 4 | 4 | 0 | 100% |
 | 丝锭管理 | 5 | 5 | 0 | 100% |
-| **总计** | **16** | **16** | **0** | **100%** |
+| **总计** | **17** | **17** | **0** | **100%** |
 
 ---
 
@@ -500,11 +526,14 @@ Authorization: Bearer {token}
 
 ## 已知问题
 
-### ⚠️ 1. /users/me端点未工作
+### ✅ 1. /users/me端点已修复
 **现象**: 返回"未登录"错误  
-**原因**: JWT中间件没有正确设置claims到gin.Context  
+**原因**: JWT中间件使用context.WithValue()存储claims，handler使用gin.Context.Get()获取 - 两种不同的存储机制  
 **影响**: 中等  
-**建议**: 修复middleware.JWTAuth与gin.Context的集成
+**状态**: ✅ 已修复 (commit: 0fbf739)  
+**修复方案**: 
+- 中间件改用c.Set()存储claims到gin.Context
+- handler改用string(middleware.ClaimsKey)获取
 
 ### ⚠️ 2. 中文显示乱码
 **现象**: curl返回的JSON中文显示为乱码  
