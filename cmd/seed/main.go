@@ -51,20 +51,22 @@ func seedSpinningLines(ctx context.Context, client *ent.Client) error {
 	log.Println("🏭 Creating spinning lines...")
 
 	lines := []struct {
-		Name   string
-		Number string
+		Name          string
+		Number        string
+		PositionCount int
 	}{
-		{"Line 1", "L001"},
-		{"Line 2", "L002"},
-		{"Line 3", "L003"},
-		{"Line 4", "L004"},
+		{"Line 1", "L001", 48},
+		{"Line 2", "L002", 48},
+		{"Line 3", "L003", 48},
+		{"Line 4", "L004", 48},
 	}
 
 	for _, line := range lines {
 		_, err := client.SpinningLine.Create().
 			SetLineName(line.Name).
 			SetLineNumber(line.Number).
-			SetStatus("idle").
+			SetPositionCount(line.PositionCount).
+			SetStatus("active").
 			Save(ctx)
 
 		if err != nil {
@@ -117,7 +119,7 @@ func seedProjects(ctx context.Context, client *ent.Client) error {
 		SetProjectName("Demo Project").
 		SetProductType("FDY").
 		SetProductSpec("150D/48F").
-		SetStatus("active").
+		SetStatus("in_progress").
 		Save(ctx)
 
 	if err != nil {
@@ -130,6 +132,7 @@ func seedProjects(ctx context.Context, client *ent.Client) error {
 	order, err := client.Order.Create().
 		SetOrderNumber("ORD-2024-001").
 		SetProjectID(project.ID).
+		SetCustomerName("Demo Customer").
 		SetProductType("FDY").
 		SetProductSpec("150D/48F").
 		SetOrderQuantity(1000).

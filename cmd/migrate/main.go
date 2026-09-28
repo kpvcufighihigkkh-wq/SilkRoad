@@ -12,7 +12,7 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql/schema"
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -68,7 +68,7 @@ func migrateCenter(dsn string) {
 }
 
 func migrateEdge(dsn string) {
-	client, err := ent_edge.Open(dialect.SQLite, dsn)
+	client, err := ent_edge.Open("sqlite", dsn)
 	if err != nil {
 		log.Fatalf("failed opening connection to sqlite: %v", err)
 	}

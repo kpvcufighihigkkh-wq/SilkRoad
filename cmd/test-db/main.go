@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -10,8 +11,9 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent_edge"
 
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 	"github.com/google/uuid"
 )
 
@@ -67,7 +69,7 @@ func testCenter() {
 		SetProjectName("Test Project").
 		SetProductType("FDY").
 		SetProductSpec("150D/48F").
-		SetStatus("active").
+		SetStatus("in_progress").
 		Save(ctx)
 	if err != nil {
 		log.Fatalf("❌ Failed creating project: %v", err)
@@ -112,10 +114,16 @@ func testEdge() {
 	log.Println("🧪 Testing edge database (SQLite)...")
 
 	dsn := "file:test_edge.db?cache=shared&_fk=1"
-	client, err := ent_edge.Open(dialect.SQLite, dsn)
+
+	// 使用modernc.org/sqlite驱动
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
-		log.Fatalf("❌ Failed connecting to sqlite: %v", err)
+		log.Fatalf("❌ Failed opening sqlite: %v", err)
 	}
+
+	// 使用ent的SQL包装器
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := ent_edge.NewClient(ent_edge.Driver(drv))
 	defer client.Close()
 	defer os.Remove("test_edge.db")  // 清理测试文件
 
@@ -210,11 +218,16 @@ func testEdge() {
 	}
 	log.Printf("✅ Created sync log for entity: %s", syncLog.EntityID)
 
-	// Delete
+	// Delete (先删除子实体bobbin，再删除父实体lot)
+	if err := client.Bobbin.DeleteOne(bobbin).Exec(ctx); err != nil {
+		log.Fatalf("❌ Failed deleting bobbin: %v", err)
+	}
+	log.Println("✅ Deleted bobbin")
+
 	if err := client.Lot.DeleteOne(lot).Exec(ctx); err != nil {
 		log.Fatalf("❌ Failed deleting lot: %v", err)
 	}
-	log.Println("✅ Deleted lot (cascade deleted bobbin)")
+	log.Println("✅ Deleted lot")
 
 	log.Println("\n🎉 All edge database tests passed!")
 }
