@@ -129,7 +129,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 // @Failure 401 {object} api.Response
 // @Router /v1/users/me [get]
 func (h *UserHandler) GetCurrentUser(c *gin.Context) {
-	claims, exists := c.Get(middleware.ClaimsKey)
+	claims, exists := c.Get(string(middleware.ClaimsKey))
 	if !exists {
 		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未登录"))
 		return

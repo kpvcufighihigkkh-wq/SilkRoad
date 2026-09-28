@@ -184,10 +184,8 @@ func (s *CenterServer) jwtMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// 将claims存入context
-		c.Request = c.Request.WithContext(
-			middleware.SetClaimsToContext(c.Request.Context(), claims),
-		)
+		// 将claims存入gin.Context（使用gin的Set方法）
+		c.Set(string(middleware.ClaimsKey), claims)
 
 		c.Next()
 	}
