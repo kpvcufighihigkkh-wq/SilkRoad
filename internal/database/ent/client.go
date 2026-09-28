@@ -18,6 +18,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
@@ -35,6 +36,8 @@ type Client struct {
 	Bobbin *BobbinClient
 	// Carton is the client for interacting with the Carton builders.
 	Carton *CartonClient
+	// Doffing is the client for interacting with the Doffing builders.
+	Doffing *DoffingClient
 	// Lot is the client for interacting with the Lot builders.
 	Lot *LotClient
 	// Order is the client for interacting with the Order builders.
@@ -60,6 +63,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Bobbin = NewBobbinClient(c.config)
 	c.Carton = NewCartonClient(c.config)
+	c.Doffing = NewDoffingClient(c.config)
 	c.Lot = NewLotClient(c.config)
 	c.Order = NewOrderClient(c.config)
 	c.Pallet = NewPalletClient(c.config)
@@ -160,6 +164,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:       cfg,
 		Bobbin:       NewBobbinClient(cfg),
 		Carton:       NewCartonClient(cfg),
+		Doffing:      NewDoffingClient(cfg),
 		Lot:          NewLotClient(cfg),
 		Order:        NewOrderClient(cfg),
 		Pallet:       NewPalletClient(cfg),
@@ -187,6 +192,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:       cfg,
 		Bobbin:       NewBobbinClient(cfg),
 		Carton:       NewCartonClient(cfg),
+		Doffing:      NewDoffingClient(cfg),
 		Lot:          NewLotClient(cfg),
 		Order:        NewOrderClient(cfg),
 		Pallet:       NewPalletClient(cfg),
@@ -222,7 +228,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Bobbin, c.Carton, c.Lot, c.Order, c.Pallet, c.Project, c.SpinningLine, c.User,
+		c.Bobbin, c.Carton, c.Doffing, c.Lot, c.Order, c.Pallet, c.Project,
+		c.SpinningLine, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -232,7 +239,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Bobbin, c.Carton, c.Lot, c.Order, c.Pallet, c.Project, c.SpinningLine, c.User,
+		c.Bobbin, c.Carton, c.Doffing, c.Lot, c.Order, c.Pallet, c.Project,
+		c.SpinningLine, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -245,6 +253,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Bobbin.mutate(ctx, m)
 	case *CartonMutation:
 		return c.Carton.mutate(ctx, m)
+	case *DoffingMutation:
+		return c.Doffing.mutate(ctx, m)
 	case *LotMutation:
 		return c.Lot.mutate(ctx, m)
 	case *OrderMutation:
@@ -589,6 +599,139 @@ func (c *CartonClient) mutate(ctx context.Context, m *CartonMutation) (Value, er
 		return (&CartonDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Carton mutation op: %q", m.Op())
+	}
+}
+
+// DoffingClient is a client for the Doffing schema.
+type DoffingClient struct {
+	config
+}
+
+// NewDoffingClient returns a client for the Doffing from the given config.
+func NewDoffingClient(c config) *DoffingClient {
+	return &DoffingClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `doffing.Hooks(f(g(h())))`.
+func (c *DoffingClient) Use(hooks ...Hook) {
+	c.hooks.Doffing = append(c.hooks.Doffing, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `doffing.Intercept(f(g(h())))`.
+func (c *DoffingClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Doffing = append(c.inters.Doffing, interceptors...)
+}
+
+// Create returns a builder for creating a Doffing entity.
+func (c *DoffingClient) Create() *DoffingCreate {
+	mutation := newDoffingMutation(c.config, OpCreate)
+	return &DoffingCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Doffing entities.
+func (c *DoffingClient) CreateBulk(builders ...*DoffingCreate) *DoffingCreateBulk {
+	return &DoffingCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DoffingClient) MapCreateBulk(slice any, setFunc func(*DoffingCreate, int)) *DoffingCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DoffingCreateBulk{err: fmt.Errorf("calling to DoffingClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DoffingCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DoffingCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Doffing.
+func (c *DoffingClient) Update() *DoffingUpdate {
+	mutation := newDoffingMutation(c.config, OpUpdate)
+	return &DoffingUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DoffingClient) UpdateOne(_m *Doffing) *DoffingUpdateOne {
+	mutation := newDoffingMutation(c.config, OpUpdateOne, withDoffing(_m))
+	return &DoffingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DoffingClient) UpdateOneID(id uuid.UUID) *DoffingUpdateOne {
+	mutation := newDoffingMutation(c.config, OpUpdateOne, withDoffingID(id))
+	return &DoffingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Doffing.
+func (c *DoffingClient) Delete() *DoffingDelete {
+	mutation := newDoffingMutation(c.config, OpDelete)
+	return &DoffingDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DoffingClient) DeleteOne(_m *Doffing) *DoffingDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DoffingClient) DeleteOneID(id uuid.UUID) *DoffingDeleteOne {
+	builder := c.Delete().Where(doffing.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DoffingDeleteOne{builder}
+}
+
+// Query returns a query builder for Doffing.
+func (c *DoffingClient) Query() *DoffingQuery {
+	return &DoffingQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDoffing},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Doffing entity by its id.
+func (c *DoffingClient) Get(ctx context.Context, id uuid.UUID) (*Doffing, error) {
+	return c.Query().Where(doffing.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DoffingClient) GetX(ctx context.Context, id uuid.UUID) *Doffing {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DoffingClient) Hooks() []Hook {
+	return c.hooks.Doffing
+}
+
+// Interceptors returns the client interceptors.
+func (c *DoffingClient) Interceptors() []Interceptor {
+	return c.inters.Doffing
+}
+
+func (c *DoffingClient) mutate(ctx context.Context, m *DoffingMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DoffingCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DoffingUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DoffingUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DoffingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Doffing mutation op: %q", m.Op())
 	}
 }
 
@@ -1489,10 +1632,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Bobbin, Carton, Lot, Order, Pallet, Project, SpinningLine, User []ent.Hook
+		Bobbin, Carton, Doffing, Lot, Order, Pallet, Project, SpinningLine,
+		User []ent.Hook
 	}
 	inters struct {
-		Bobbin, Carton, Lot, Order, Pallet, Project, SpinningLine,
+		Bobbin, Carton, Doffing, Lot, Order, Pallet, Project, SpinningLine,
 		User []ent.Interceptor
 	}
 )

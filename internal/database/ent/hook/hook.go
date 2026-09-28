@@ -33,6 +33,18 @@ func (f CartonFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CartonMutation", m)
 }
 
+// The DoffingFunc type is an adapter to allow the use of ordinary
+// function as Doffing mutator.
+type DoffingFunc func(context.Context, *ent.DoffingMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f DoffingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.DoffingMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DoffingMutation", m)
+}
+
 // The LotFunc type is an adapter to allow the use of ordinary
 // function as Lot mutator.
 type LotFunc func(context.Context, *ent.LotMutation) (ent.Value, error)

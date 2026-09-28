@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
@@ -127,6 +128,42 @@ func init() {
 	cartonDescID := cartonFields[0].Descriptor()
 	// carton.DefaultID holds the default value on creation for the id field.
 	carton.DefaultID = cartonDescID.Default.(func() uuid.UUID)
+	doffingFields := schema.Doffing{}.Fields()
+	_ = doffingFields
+	// doffingDescSpinningPosition is the schema descriptor for spinning_position field.
+	doffingDescSpinningPosition := doffingFields[2].Descriptor()
+	// doffing.SpinningPositionValidator is a validator for the "spinning_position" field. It is called by the builders before save.
+	doffing.SpinningPositionValidator = doffingDescSpinningPosition.Validators[0].(func(int) error)
+	// doffingDescBobbinNumber is the schema descriptor for bobbin_number field.
+	doffingDescBobbinNumber := doffingFields[6].Descriptor()
+	// doffing.BobbinNumberValidator is a validator for the "bobbin_number" field. It is called by the builders before save.
+	doffing.BobbinNumberValidator = doffingDescBobbinNumber.Validators[0].(func(string) error)
+	// doffingDescActualWeight is the schema descriptor for actual_weight field.
+	doffingDescActualWeight := doffingFields[7].Descriptor()
+	// doffing.ActualWeightValidator is a validator for the "actual_weight" field. It is called by the builders before save.
+	doffing.ActualWeightValidator = doffingDescActualWeight.Validators[0].(func(float64) error)
+	// doffingDescGrade is the schema descriptor for grade field.
+	doffingDescGrade := doffingFields[8].Descriptor()
+	// doffing.GradeValidator is a validator for the "grade" field. It is called by the builders before save.
+	doffing.GradeValidator = doffingDescGrade.Validators[0].(func(string) error)
+	// doffingDescDoffingTime is the schema descriptor for doffing_time field.
+	doffingDescDoffingTime := doffingFields[10].Descriptor()
+	// doffing.DefaultDoffingTime holds the default value on creation for the doffing_time field.
+	doffing.DefaultDoffingTime = doffingDescDoffingTime.Default.(func() time.Time)
+	// doffingDescCreatedAt is the schema descriptor for created_at field.
+	doffingDescCreatedAt := doffingFields[12].Descriptor()
+	// doffing.DefaultCreatedAt holds the default value on creation for the created_at field.
+	doffing.DefaultCreatedAt = doffingDescCreatedAt.Default.(func() time.Time)
+	// doffingDescUpdatedAt is the schema descriptor for updated_at field.
+	doffingDescUpdatedAt := doffingFields[13].Descriptor()
+	// doffing.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	doffing.DefaultUpdatedAt = doffingDescUpdatedAt.Default.(func() time.Time)
+	// doffing.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	doffing.UpdateDefaultUpdatedAt = doffingDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// doffingDescID is the schema descriptor for id field.
+	doffingDescID := doffingFields[0].Descriptor()
+	// doffing.DefaultID holds the default value on creation for the id field.
+	doffing.DefaultID = doffingDescID.Default.(func() uuid.UUID)
 	lotFields := schema.Lot{}.Fields()
 	_ = lotFields
 	// lotDescLotNumber is the schema descriptor for lot_number field.

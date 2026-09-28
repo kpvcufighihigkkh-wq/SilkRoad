@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
@@ -65,21 +66,27 @@ func (p *BaseDataProvider) getSpinningLines(ctx context.Context) ([]map[string]i
 
 	var result []map[string]interface{}
 	for _, line := range lines {
-		result = append(result, map[string]interface{}{
-			"id":             line.ID.String(),
-			"line_number":    line.LineNumber,
-			"line_name":      line.LineName,
-			"position_count": line.PositionCount,
-			"workshop_area":  line.WorkshopArea,
-			"product_type":   line.ProductType,
-			"status":         line.Status,
-			"plc_ip":         line.PlcIP,
-			"plc_port":       line.PlcPort,
-			"plc_protocol":   line.PlcProtocol,
-			"notes":          line.Notes,
-			"created_at":     line.CreatedAt,
-			"updated_at":     line.UpdatedAt,
-		})
+		data := map[string]interface{}{
+			"id":          line.ID.String(),
+			"line_number": line.LineNumber,
+			"line_name":   line.LineName,
+			"status":      line.Status,
+			"created_at":  line.CreatedAt,
+			"updated_at":  line.UpdatedAt,
+		}
+
+		// 可选字段
+		if line.Location != "" {
+			data["location"] = line.Location
+		}
+		if line.Capacity > 0 {
+			data["capacity"] = line.Capacity
+		}
+		if line.CurrentLotID != uuid.Nil {
+			data["current_lot_id"] = line.CurrentLotID.String()
+		}
+
+		result = append(result, data)
 	}
 
 	return result, nil
@@ -97,21 +104,29 @@ func (p *BaseDataProvider) getProjects(ctx context.Context) ([]map[string]interf
 
 	var result []map[string]interface{}
 	for _, proj := range projects {
-		result = append(result, map[string]interface{}{
-			"id":               proj.ID.String(),
-			"project_number":   proj.ProjectNumber,
-			"project_name":     proj.ProjectName,
-			"product_type":     proj.ProductType,
-			"product_spec":     proj.ProductSpec,
-			"status":           proj.Status,
-			"planned_quantity": proj.PlannedQuantity,
-			"actual_quantity":  proj.ActualQuantity,
-			"start_date":       proj.StartDate,
-			"end_date":         proj.EndDate,
-			"notes":            proj.Notes,
-			"created_at":       proj.CreatedAt,
-			"updated_at":       proj.UpdatedAt,
-		})
+		data := map[string]interface{}{
+			"id":           proj.ID.String(),
+			"project_name": proj.ProjectName,
+			"status":       proj.Status,
+			"created_at":   proj.CreatedAt,
+			"updated_at":   proj.UpdatedAt,
+		}
+
+		// 可选字段
+		if proj.Description != "" {
+			data["description"] = proj.Description
+		}
+		if proj.CustomerName != "" {
+			data["customer_name"] = proj.CustomerName
+		}
+		if !proj.StartDate.IsZero() {
+			data["start_date"] = proj.StartDate
+		}
+		if !proj.EndDate.IsZero() {
+			data["end_date"] = proj.EndDate
+		}
+
+		result = append(result, data)
 	}
 
 	return result, nil

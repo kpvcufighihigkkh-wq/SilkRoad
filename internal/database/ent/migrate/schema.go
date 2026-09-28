@@ -142,6 +142,56 @@ var (
 			},
 		},
 	}
+	// DoffingsColumns holds the columns for the "doffings" table.
+	DoffingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "spinning_line_id", Type: field.TypeUUID},
+		{Name: "spinning_position", Type: field.TypeInt},
+		{Name: "lot_id", Type: field.TypeUUID},
+		{Name: "operator_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "confirmed", "cancelled"}, Default: "pending"},
+		{Name: "bobbin_number", Type: field.TypeString, Nullable: true, Size: 50},
+		{Name: "actual_weight", Type: field.TypeFloat64, Nullable: true},
+		{Name: "grade", Type: field.TypeString, Nullable: true, Size: 10},
+		{Name: "cancel_reason", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "doffing_time", Type: field.TypeTime},
+		{Name: "confirmed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// DoffingsTable holds the schema information for the "doffings" table.
+	DoffingsTable = &schema.Table{
+		Name:       "doffings",
+		Columns:    DoffingsColumns,
+		PrimaryKey: []*schema.Column{DoffingsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "doffing_spinning_line_id",
+				Unique:  false,
+				Columns: []*schema.Column{DoffingsColumns[1]},
+			},
+			{
+				Name:    "doffing_lot_id",
+				Unique:  false,
+				Columns: []*schema.Column{DoffingsColumns[3]},
+			},
+			{
+				Name:    "doffing_status",
+				Unique:  false,
+				Columns: []*schema.Column{DoffingsColumns[5]},
+			},
+			{
+				Name:    "doffing_doffing_time",
+				Unique:  false,
+				Columns: []*schema.Column{DoffingsColumns[10]},
+			},
+			{
+				Name:    "doffing_spinning_line_id_spinning_position_status",
+				Unique:  false,
+				Columns: []*schema.Column{DoffingsColumns[1], DoffingsColumns[2], DoffingsColumns[5]},
+			},
+		},
+	}
 	// LotsColumns holds the columns for the "lots" table.
 	LotsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -405,6 +455,7 @@ var (
 	Tables = []*schema.Table{
 		BobbinsTable,
 		CartonsTable,
+		DoffingsTable,
 		LotsTable,
 		OrdersTable,
 		PalletsTable,

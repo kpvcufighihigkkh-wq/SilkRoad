@@ -203,3 +203,79 @@ func (s *BobbinService) toBobbinResponse(b *ent.Bobbin) *BobbinResponse {
 
 	return resp
 }
+
+// WeighBobbinRequest 丝锭称重请求
+type WeighBobbinRequest struct {
+	GrossWeight float64 `json:"gross_weight" binding:"required,gt=0"`
+	TareWeight  float64 `json:"tare_weight" binding:"required,gte=0"`
+	NetWeight   float64 `json:"net_weight" binding:"required,gt=0"`
+}
+
+// InspectBobbinRequest 丝锭质检请求
+type InspectBobbinRequest struct {
+	Grade        string `json:"grade" binding:"required"`
+	InspectorID  string `json:"inspector_id"`
+	DefectNote   string `json:"defect_note"`
+}
+
+// WeighBobbin 丝锭称重
+func (s *BobbinService) WeighBobbin(ctx context.Context, id string, req *WeighBobbinRequest) error {
+	bobbinID, err := uuid.Parse(id)
+	if err != nil {
+		return &ServiceError{Code: 10001, Message: "无效的丝锭ID"}
+	}
+
+	b, err := s.client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return &ServiceError{Code: 40001, Message: "丝锭不存在"}
+		}
+		return err
+	}
+
+	// 验证重量逻辑：净重 = 毛重 - 皮重
+	expectedNet := req.GrossWeight - req.TareWeight
+	if abs(expectedNet-req.NetWeight) > 0.01 { // 允许0.01kg误差
+		return &ServiceError{Code: 10001, Message: "重量数据不一致：净重应等于毛重减去皮重"}
+	}
+
+	return b.Update().
+		SetGrossWeight(req.GrossWeight).
+		SetTareWeight(req.TareWeight).
+		SetNetWeight(req.NetWeight).
+		Exec(ctx)
+}
+
+// InspectBobbin 丝锭质检
+func (s *BobbinService) InspectBobbin(ctx context.Context, id string, req *InspectBobbinRequest) error {
+	bobbinID, err := uuid.Parse(id)
+	if err != nil {
+		return &ServiceError{Code: 10001, Message: "无效的丝锭ID"}
+	}
+
+	b, err := s.client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return &ServiceError{Code: 40001, Message: "丝锭不存在"}
+		}
+		return err
+	}
+
+	builder := b.Update().SetGrade(req.Grade)
+
+	// 如果质检不合格，可以添加缺陷备注
+	if req.DefectNote != "" {
+		// TODO: 需要在schema中添加defect_note字段
+		// builder.SetDefectNote(req.DefectNote)
+	}
+
+	return builder.Exec(ctx)
+}
+
+// abs 返回浮点数的绝对值
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
+}

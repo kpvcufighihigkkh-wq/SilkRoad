@@ -16,6 +16,8 @@ type Tx struct {
 	Bobbin *BobbinClient
 	// Carton is the client for interacting with the Carton builders.
 	Carton *CartonClient
+	// Doffing is the client for interacting with the Doffing builders.
+	Doffing *DoffingClient
 	// Lot is the client for interacting with the Lot builders.
 	Lot *LotClient
 	// Order is the client for interacting with the Order builders.
@@ -161,6 +163,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Bobbin = NewBobbinClient(tx.config)
 	tx.Carton = NewCartonClient(tx.config)
+	tx.Doffing = NewDoffingClient(tx.config)
 	tx.Lot = NewLotClient(tx.config)
 	tx.Order = NewOrderClient(tx.config)
 	tx.Pallet = NewPalletClient(tx.config)

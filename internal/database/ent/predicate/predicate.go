@@ -12,6 +12,9 @@ type Bobbin func(*sql.Selector)
 // Carton is the predicate function for carton builders.
 type Carton func(*sql.Selector)
 
+// Doffing is the predicate function for doffing builders.
+type Doffing func(*sql.Selector)
+
 // Lot is the predicate function for lot builders.
 type Lot func(*sql.Selector)
 

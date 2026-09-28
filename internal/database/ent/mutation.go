@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
@@ -34,6 +35,7 @@ const (
 	// Node types.
 	TypeBobbin       = "Bobbin"
 	TypeCarton       = "Carton"
+	TypeDoffing      = "Doffing"
 	TypeLot          = "Lot"
 	TypeOrder        = "Order"
 	TypePallet       = "Pallet"
@@ -2587,6 +2589,1173 @@ func (m *CartonMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Carton edge %s", name)
+}
+
+// DoffingMutation represents an operation that mutates the Doffing nodes in the graph.
+type DoffingMutation struct {
+	config
+	op                   Op
+	typ                  string
+	id                   *uuid.UUID
+	spinning_line_id     *uuid.UUID
+	spinning_position    *int
+	addspinning_position *int
+	lot_id               *uuid.UUID
+	operator_id          *uuid.UUID
+	status               *doffing.Status
+	bobbin_number        *string
+	actual_weight        *float64
+	addactual_weight     *float64
+	grade                *string
+	cancel_reason        *string
+	doffing_time         *time.Time
+	confirmed_at         *time.Time
+	created_at           *time.Time
+	updated_at           *time.Time
+	clearedFields        map[string]struct{}
+	done                 bool
+	oldValue             func(context.Context) (*Doffing, error)
+	predicates           []predicate.Doffing
+}
+
+var _ ent.Mutation = (*DoffingMutation)(nil)
+
+// doffingOption allows management of the mutation configuration using functional options.
+type doffingOption func(*DoffingMutation)
+
+// newDoffingMutation creates new mutation for the Doffing entity.
+func newDoffingMutation(c config, op Op, opts ...doffingOption) *DoffingMutation {
+	m := &DoffingMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeDoffing,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withDoffingID sets the ID field of the mutation.
+func withDoffingID(id uuid.UUID) doffingOption {
+	return func(m *DoffingMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Doffing
+		)
+		m.oldValue = func(ctx context.Context) (*Doffing, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Doffing.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withDoffing sets the old Doffing of the mutation.
+func withDoffing(node *Doffing) doffingOption {
+	return func(m *DoffingMutation) {
+		m.oldValue = func(context.Context) (*Doffing, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m DoffingMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m DoffingMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Doffing entities.
+func (m *DoffingMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *DoffingMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *DoffingMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Doffing.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSpinningLineID sets the "spinning_line_id" field.
+func (m *DoffingMutation) SetSpinningLineID(u uuid.UUID) {
+	m.spinning_line_id = &u
+}
+
+// SpinningLineID returns the value of the "spinning_line_id" field in the mutation.
+func (m *DoffingMutation) SpinningLineID() (r uuid.UUID, exists bool) {
+	v := m.spinning_line_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSpinningLineID returns the old "spinning_line_id" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldSpinningLineID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSpinningLineID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSpinningLineID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSpinningLineID: %w", err)
+	}
+	return oldValue.SpinningLineID, nil
+}
+
+// ResetSpinningLineID resets all changes to the "spinning_line_id" field.
+func (m *DoffingMutation) ResetSpinningLineID() {
+	m.spinning_line_id = nil
+}
+
+// SetSpinningPosition sets the "spinning_position" field.
+func (m *DoffingMutation) SetSpinningPosition(i int) {
+	m.spinning_position = &i
+	m.addspinning_position = nil
+}
+
+// SpinningPosition returns the value of the "spinning_position" field in the mutation.
+func (m *DoffingMutation) SpinningPosition() (r int, exists bool) {
+	v := m.spinning_position
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSpinningPosition returns the old "spinning_position" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldSpinningPosition(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSpinningPosition is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSpinningPosition requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSpinningPosition: %w", err)
+	}
+	return oldValue.SpinningPosition, nil
+}
+
+// AddSpinningPosition adds i to the "spinning_position" field.
+func (m *DoffingMutation) AddSpinningPosition(i int) {
+	if m.addspinning_position != nil {
+		*m.addspinning_position += i
+	} else {
+		m.addspinning_position = &i
+	}
+}
+
+// AddedSpinningPosition returns the value that was added to the "spinning_position" field in this mutation.
+func (m *DoffingMutation) AddedSpinningPosition() (r int, exists bool) {
+	v := m.addspinning_position
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSpinningPosition resets all changes to the "spinning_position" field.
+func (m *DoffingMutation) ResetSpinningPosition() {
+	m.spinning_position = nil
+	m.addspinning_position = nil
+}
+
+// SetLotID sets the "lot_id" field.
+func (m *DoffingMutation) SetLotID(u uuid.UUID) {
+	m.lot_id = &u
+}
+
+// LotID returns the value of the "lot_id" field in the mutation.
+func (m *DoffingMutation) LotID() (r uuid.UUID, exists bool) {
+	v := m.lot_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLotID returns the old "lot_id" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldLotID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLotID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLotID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLotID: %w", err)
+	}
+	return oldValue.LotID, nil
+}
+
+// ResetLotID resets all changes to the "lot_id" field.
+func (m *DoffingMutation) ResetLotID() {
+	m.lot_id = nil
+}
+
+// SetOperatorID sets the "operator_id" field.
+func (m *DoffingMutation) SetOperatorID(u uuid.UUID) {
+	m.operator_id = &u
+}
+
+// OperatorID returns the value of the "operator_id" field in the mutation.
+func (m *DoffingMutation) OperatorID() (r uuid.UUID, exists bool) {
+	v := m.operator_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOperatorID returns the old "operator_id" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldOperatorID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOperatorID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOperatorID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOperatorID: %w", err)
+	}
+	return oldValue.OperatorID, nil
+}
+
+// ClearOperatorID clears the value of the "operator_id" field.
+func (m *DoffingMutation) ClearOperatorID() {
+	m.operator_id = nil
+	m.clearedFields[doffing.FieldOperatorID] = struct{}{}
+}
+
+// OperatorIDCleared returns if the "operator_id" field was cleared in this mutation.
+func (m *DoffingMutation) OperatorIDCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldOperatorID]
+	return ok
+}
+
+// ResetOperatorID resets all changes to the "operator_id" field.
+func (m *DoffingMutation) ResetOperatorID() {
+	m.operator_id = nil
+	delete(m.clearedFields, doffing.FieldOperatorID)
+}
+
+// SetStatus sets the "status" field.
+func (m *DoffingMutation) SetStatus(d doffing.Status) {
+	m.status = &d
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *DoffingMutation) Status() (r doffing.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldStatus(ctx context.Context) (v doffing.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *DoffingMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetBobbinNumber sets the "bobbin_number" field.
+func (m *DoffingMutation) SetBobbinNumber(s string) {
+	m.bobbin_number = &s
+}
+
+// BobbinNumber returns the value of the "bobbin_number" field in the mutation.
+func (m *DoffingMutation) BobbinNumber() (r string, exists bool) {
+	v := m.bobbin_number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBobbinNumber returns the old "bobbin_number" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldBobbinNumber(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBobbinNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBobbinNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBobbinNumber: %w", err)
+	}
+	return oldValue.BobbinNumber, nil
+}
+
+// ClearBobbinNumber clears the value of the "bobbin_number" field.
+func (m *DoffingMutation) ClearBobbinNumber() {
+	m.bobbin_number = nil
+	m.clearedFields[doffing.FieldBobbinNumber] = struct{}{}
+}
+
+// BobbinNumberCleared returns if the "bobbin_number" field was cleared in this mutation.
+func (m *DoffingMutation) BobbinNumberCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldBobbinNumber]
+	return ok
+}
+
+// ResetBobbinNumber resets all changes to the "bobbin_number" field.
+func (m *DoffingMutation) ResetBobbinNumber() {
+	m.bobbin_number = nil
+	delete(m.clearedFields, doffing.FieldBobbinNumber)
+}
+
+// SetActualWeight sets the "actual_weight" field.
+func (m *DoffingMutation) SetActualWeight(f float64) {
+	m.actual_weight = &f
+	m.addactual_weight = nil
+}
+
+// ActualWeight returns the value of the "actual_weight" field in the mutation.
+func (m *DoffingMutation) ActualWeight() (r float64, exists bool) {
+	v := m.actual_weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldActualWeight returns the old "actual_weight" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldActualWeight(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldActualWeight is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldActualWeight requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldActualWeight: %w", err)
+	}
+	return oldValue.ActualWeight, nil
+}
+
+// AddActualWeight adds f to the "actual_weight" field.
+func (m *DoffingMutation) AddActualWeight(f float64) {
+	if m.addactual_weight != nil {
+		*m.addactual_weight += f
+	} else {
+		m.addactual_weight = &f
+	}
+}
+
+// AddedActualWeight returns the value that was added to the "actual_weight" field in this mutation.
+func (m *DoffingMutation) AddedActualWeight() (r float64, exists bool) {
+	v := m.addactual_weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearActualWeight clears the value of the "actual_weight" field.
+func (m *DoffingMutation) ClearActualWeight() {
+	m.actual_weight = nil
+	m.addactual_weight = nil
+	m.clearedFields[doffing.FieldActualWeight] = struct{}{}
+}
+
+// ActualWeightCleared returns if the "actual_weight" field was cleared in this mutation.
+func (m *DoffingMutation) ActualWeightCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldActualWeight]
+	return ok
+}
+
+// ResetActualWeight resets all changes to the "actual_weight" field.
+func (m *DoffingMutation) ResetActualWeight() {
+	m.actual_weight = nil
+	m.addactual_weight = nil
+	delete(m.clearedFields, doffing.FieldActualWeight)
+}
+
+// SetGrade sets the "grade" field.
+func (m *DoffingMutation) SetGrade(s string) {
+	m.grade = &s
+}
+
+// Grade returns the value of the "grade" field in the mutation.
+func (m *DoffingMutation) Grade() (r string, exists bool) {
+	v := m.grade
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGrade returns the old "grade" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldGrade(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGrade is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGrade requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGrade: %w", err)
+	}
+	return oldValue.Grade, nil
+}
+
+// ClearGrade clears the value of the "grade" field.
+func (m *DoffingMutation) ClearGrade() {
+	m.grade = nil
+	m.clearedFields[doffing.FieldGrade] = struct{}{}
+}
+
+// GradeCleared returns if the "grade" field was cleared in this mutation.
+func (m *DoffingMutation) GradeCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldGrade]
+	return ok
+}
+
+// ResetGrade resets all changes to the "grade" field.
+func (m *DoffingMutation) ResetGrade() {
+	m.grade = nil
+	delete(m.clearedFields, doffing.FieldGrade)
+}
+
+// SetCancelReason sets the "cancel_reason" field.
+func (m *DoffingMutation) SetCancelReason(s string) {
+	m.cancel_reason = &s
+}
+
+// CancelReason returns the value of the "cancel_reason" field in the mutation.
+func (m *DoffingMutation) CancelReason() (r string, exists bool) {
+	v := m.cancel_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCancelReason returns the old "cancel_reason" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldCancelReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCancelReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCancelReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCancelReason: %w", err)
+	}
+	return oldValue.CancelReason, nil
+}
+
+// ClearCancelReason clears the value of the "cancel_reason" field.
+func (m *DoffingMutation) ClearCancelReason() {
+	m.cancel_reason = nil
+	m.clearedFields[doffing.FieldCancelReason] = struct{}{}
+}
+
+// CancelReasonCleared returns if the "cancel_reason" field was cleared in this mutation.
+func (m *DoffingMutation) CancelReasonCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldCancelReason]
+	return ok
+}
+
+// ResetCancelReason resets all changes to the "cancel_reason" field.
+func (m *DoffingMutation) ResetCancelReason() {
+	m.cancel_reason = nil
+	delete(m.clearedFields, doffing.FieldCancelReason)
+}
+
+// SetDoffingTime sets the "doffing_time" field.
+func (m *DoffingMutation) SetDoffingTime(t time.Time) {
+	m.doffing_time = &t
+}
+
+// DoffingTime returns the value of the "doffing_time" field in the mutation.
+func (m *DoffingMutation) DoffingTime() (r time.Time, exists bool) {
+	v := m.doffing_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDoffingTime returns the old "doffing_time" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldDoffingTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDoffingTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDoffingTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDoffingTime: %w", err)
+	}
+	return oldValue.DoffingTime, nil
+}
+
+// ResetDoffingTime resets all changes to the "doffing_time" field.
+func (m *DoffingMutation) ResetDoffingTime() {
+	m.doffing_time = nil
+}
+
+// SetConfirmedAt sets the "confirmed_at" field.
+func (m *DoffingMutation) SetConfirmedAt(t time.Time) {
+	m.confirmed_at = &t
+}
+
+// ConfirmedAt returns the value of the "confirmed_at" field in the mutation.
+func (m *DoffingMutation) ConfirmedAt() (r time.Time, exists bool) {
+	v := m.confirmed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldConfirmedAt returns the old "confirmed_at" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldConfirmedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldConfirmedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldConfirmedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldConfirmedAt: %w", err)
+	}
+	return oldValue.ConfirmedAt, nil
+}
+
+// ClearConfirmedAt clears the value of the "confirmed_at" field.
+func (m *DoffingMutation) ClearConfirmedAt() {
+	m.confirmed_at = nil
+	m.clearedFields[doffing.FieldConfirmedAt] = struct{}{}
+}
+
+// ConfirmedAtCleared returns if the "confirmed_at" field was cleared in this mutation.
+func (m *DoffingMutation) ConfirmedAtCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldConfirmedAt]
+	return ok
+}
+
+// ResetConfirmedAt resets all changes to the "confirmed_at" field.
+func (m *DoffingMutation) ResetConfirmedAt() {
+	m.confirmed_at = nil
+	delete(m.clearedFields, doffing.FieldConfirmedAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *DoffingMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *DoffingMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *DoffingMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *DoffingMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *DoffingMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *DoffingMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the DoffingMutation builder.
+func (m *DoffingMutation) Where(ps ...predicate.Doffing) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the DoffingMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DoffingMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Doffing, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *DoffingMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DoffingMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Doffing).
+func (m *DoffingMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *DoffingMutation) Fields() []string {
+	fields := make([]string, 0, 13)
+	if m.spinning_line_id != nil {
+		fields = append(fields, doffing.FieldSpinningLineID)
+	}
+	if m.spinning_position != nil {
+		fields = append(fields, doffing.FieldSpinningPosition)
+	}
+	if m.lot_id != nil {
+		fields = append(fields, doffing.FieldLotID)
+	}
+	if m.operator_id != nil {
+		fields = append(fields, doffing.FieldOperatorID)
+	}
+	if m.status != nil {
+		fields = append(fields, doffing.FieldStatus)
+	}
+	if m.bobbin_number != nil {
+		fields = append(fields, doffing.FieldBobbinNumber)
+	}
+	if m.actual_weight != nil {
+		fields = append(fields, doffing.FieldActualWeight)
+	}
+	if m.grade != nil {
+		fields = append(fields, doffing.FieldGrade)
+	}
+	if m.cancel_reason != nil {
+		fields = append(fields, doffing.FieldCancelReason)
+	}
+	if m.doffing_time != nil {
+		fields = append(fields, doffing.FieldDoffingTime)
+	}
+	if m.confirmed_at != nil {
+		fields = append(fields, doffing.FieldConfirmedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, doffing.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, doffing.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *DoffingMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case doffing.FieldSpinningLineID:
+		return m.SpinningLineID()
+	case doffing.FieldSpinningPosition:
+		return m.SpinningPosition()
+	case doffing.FieldLotID:
+		return m.LotID()
+	case doffing.FieldOperatorID:
+		return m.OperatorID()
+	case doffing.FieldStatus:
+		return m.Status()
+	case doffing.FieldBobbinNumber:
+		return m.BobbinNumber()
+	case doffing.FieldActualWeight:
+		return m.ActualWeight()
+	case doffing.FieldGrade:
+		return m.Grade()
+	case doffing.FieldCancelReason:
+		return m.CancelReason()
+	case doffing.FieldDoffingTime:
+		return m.DoffingTime()
+	case doffing.FieldConfirmedAt:
+		return m.ConfirmedAt()
+	case doffing.FieldCreatedAt:
+		return m.CreatedAt()
+	case doffing.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *DoffingMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case doffing.FieldSpinningLineID:
+		return m.OldSpinningLineID(ctx)
+	case doffing.FieldSpinningPosition:
+		return m.OldSpinningPosition(ctx)
+	case doffing.FieldLotID:
+		return m.OldLotID(ctx)
+	case doffing.FieldOperatorID:
+		return m.OldOperatorID(ctx)
+	case doffing.FieldStatus:
+		return m.OldStatus(ctx)
+	case doffing.FieldBobbinNumber:
+		return m.OldBobbinNumber(ctx)
+	case doffing.FieldActualWeight:
+		return m.OldActualWeight(ctx)
+	case doffing.FieldGrade:
+		return m.OldGrade(ctx)
+	case doffing.FieldCancelReason:
+		return m.OldCancelReason(ctx)
+	case doffing.FieldDoffingTime:
+		return m.OldDoffingTime(ctx)
+	case doffing.FieldConfirmedAt:
+		return m.OldConfirmedAt(ctx)
+	case doffing.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case doffing.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Doffing field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DoffingMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case doffing.FieldSpinningLineID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSpinningLineID(v)
+		return nil
+	case doffing.FieldSpinningPosition:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSpinningPosition(v)
+		return nil
+	case doffing.FieldLotID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLotID(v)
+		return nil
+	case doffing.FieldOperatorID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOperatorID(v)
+		return nil
+	case doffing.FieldStatus:
+		v, ok := value.(doffing.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case doffing.FieldBobbinNumber:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBobbinNumber(v)
+		return nil
+	case doffing.FieldActualWeight:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetActualWeight(v)
+		return nil
+	case doffing.FieldGrade:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGrade(v)
+		return nil
+	case doffing.FieldCancelReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCancelReason(v)
+		return nil
+	case doffing.FieldDoffingTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDoffingTime(v)
+		return nil
+	case doffing.FieldConfirmedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetConfirmedAt(v)
+		return nil
+	case doffing.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case doffing.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Doffing field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *DoffingMutation) AddedFields() []string {
+	var fields []string
+	if m.addspinning_position != nil {
+		fields = append(fields, doffing.FieldSpinningPosition)
+	}
+	if m.addactual_weight != nil {
+		fields = append(fields, doffing.FieldActualWeight)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *DoffingMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case doffing.FieldSpinningPosition:
+		return m.AddedSpinningPosition()
+	case doffing.FieldActualWeight:
+		return m.AddedActualWeight()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *DoffingMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case doffing.FieldSpinningPosition:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSpinningPosition(v)
+		return nil
+	case doffing.FieldActualWeight:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddActualWeight(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Doffing numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *DoffingMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(doffing.FieldOperatorID) {
+		fields = append(fields, doffing.FieldOperatorID)
+	}
+	if m.FieldCleared(doffing.FieldBobbinNumber) {
+		fields = append(fields, doffing.FieldBobbinNumber)
+	}
+	if m.FieldCleared(doffing.FieldActualWeight) {
+		fields = append(fields, doffing.FieldActualWeight)
+	}
+	if m.FieldCleared(doffing.FieldGrade) {
+		fields = append(fields, doffing.FieldGrade)
+	}
+	if m.FieldCleared(doffing.FieldCancelReason) {
+		fields = append(fields, doffing.FieldCancelReason)
+	}
+	if m.FieldCleared(doffing.FieldConfirmedAt) {
+		fields = append(fields, doffing.FieldConfirmedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *DoffingMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *DoffingMutation) ClearField(name string) error {
+	switch name {
+	case doffing.FieldOperatorID:
+		m.ClearOperatorID()
+		return nil
+	case doffing.FieldBobbinNumber:
+		m.ClearBobbinNumber()
+		return nil
+	case doffing.FieldActualWeight:
+		m.ClearActualWeight()
+		return nil
+	case doffing.FieldGrade:
+		m.ClearGrade()
+		return nil
+	case doffing.FieldCancelReason:
+		m.ClearCancelReason()
+		return nil
+	case doffing.FieldConfirmedAt:
+		m.ClearConfirmedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Doffing nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *DoffingMutation) ResetField(name string) error {
+	switch name {
+	case doffing.FieldSpinningLineID:
+		m.ResetSpinningLineID()
+		return nil
+	case doffing.FieldSpinningPosition:
+		m.ResetSpinningPosition()
+		return nil
+	case doffing.FieldLotID:
+		m.ResetLotID()
+		return nil
+	case doffing.FieldOperatorID:
+		m.ResetOperatorID()
+		return nil
+	case doffing.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case doffing.FieldBobbinNumber:
+		m.ResetBobbinNumber()
+		return nil
+	case doffing.FieldActualWeight:
+		m.ResetActualWeight()
+		return nil
+	case doffing.FieldGrade:
+		m.ResetGrade()
+		return nil
+	case doffing.FieldCancelReason:
+		m.ResetCancelReason()
+		return nil
+	case doffing.FieldDoffingTime:
+		m.ResetDoffingTime()
+		return nil
+	case doffing.FieldConfirmedAt:
+		m.ResetConfirmedAt()
+		return nil
+	case doffing.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case doffing.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Doffing field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *DoffingMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *DoffingMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *DoffingMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *DoffingMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *DoffingMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *DoffingMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *DoffingMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Doffing unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *DoffingMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Doffing edge %s", name)
 }
 
 // LotMutation represents an operation that mutates the Lot nodes in the graph.

@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
@@ -82,6 +83,7 @@ func checkColumn(t, c string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			bobbin.Table:       bobbin.ValidColumn,
 			carton.Table:       carton.ValidColumn,
+			doffing.Table:      doffing.ValidColumn,
 			lot.Table:          lot.ValidColumn,
 			order.Table:        order.ValidColumn,
 			pallet.Table:       pallet.ValidColumn,

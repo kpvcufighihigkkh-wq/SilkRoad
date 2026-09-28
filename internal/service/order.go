@@ -56,10 +56,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 	order, err := s.client.Order.Create().
 		SetOrderNumber(req.OrderNumber).
 		SetProjectID(projectID).
-		SetCustomerName(req.CustomerName).
 		SetProductType(order.ProductType(req.ProductType)).
 		SetProductSpec(req.ProductSpec).
-		SetOrderQuantity(req.OrderQuantity).
+		SetTargetQuantity(req.OrderQuantity).
 		SetStatus(order.Status("pending")).
 		Save(ctx)
 
@@ -71,11 +70,11 @@ func (s *OrderService) CreateOrder(ctx context.Context, req *CreateOrderRequest)
 		ID:            order.ID.String(),
 		OrderNumber:   order.OrderNumber,
 		ProjectID:     order.ProjectID.String(),
-		CustomerName:  order.CustomerName,
+		CustomerName:  "", // 不再存储在Order表中
 		ProductType:   string(order.ProductType),
 		ProductSpec:   order.ProductSpec,
 		Status:        string(order.Status),
-		OrderQuantity: order.OrderQuantity,
+		OrderQuantity: order.TargetQuantity,
 		Progress:      0,
 		CreatedAt:     order.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:     order.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -98,11 +97,11 @@ func (s *OrderService) GetOrder(ctx context.Context, id string) (*OrderResponse,
 		ID:            order.ID.String(),
 		OrderNumber:   order.OrderNumber,
 		ProjectID:     order.ProjectID.String(),
-		CustomerName:  order.CustomerName,
+		CustomerName:  "", // 不再存储在Order表中
 		ProductType:   string(order.ProductType),
 		ProductSpec:   order.ProductSpec,
 		Status:        string(order.Status),
-		OrderQuantity: order.OrderQuantity,
+		OrderQuantity: order.TargetQuantity,
 		Progress:      0, // TODO: 计算进度
 		CreatedAt:     order.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:     order.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -141,11 +140,11 @@ func (s *OrderService) ListOrders(ctx context.Context, page, pageSize int, statu
 			ID:            order.ID.String(),
 			OrderNumber:   order.OrderNumber,
 			ProjectID:     order.ProjectID.String(),
-			CustomerName:  order.CustomerName,
+			CustomerName:  "", // 不再存储在Order表中
 			ProductType:   string(order.ProductType),
 			ProductSpec:   order.ProductSpec,
 			Status:        string(order.Status),
-			OrderQuantity: order.OrderQuantity,
+			OrderQuantity: order.TargetQuantity,
 			Progress:      0,
 			CreatedAt:     order.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 			UpdatedAt:     order.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
