@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
@@ -28,20 +29,6 @@ func (_u *SpinningLineUpdate) Where(ps ...predicate.SpinningLine) *SpinningLineU
 	return _u
 }
 
-// SetLineNumber sets the "line_number" field.
-func (_u *SpinningLineUpdate) SetLineNumber(v string) *SpinningLineUpdate {
-	_u.mutation.SetLineNumber(v)
-	return _u
-}
-
-// SetNillableLineNumber sets the "line_number" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillableLineNumber(v *string) *SpinningLineUpdate {
-	if v != nil {
-		_u.SetLineNumber(*v)
-	}
-	return _u
-}
-
 // SetLineName sets the "line_name" field.
 func (_u *SpinningLineUpdate) SetLineName(v string) *SpinningLineUpdate {
 	_u.mutation.SetLineName(v)
@@ -56,64 +43,70 @@ func (_u *SpinningLineUpdate) SetNillableLineName(v *string) *SpinningLineUpdate
 	return _u
 }
 
-// SetPositionCount sets the "position_count" field.
-func (_u *SpinningLineUpdate) SetPositionCount(v int) *SpinningLineUpdate {
-	_u.mutation.ResetPositionCount()
-	_u.mutation.SetPositionCount(v)
+// SetLineNumber sets the "line_number" field.
+func (_u *SpinningLineUpdate) SetLineNumber(v string) *SpinningLineUpdate {
+	_u.mutation.SetLineNumber(v)
 	return _u
 }
 
-// SetNillablePositionCount sets the "position_count" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillablePositionCount(v *int) *SpinningLineUpdate {
+// SetNillableLineNumber sets the "line_number" field if the given value is not nil.
+func (_u *SpinningLineUpdate) SetNillableLineNumber(v *string) *SpinningLineUpdate {
 	if v != nil {
-		_u.SetPositionCount(*v)
+		_u.SetLineNumber(*v)
 	}
 	return _u
 }
 
-// AddPositionCount adds value to the "position_count" field.
-func (_u *SpinningLineUpdate) AddPositionCount(v int) *SpinningLineUpdate {
-	_u.mutation.AddPositionCount(v)
+// ClearLineNumber clears the value of the "line_number" field.
+func (_u *SpinningLineUpdate) ClearLineNumber() *SpinningLineUpdate {
+	_u.mutation.ClearLineNumber()
 	return _u
 }
 
-// SetWorkshopArea sets the "workshop_area" field.
-func (_u *SpinningLineUpdate) SetWorkshopArea(v string) *SpinningLineUpdate {
-	_u.mutation.SetWorkshopArea(v)
+// SetLocation sets the "location" field.
+func (_u *SpinningLineUpdate) SetLocation(v string) *SpinningLineUpdate {
+	_u.mutation.SetLocation(v)
 	return _u
 }
 
-// SetNillableWorkshopArea sets the "workshop_area" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillableWorkshopArea(v *string) *SpinningLineUpdate {
+// SetNillableLocation sets the "location" field if the given value is not nil.
+func (_u *SpinningLineUpdate) SetNillableLocation(v *string) *SpinningLineUpdate {
 	if v != nil {
-		_u.SetWorkshopArea(*v)
+		_u.SetLocation(*v)
 	}
 	return _u
 }
 
-// ClearWorkshopArea clears the value of the "workshop_area" field.
-func (_u *SpinningLineUpdate) ClearWorkshopArea() *SpinningLineUpdate {
-	_u.mutation.ClearWorkshopArea()
+// ClearLocation clears the value of the "location" field.
+func (_u *SpinningLineUpdate) ClearLocation() *SpinningLineUpdate {
+	_u.mutation.ClearLocation()
 	return _u
 }
 
-// SetProductType sets the "product_type" field.
-func (_u *SpinningLineUpdate) SetProductType(v spinningline.ProductType) *SpinningLineUpdate {
-	_u.mutation.SetProductType(v)
+// SetCapacity sets the "capacity" field.
+func (_u *SpinningLineUpdate) SetCapacity(v int) *SpinningLineUpdate {
+	_u.mutation.ResetCapacity()
+	_u.mutation.SetCapacity(v)
 	return _u
 }
 
-// SetNillableProductType sets the "product_type" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillableProductType(v *spinningline.ProductType) *SpinningLineUpdate {
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
+func (_u *SpinningLineUpdate) SetNillableCapacity(v *int) *SpinningLineUpdate {
 	if v != nil {
-		_u.SetProductType(*v)
+		_u.SetCapacity(*v)
 	}
 	return _u
 }
 
-// ClearProductType clears the value of the "product_type" field.
-func (_u *SpinningLineUpdate) ClearProductType() *SpinningLineUpdate {
-	_u.mutation.ClearProductType()
+// AddCapacity adds value to the "capacity" field.
+func (_u *SpinningLineUpdate) AddCapacity(v int) *SpinningLineUpdate {
+	_u.mutation.AddCapacity(v)
+	return _u
+}
+
+// ClearCapacity clears the value of the "capacity" field.
+func (_u *SpinningLineUpdate) ClearCapacity() *SpinningLineUpdate {
+	_u.mutation.ClearCapacity()
 	return _u
 }
 
@@ -131,90 +124,23 @@ func (_u *SpinningLineUpdate) SetNillableStatus(v *spinningline.Status) *Spinnin
 	return _u
 }
 
-// SetPlcIP sets the "plc_ip" field.
-func (_u *SpinningLineUpdate) SetPlcIP(v string) *SpinningLineUpdate {
-	_u.mutation.SetPlcIP(v)
+// SetCurrentLotID sets the "current_lot_id" field.
+func (_u *SpinningLineUpdate) SetCurrentLotID(v uuid.UUID) *SpinningLineUpdate {
+	_u.mutation.SetCurrentLotID(v)
 	return _u
 }
 
-// SetNillablePlcIP sets the "plc_ip" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillablePlcIP(v *string) *SpinningLineUpdate {
+// SetNillableCurrentLotID sets the "current_lot_id" field if the given value is not nil.
+func (_u *SpinningLineUpdate) SetNillableCurrentLotID(v *uuid.UUID) *SpinningLineUpdate {
 	if v != nil {
-		_u.SetPlcIP(*v)
+		_u.SetCurrentLotID(*v)
 	}
 	return _u
 }
 
-// ClearPlcIP clears the value of the "plc_ip" field.
-func (_u *SpinningLineUpdate) ClearPlcIP() *SpinningLineUpdate {
-	_u.mutation.ClearPlcIP()
-	return _u
-}
-
-// SetPlcPort sets the "plc_port" field.
-func (_u *SpinningLineUpdate) SetPlcPort(v int) *SpinningLineUpdate {
-	_u.mutation.ResetPlcPort()
-	_u.mutation.SetPlcPort(v)
-	return _u
-}
-
-// SetNillablePlcPort sets the "plc_port" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillablePlcPort(v *int) *SpinningLineUpdate {
-	if v != nil {
-		_u.SetPlcPort(*v)
-	}
-	return _u
-}
-
-// AddPlcPort adds value to the "plc_port" field.
-func (_u *SpinningLineUpdate) AddPlcPort(v int) *SpinningLineUpdate {
-	_u.mutation.AddPlcPort(v)
-	return _u
-}
-
-// ClearPlcPort clears the value of the "plc_port" field.
-func (_u *SpinningLineUpdate) ClearPlcPort() *SpinningLineUpdate {
-	_u.mutation.ClearPlcPort()
-	return _u
-}
-
-// SetPlcProtocol sets the "plc_protocol" field.
-func (_u *SpinningLineUpdate) SetPlcProtocol(v string) *SpinningLineUpdate {
-	_u.mutation.SetPlcProtocol(v)
-	return _u
-}
-
-// SetNillablePlcProtocol sets the "plc_protocol" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillablePlcProtocol(v *string) *SpinningLineUpdate {
-	if v != nil {
-		_u.SetPlcProtocol(*v)
-	}
-	return _u
-}
-
-// ClearPlcProtocol clears the value of the "plc_protocol" field.
-func (_u *SpinningLineUpdate) ClearPlcProtocol() *SpinningLineUpdate {
-	_u.mutation.ClearPlcProtocol()
-	return _u
-}
-
-// SetNotes sets the "notes" field.
-func (_u *SpinningLineUpdate) SetNotes(v string) *SpinningLineUpdate {
-	_u.mutation.SetNotes(v)
-	return _u
-}
-
-// SetNillableNotes sets the "notes" field if the given value is not nil.
-func (_u *SpinningLineUpdate) SetNillableNotes(v *string) *SpinningLineUpdate {
-	if v != nil {
-		_u.SetNotes(*v)
-	}
-	return _u
-}
-
-// ClearNotes clears the value of the "notes" field.
-func (_u *SpinningLineUpdate) ClearNotes() *SpinningLineUpdate {
-	_u.mutation.ClearNotes()
+// ClearCurrentLotID clears the value of the "current_lot_id" field.
+func (_u *SpinningLineUpdate) ClearCurrentLotID() *SpinningLineUpdate {
+	_u.mutation.ClearCurrentLotID()
 	return _u
 }
 
@@ -267,49 +193,29 @@ func (_u *SpinningLineUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *SpinningLineUpdate) check() error {
-	if v, ok := _u.mutation.LineNumber(); ok {
-		if err := spinningline.LineNumberValidator(v); err != nil {
-			return &ValidationError{Name: "line_number", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_number": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.LineName(); ok {
 		if err := spinningline.LineNameValidator(v); err != nil {
 			return &ValidationError{Name: "line_name", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.PositionCount(); ok {
-		if err := spinningline.PositionCountValidator(v); err != nil {
-			return &ValidationError{Name: "position_count", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.position_count": %w`, err)}
+	if v, ok := _u.mutation.LineNumber(); ok {
+		if err := spinningline.LineNumberValidator(v); err != nil {
+			return &ValidationError{Name: "line_number", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_number": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.WorkshopArea(); ok {
-		if err := spinningline.WorkshopAreaValidator(v); err != nil {
-			return &ValidationError{Name: "workshop_area", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.workshop_area": %w`, err)}
+	if v, ok := _u.mutation.Location(); ok {
+		if err := spinningline.LocationValidator(v); err != nil {
+			return &ValidationError{Name: "location", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.location": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ProductType(); ok {
-		if err := spinningline.ProductTypeValidator(v); err != nil {
-			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.product_type": %w`, err)}
+	if v, ok := _u.mutation.Capacity(); ok {
+		if err := spinningline.CapacityValidator(v); err != nil {
+			return &ValidationError{Name: "capacity", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.capacity": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := spinningline.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.status": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlcIP(); ok {
-		if err := spinningline.PlcIPValidator(v); err != nil {
-			return &ValidationError{Name: "plc_ip", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_ip": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlcPort(); ok {
-		if err := spinningline.PlcPortValidator(v); err != nil {
-			return &ValidationError{Name: "plc_port", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_port": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlcProtocol(); ok {
-		if err := spinningline.PlcProtocolValidator(v); err != nil {
-			return &ValidationError{Name: "plc_protocol", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_protocol": %w`, err)}
 		}
 	}
 	return nil
@@ -327,59 +233,38 @@ func (_u *SpinningLineUpdate) sqlSave(ctx context.Context) (_node int, err error
 			}
 		}
 	}
-	if value, ok := _u.mutation.LineNumber(); ok {
-		_spec.SetField(spinningline.FieldLineNumber, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.LineName(); ok {
 		_spec.SetField(spinningline.FieldLineName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.PositionCount(); ok {
-		_spec.SetField(spinningline.FieldPositionCount, field.TypeInt, value)
+	if value, ok := _u.mutation.LineNumber(); ok {
+		_spec.SetField(spinningline.FieldLineNumber, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.AddedPositionCount(); ok {
-		_spec.AddField(spinningline.FieldPositionCount, field.TypeInt, value)
+	if _u.mutation.LineNumberCleared() {
+		_spec.ClearField(spinningline.FieldLineNumber, field.TypeString)
 	}
-	if value, ok := _u.mutation.WorkshopArea(); ok {
-		_spec.SetField(spinningline.FieldWorkshopArea, field.TypeString, value)
+	if value, ok := _u.mutation.Location(); ok {
+		_spec.SetField(spinningline.FieldLocation, field.TypeString, value)
 	}
-	if _u.mutation.WorkshopAreaCleared() {
-		_spec.ClearField(spinningline.FieldWorkshopArea, field.TypeString)
+	if _u.mutation.LocationCleared() {
+		_spec.ClearField(spinningline.FieldLocation, field.TypeString)
 	}
-	if value, ok := _u.mutation.ProductType(); ok {
-		_spec.SetField(spinningline.FieldProductType, field.TypeEnum, value)
+	if value, ok := _u.mutation.Capacity(); ok {
+		_spec.SetField(spinningline.FieldCapacity, field.TypeInt, value)
 	}
-	if _u.mutation.ProductTypeCleared() {
-		_spec.ClearField(spinningline.FieldProductType, field.TypeEnum)
+	if value, ok := _u.mutation.AddedCapacity(); ok {
+		_spec.AddField(spinningline.FieldCapacity, field.TypeInt, value)
+	}
+	if _u.mutation.CapacityCleared() {
+		_spec.ClearField(spinningline.FieldCapacity, field.TypeInt)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(spinningline.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.PlcIP(); ok {
-		_spec.SetField(spinningline.FieldPlcIP, field.TypeString, value)
+	if value, ok := _u.mutation.CurrentLotID(); ok {
+		_spec.SetField(spinningline.FieldCurrentLotID, field.TypeUUID, value)
 	}
-	if _u.mutation.PlcIPCleared() {
-		_spec.ClearField(spinningline.FieldPlcIP, field.TypeString)
-	}
-	if value, ok := _u.mutation.PlcPort(); ok {
-		_spec.SetField(spinningline.FieldPlcPort, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedPlcPort(); ok {
-		_spec.AddField(spinningline.FieldPlcPort, field.TypeInt, value)
-	}
-	if _u.mutation.PlcPortCleared() {
-		_spec.ClearField(spinningline.FieldPlcPort, field.TypeInt)
-	}
-	if value, ok := _u.mutation.PlcProtocol(); ok {
-		_spec.SetField(spinningline.FieldPlcProtocol, field.TypeString, value)
-	}
-	if _u.mutation.PlcProtocolCleared() {
-		_spec.ClearField(spinningline.FieldPlcProtocol, field.TypeString)
-	}
-	if value, ok := _u.mutation.Notes(); ok {
-		_spec.SetField(spinningline.FieldNotes, field.TypeString, value)
-	}
-	if _u.mutation.NotesCleared() {
-		_spec.ClearField(spinningline.FieldNotes, field.TypeString)
+	if _u.mutation.CurrentLotIDCleared() {
+		_spec.ClearField(spinningline.FieldCurrentLotID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(spinningline.FieldUpdatedAt, field.TypeTime, value)
@@ -404,20 +289,6 @@ type SpinningLineUpdateOne struct {
 	mutation *SpinningLineMutation
 }
 
-// SetLineNumber sets the "line_number" field.
-func (_u *SpinningLineUpdateOne) SetLineNumber(v string) *SpinningLineUpdateOne {
-	_u.mutation.SetLineNumber(v)
-	return _u
-}
-
-// SetNillableLineNumber sets the "line_number" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillableLineNumber(v *string) *SpinningLineUpdateOne {
-	if v != nil {
-		_u.SetLineNumber(*v)
-	}
-	return _u
-}
-
 // SetLineName sets the "line_name" field.
 func (_u *SpinningLineUpdateOne) SetLineName(v string) *SpinningLineUpdateOne {
 	_u.mutation.SetLineName(v)
@@ -432,64 +303,70 @@ func (_u *SpinningLineUpdateOne) SetNillableLineName(v *string) *SpinningLineUpd
 	return _u
 }
 
-// SetPositionCount sets the "position_count" field.
-func (_u *SpinningLineUpdateOne) SetPositionCount(v int) *SpinningLineUpdateOne {
-	_u.mutation.ResetPositionCount()
-	_u.mutation.SetPositionCount(v)
+// SetLineNumber sets the "line_number" field.
+func (_u *SpinningLineUpdateOne) SetLineNumber(v string) *SpinningLineUpdateOne {
+	_u.mutation.SetLineNumber(v)
 	return _u
 }
 
-// SetNillablePositionCount sets the "position_count" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillablePositionCount(v *int) *SpinningLineUpdateOne {
+// SetNillableLineNumber sets the "line_number" field if the given value is not nil.
+func (_u *SpinningLineUpdateOne) SetNillableLineNumber(v *string) *SpinningLineUpdateOne {
 	if v != nil {
-		_u.SetPositionCount(*v)
+		_u.SetLineNumber(*v)
 	}
 	return _u
 }
 
-// AddPositionCount adds value to the "position_count" field.
-func (_u *SpinningLineUpdateOne) AddPositionCount(v int) *SpinningLineUpdateOne {
-	_u.mutation.AddPositionCount(v)
+// ClearLineNumber clears the value of the "line_number" field.
+func (_u *SpinningLineUpdateOne) ClearLineNumber() *SpinningLineUpdateOne {
+	_u.mutation.ClearLineNumber()
 	return _u
 }
 
-// SetWorkshopArea sets the "workshop_area" field.
-func (_u *SpinningLineUpdateOne) SetWorkshopArea(v string) *SpinningLineUpdateOne {
-	_u.mutation.SetWorkshopArea(v)
+// SetLocation sets the "location" field.
+func (_u *SpinningLineUpdateOne) SetLocation(v string) *SpinningLineUpdateOne {
+	_u.mutation.SetLocation(v)
 	return _u
 }
 
-// SetNillableWorkshopArea sets the "workshop_area" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillableWorkshopArea(v *string) *SpinningLineUpdateOne {
+// SetNillableLocation sets the "location" field if the given value is not nil.
+func (_u *SpinningLineUpdateOne) SetNillableLocation(v *string) *SpinningLineUpdateOne {
 	if v != nil {
-		_u.SetWorkshopArea(*v)
+		_u.SetLocation(*v)
 	}
 	return _u
 }
 
-// ClearWorkshopArea clears the value of the "workshop_area" field.
-func (_u *SpinningLineUpdateOne) ClearWorkshopArea() *SpinningLineUpdateOne {
-	_u.mutation.ClearWorkshopArea()
+// ClearLocation clears the value of the "location" field.
+func (_u *SpinningLineUpdateOne) ClearLocation() *SpinningLineUpdateOne {
+	_u.mutation.ClearLocation()
 	return _u
 }
 
-// SetProductType sets the "product_type" field.
-func (_u *SpinningLineUpdateOne) SetProductType(v spinningline.ProductType) *SpinningLineUpdateOne {
-	_u.mutation.SetProductType(v)
+// SetCapacity sets the "capacity" field.
+func (_u *SpinningLineUpdateOne) SetCapacity(v int) *SpinningLineUpdateOne {
+	_u.mutation.ResetCapacity()
+	_u.mutation.SetCapacity(v)
 	return _u
 }
 
-// SetNillableProductType sets the "product_type" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillableProductType(v *spinningline.ProductType) *SpinningLineUpdateOne {
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
+func (_u *SpinningLineUpdateOne) SetNillableCapacity(v *int) *SpinningLineUpdateOne {
 	if v != nil {
-		_u.SetProductType(*v)
+		_u.SetCapacity(*v)
 	}
 	return _u
 }
 
-// ClearProductType clears the value of the "product_type" field.
-func (_u *SpinningLineUpdateOne) ClearProductType() *SpinningLineUpdateOne {
-	_u.mutation.ClearProductType()
+// AddCapacity adds value to the "capacity" field.
+func (_u *SpinningLineUpdateOne) AddCapacity(v int) *SpinningLineUpdateOne {
+	_u.mutation.AddCapacity(v)
+	return _u
+}
+
+// ClearCapacity clears the value of the "capacity" field.
+func (_u *SpinningLineUpdateOne) ClearCapacity() *SpinningLineUpdateOne {
+	_u.mutation.ClearCapacity()
 	return _u
 }
 
@@ -507,90 +384,23 @@ func (_u *SpinningLineUpdateOne) SetNillableStatus(v *spinningline.Status) *Spin
 	return _u
 }
 
-// SetPlcIP sets the "plc_ip" field.
-func (_u *SpinningLineUpdateOne) SetPlcIP(v string) *SpinningLineUpdateOne {
-	_u.mutation.SetPlcIP(v)
+// SetCurrentLotID sets the "current_lot_id" field.
+func (_u *SpinningLineUpdateOne) SetCurrentLotID(v uuid.UUID) *SpinningLineUpdateOne {
+	_u.mutation.SetCurrentLotID(v)
 	return _u
 }
 
-// SetNillablePlcIP sets the "plc_ip" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillablePlcIP(v *string) *SpinningLineUpdateOne {
+// SetNillableCurrentLotID sets the "current_lot_id" field if the given value is not nil.
+func (_u *SpinningLineUpdateOne) SetNillableCurrentLotID(v *uuid.UUID) *SpinningLineUpdateOne {
 	if v != nil {
-		_u.SetPlcIP(*v)
+		_u.SetCurrentLotID(*v)
 	}
 	return _u
 }
 
-// ClearPlcIP clears the value of the "plc_ip" field.
-func (_u *SpinningLineUpdateOne) ClearPlcIP() *SpinningLineUpdateOne {
-	_u.mutation.ClearPlcIP()
-	return _u
-}
-
-// SetPlcPort sets the "plc_port" field.
-func (_u *SpinningLineUpdateOne) SetPlcPort(v int) *SpinningLineUpdateOne {
-	_u.mutation.ResetPlcPort()
-	_u.mutation.SetPlcPort(v)
-	return _u
-}
-
-// SetNillablePlcPort sets the "plc_port" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillablePlcPort(v *int) *SpinningLineUpdateOne {
-	if v != nil {
-		_u.SetPlcPort(*v)
-	}
-	return _u
-}
-
-// AddPlcPort adds value to the "plc_port" field.
-func (_u *SpinningLineUpdateOne) AddPlcPort(v int) *SpinningLineUpdateOne {
-	_u.mutation.AddPlcPort(v)
-	return _u
-}
-
-// ClearPlcPort clears the value of the "plc_port" field.
-func (_u *SpinningLineUpdateOne) ClearPlcPort() *SpinningLineUpdateOne {
-	_u.mutation.ClearPlcPort()
-	return _u
-}
-
-// SetPlcProtocol sets the "plc_protocol" field.
-func (_u *SpinningLineUpdateOne) SetPlcProtocol(v string) *SpinningLineUpdateOne {
-	_u.mutation.SetPlcProtocol(v)
-	return _u
-}
-
-// SetNillablePlcProtocol sets the "plc_protocol" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillablePlcProtocol(v *string) *SpinningLineUpdateOne {
-	if v != nil {
-		_u.SetPlcProtocol(*v)
-	}
-	return _u
-}
-
-// ClearPlcProtocol clears the value of the "plc_protocol" field.
-func (_u *SpinningLineUpdateOne) ClearPlcProtocol() *SpinningLineUpdateOne {
-	_u.mutation.ClearPlcProtocol()
-	return _u
-}
-
-// SetNotes sets the "notes" field.
-func (_u *SpinningLineUpdateOne) SetNotes(v string) *SpinningLineUpdateOne {
-	_u.mutation.SetNotes(v)
-	return _u
-}
-
-// SetNillableNotes sets the "notes" field if the given value is not nil.
-func (_u *SpinningLineUpdateOne) SetNillableNotes(v *string) *SpinningLineUpdateOne {
-	if v != nil {
-		_u.SetNotes(*v)
-	}
-	return _u
-}
-
-// ClearNotes clears the value of the "notes" field.
-func (_u *SpinningLineUpdateOne) ClearNotes() *SpinningLineUpdateOne {
-	_u.mutation.ClearNotes()
+// ClearCurrentLotID clears the value of the "current_lot_id" field.
+func (_u *SpinningLineUpdateOne) ClearCurrentLotID() *SpinningLineUpdateOne {
+	_u.mutation.ClearCurrentLotID()
 	return _u
 }
 
@@ -656,49 +466,29 @@ func (_u *SpinningLineUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *SpinningLineUpdateOne) check() error {
-	if v, ok := _u.mutation.LineNumber(); ok {
-		if err := spinningline.LineNumberValidator(v); err != nil {
-			return &ValidationError{Name: "line_number", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_number": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.LineName(); ok {
 		if err := spinningline.LineNameValidator(v); err != nil {
 			return &ValidationError{Name: "line_name", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.PositionCount(); ok {
-		if err := spinningline.PositionCountValidator(v); err != nil {
-			return &ValidationError{Name: "position_count", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.position_count": %w`, err)}
+	if v, ok := _u.mutation.LineNumber(); ok {
+		if err := spinningline.LineNumberValidator(v); err != nil {
+			return &ValidationError{Name: "line_number", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_number": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.WorkshopArea(); ok {
-		if err := spinningline.WorkshopAreaValidator(v); err != nil {
-			return &ValidationError{Name: "workshop_area", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.workshop_area": %w`, err)}
+	if v, ok := _u.mutation.Location(); ok {
+		if err := spinningline.LocationValidator(v); err != nil {
+			return &ValidationError{Name: "location", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.location": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ProductType(); ok {
-		if err := spinningline.ProductTypeValidator(v); err != nil {
-			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.product_type": %w`, err)}
+	if v, ok := _u.mutation.Capacity(); ok {
+		if err := spinningline.CapacityValidator(v); err != nil {
+			return &ValidationError{Name: "capacity", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.capacity": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := spinningline.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.status": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlcIP(); ok {
-		if err := spinningline.PlcIPValidator(v); err != nil {
-			return &ValidationError{Name: "plc_ip", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_ip": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlcPort(); ok {
-		if err := spinningline.PlcPortValidator(v); err != nil {
-			return &ValidationError{Name: "plc_port", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_port": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlcProtocol(); ok {
-		if err := spinningline.PlcProtocolValidator(v); err != nil {
-			return &ValidationError{Name: "plc_protocol", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_protocol": %w`, err)}
 		}
 	}
 	return nil
@@ -733,59 +523,38 @@ func (_u *SpinningLineUpdateOne) sqlSave(ctx context.Context) (_node *SpinningLi
 			}
 		}
 	}
-	if value, ok := _u.mutation.LineNumber(); ok {
-		_spec.SetField(spinningline.FieldLineNumber, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.LineName(); ok {
 		_spec.SetField(spinningline.FieldLineName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.PositionCount(); ok {
-		_spec.SetField(spinningline.FieldPositionCount, field.TypeInt, value)
+	if value, ok := _u.mutation.LineNumber(); ok {
+		_spec.SetField(spinningline.FieldLineNumber, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.AddedPositionCount(); ok {
-		_spec.AddField(spinningline.FieldPositionCount, field.TypeInt, value)
+	if _u.mutation.LineNumberCleared() {
+		_spec.ClearField(spinningline.FieldLineNumber, field.TypeString)
 	}
-	if value, ok := _u.mutation.WorkshopArea(); ok {
-		_spec.SetField(spinningline.FieldWorkshopArea, field.TypeString, value)
+	if value, ok := _u.mutation.Location(); ok {
+		_spec.SetField(spinningline.FieldLocation, field.TypeString, value)
 	}
-	if _u.mutation.WorkshopAreaCleared() {
-		_spec.ClearField(spinningline.FieldWorkshopArea, field.TypeString)
+	if _u.mutation.LocationCleared() {
+		_spec.ClearField(spinningline.FieldLocation, field.TypeString)
 	}
-	if value, ok := _u.mutation.ProductType(); ok {
-		_spec.SetField(spinningline.FieldProductType, field.TypeEnum, value)
+	if value, ok := _u.mutation.Capacity(); ok {
+		_spec.SetField(spinningline.FieldCapacity, field.TypeInt, value)
 	}
-	if _u.mutation.ProductTypeCleared() {
-		_spec.ClearField(spinningline.FieldProductType, field.TypeEnum)
+	if value, ok := _u.mutation.AddedCapacity(); ok {
+		_spec.AddField(spinningline.FieldCapacity, field.TypeInt, value)
+	}
+	if _u.mutation.CapacityCleared() {
+		_spec.ClearField(spinningline.FieldCapacity, field.TypeInt)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(spinningline.FieldStatus, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.PlcIP(); ok {
-		_spec.SetField(spinningline.FieldPlcIP, field.TypeString, value)
+	if value, ok := _u.mutation.CurrentLotID(); ok {
+		_spec.SetField(spinningline.FieldCurrentLotID, field.TypeUUID, value)
 	}
-	if _u.mutation.PlcIPCleared() {
-		_spec.ClearField(spinningline.FieldPlcIP, field.TypeString)
-	}
-	if value, ok := _u.mutation.PlcPort(); ok {
-		_spec.SetField(spinningline.FieldPlcPort, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedPlcPort(); ok {
-		_spec.AddField(spinningline.FieldPlcPort, field.TypeInt, value)
-	}
-	if _u.mutation.PlcPortCleared() {
-		_spec.ClearField(spinningline.FieldPlcPort, field.TypeInt)
-	}
-	if value, ok := _u.mutation.PlcProtocol(); ok {
-		_spec.SetField(spinningline.FieldPlcProtocol, field.TypeString, value)
-	}
-	if _u.mutation.PlcProtocolCleared() {
-		_spec.ClearField(spinningline.FieldPlcProtocol, field.TypeString)
-	}
-	if value, ok := _u.mutation.Notes(); ok {
-		_spec.SetField(spinningline.FieldNotes, field.TypeString, value)
-	}
-	if _u.mutation.NotesCleared() {
-		_spec.ClearField(spinningline.FieldNotes, field.TypeString)
+	if _u.mutation.CurrentLotIDCleared() {
+		_spec.ClearField(spinningline.FieldCurrentLotID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(spinningline.FieldUpdatedAt, field.TypeTime, value)

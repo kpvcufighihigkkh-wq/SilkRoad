@@ -59,37 +59,9 @@ func (_u *OrderUpdate) SetNillableProjectID(v *uuid.UUID) *OrderUpdate {
 	return _u
 }
 
-// SetCustomerName sets the "customer_name" field.
-func (_u *OrderUpdate) SetCustomerName(v string) *OrderUpdate {
-	_u.mutation.SetCustomerName(v)
-	return _u
-}
-
-// SetNillableCustomerName sets the "customer_name" field if the given value is not nil.
-func (_u *OrderUpdate) SetNillableCustomerName(v *string) *OrderUpdate {
-	if v != nil {
-		_u.SetCustomerName(*v)
-	}
-	return _u
-}
-
-// SetCustomerCode sets the "customer_code" field.
-func (_u *OrderUpdate) SetCustomerCode(v string) *OrderUpdate {
-	_u.mutation.SetCustomerCode(v)
-	return _u
-}
-
-// SetNillableCustomerCode sets the "customer_code" field if the given value is not nil.
-func (_u *OrderUpdate) SetNillableCustomerCode(v *string) *OrderUpdate {
-	if v != nil {
-		_u.SetCustomerCode(*v)
-	}
-	return _u
-}
-
-// ClearCustomerCode clears the value of the "customer_code" field.
-func (_u *OrderUpdate) ClearCustomerCode() *OrderUpdate {
-	_u.mutation.ClearCustomerCode()
+// ClearProjectID clears the value of the "project_id" field.
+func (_u *OrderUpdate) ClearProjectID() *OrderUpdate {
+	_u.mutation.ClearProjectID()
 	return _u
 }
 
@@ -121,45 +93,51 @@ func (_u *OrderUpdate) SetNillableProductSpec(v *string) *OrderUpdate {
 	return _u
 }
 
-// SetOrderQuantity sets the "order_quantity" field.
-func (_u *OrderUpdate) SetOrderQuantity(v int) *OrderUpdate {
-	_u.mutation.ResetOrderQuantity()
-	_u.mutation.SetOrderQuantity(v)
+// ClearProductSpec clears the value of the "product_spec" field.
+func (_u *OrderUpdate) ClearProductSpec() *OrderUpdate {
+	_u.mutation.ClearProductSpec()
 	return _u
 }
 
-// SetNillableOrderQuantity sets the "order_quantity" field if the given value is not nil.
-func (_u *OrderUpdate) SetNillableOrderQuantity(v *int) *OrderUpdate {
+// SetTargetQuantity sets the "target_quantity" field.
+func (_u *OrderUpdate) SetTargetQuantity(v int) *OrderUpdate {
+	_u.mutation.ResetTargetQuantity()
+	_u.mutation.SetTargetQuantity(v)
+	return _u
+}
+
+// SetNillableTargetQuantity sets the "target_quantity" field if the given value is not nil.
+func (_u *OrderUpdate) SetNillableTargetQuantity(v *int) *OrderUpdate {
 	if v != nil {
-		_u.SetOrderQuantity(*v)
+		_u.SetTargetQuantity(*v)
 	}
 	return _u
 }
 
-// AddOrderQuantity adds value to the "order_quantity" field.
-func (_u *OrderUpdate) AddOrderQuantity(v int) *OrderUpdate {
-	_u.mutation.AddOrderQuantity(v)
+// AddTargetQuantity adds value to the "target_quantity" field.
+func (_u *OrderUpdate) AddTargetQuantity(v int) *OrderUpdate {
+	_u.mutation.AddTargetQuantity(v)
 	return _u
 }
 
-// SetProducedQuantity sets the "produced_quantity" field.
-func (_u *OrderUpdate) SetProducedQuantity(v int) *OrderUpdate {
-	_u.mutation.ResetProducedQuantity()
-	_u.mutation.SetProducedQuantity(v)
+// SetActualQuantity sets the "actual_quantity" field.
+func (_u *OrderUpdate) SetActualQuantity(v int) *OrderUpdate {
+	_u.mutation.ResetActualQuantity()
+	_u.mutation.SetActualQuantity(v)
 	return _u
 }
 
-// SetNillableProducedQuantity sets the "produced_quantity" field if the given value is not nil.
-func (_u *OrderUpdate) SetNillableProducedQuantity(v *int) *OrderUpdate {
+// SetNillableActualQuantity sets the "actual_quantity" field if the given value is not nil.
+func (_u *OrderUpdate) SetNillableActualQuantity(v *int) *OrderUpdate {
 	if v != nil {
-		_u.SetProducedQuantity(*v)
+		_u.SetActualQuantity(*v)
 	}
 	return _u
 }
 
-// AddProducedQuantity adds value to the "produced_quantity" field.
-func (_u *OrderUpdate) AddProducedQuantity(v int) *OrderUpdate {
-	_u.mutation.AddProducedQuantity(v)
+// AddActualQuantity adds value to the "actual_quantity" field.
+func (_u *OrderUpdate) AddActualQuantity(v int) *OrderUpdate {
+	_u.mutation.AddActualQuantity(v)
 	return _u
 }
 
@@ -174,6 +152,27 @@ func (_u *OrderUpdate) SetNillableStatus(v *order.Status) *OrderUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetPriority sets the "priority" field.
+func (_u *OrderUpdate) SetPriority(v int) *OrderUpdate {
+	_u.mutation.ResetPriority()
+	_u.mutation.SetPriority(v)
+	return _u
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_u *OrderUpdate) SetNillablePriority(v *int) *OrderUpdate {
+	if v != nil {
+		_u.SetPriority(*v)
+	}
+	return _u
+}
+
+// AddPriority adds value to the "priority" field.
+func (_u *OrderUpdate) AddPriority(v int) *OrderUpdate {
+	_u.mutation.AddPriority(v)
 	return _u
 }
 
@@ -318,16 +317,6 @@ func (_u *OrderUpdate) check() error {
 			return &ValidationError{Name: "order_number", err: fmt.Errorf(`ent: validator failed for field "Order.order_number": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.CustomerName(); ok {
-		if err := order.CustomerNameValidator(v); err != nil {
-			return &ValidationError{Name: "customer_name", err: fmt.Errorf(`ent: validator failed for field "Order.customer_name": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.CustomerCode(); ok {
-		if err := order.CustomerCodeValidator(v); err != nil {
-			return &ValidationError{Name: "customer_code", err: fmt.Errorf(`ent: validator failed for field "Order.customer_code": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.ProductType(); ok {
 		if err := order.ProductTypeValidator(v); err != nil {
 			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Order.product_type": %w`, err)}
@@ -338,23 +327,20 @@ func (_u *OrderUpdate) check() error {
 			return &ValidationError{Name: "product_spec", err: fmt.Errorf(`ent: validator failed for field "Order.product_spec": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.OrderQuantity(); ok {
-		if err := order.OrderQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "order_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.order_quantity": %w`, err)}
+	if v, ok := _u.mutation.TargetQuantity(); ok {
+		if err := order.TargetQuantityValidator(v); err != nil {
+			return &ValidationError{Name: "target_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.target_quantity": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ProducedQuantity(); ok {
-		if err := order.ProducedQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "produced_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.produced_quantity": %w`, err)}
+	if v, ok := _u.mutation.ActualQuantity(); ok {
+		if err := order.ActualQuantityValidator(v); err != nil {
+			return &ValidationError{Name: "actual_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.actual_quantity": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := order.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Order.status": %w`, err)}
 		}
-	}
-	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Order.project"`)
 	}
 	return nil
 }
@@ -374,35 +360,35 @@ func (_u *OrderUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.OrderNumber(); ok {
 		_spec.SetField(order.FieldOrderNumber, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.CustomerName(); ok {
-		_spec.SetField(order.FieldCustomerName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomerCode(); ok {
-		_spec.SetField(order.FieldCustomerCode, field.TypeString, value)
-	}
-	if _u.mutation.CustomerCodeCleared() {
-		_spec.ClearField(order.FieldCustomerCode, field.TypeString)
-	}
 	if value, ok := _u.mutation.ProductType(); ok {
 		_spec.SetField(order.FieldProductType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.ProductSpec(); ok {
 		_spec.SetField(order.FieldProductSpec, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.OrderQuantity(); ok {
-		_spec.SetField(order.FieldOrderQuantity, field.TypeInt, value)
+	if _u.mutation.ProductSpecCleared() {
+		_spec.ClearField(order.FieldProductSpec, field.TypeString)
 	}
-	if value, ok := _u.mutation.AddedOrderQuantity(); ok {
-		_spec.AddField(order.FieldOrderQuantity, field.TypeInt, value)
+	if value, ok := _u.mutation.TargetQuantity(); ok {
+		_spec.SetField(order.FieldTargetQuantity, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.ProducedQuantity(); ok {
-		_spec.SetField(order.FieldProducedQuantity, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedTargetQuantity(); ok {
+		_spec.AddField(order.FieldTargetQuantity, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedProducedQuantity(); ok {
-		_spec.AddField(order.FieldProducedQuantity, field.TypeInt, value)
+	if value, ok := _u.mutation.ActualQuantity(); ok {
+		_spec.SetField(order.FieldActualQuantity, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedActualQuantity(); ok {
+		_spec.AddField(order.FieldActualQuantity, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(order.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Priority(); ok {
+		_spec.SetField(order.FieldPriority, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPriority(); ok {
+		_spec.AddField(order.FieldPriority, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.DeliveryDate(); ok {
 		_spec.SetField(order.FieldDeliveryDate, field.TypeTime, value)
@@ -541,37 +527,9 @@ func (_u *OrderUpdateOne) SetNillableProjectID(v *uuid.UUID) *OrderUpdateOne {
 	return _u
 }
 
-// SetCustomerName sets the "customer_name" field.
-func (_u *OrderUpdateOne) SetCustomerName(v string) *OrderUpdateOne {
-	_u.mutation.SetCustomerName(v)
-	return _u
-}
-
-// SetNillableCustomerName sets the "customer_name" field if the given value is not nil.
-func (_u *OrderUpdateOne) SetNillableCustomerName(v *string) *OrderUpdateOne {
-	if v != nil {
-		_u.SetCustomerName(*v)
-	}
-	return _u
-}
-
-// SetCustomerCode sets the "customer_code" field.
-func (_u *OrderUpdateOne) SetCustomerCode(v string) *OrderUpdateOne {
-	_u.mutation.SetCustomerCode(v)
-	return _u
-}
-
-// SetNillableCustomerCode sets the "customer_code" field if the given value is not nil.
-func (_u *OrderUpdateOne) SetNillableCustomerCode(v *string) *OrderUpdateOne {
-	if v != nil {
-		_u.SetCustomerCode(*v)
-	}
-	return _u
-}
-
-// ClearCustomerCode clears the value of the "customer_code" field.
-func (_u *OrderUpdateOne) ClearCustomerCode() *OrderUpdateOne {
-	_u.mutation.ClearCustomerCode()
+// ClearProjectID clears the value of the "project_id" field.
+func (_u *OrderUpdateOne) ClearProjectID() *OrderUpdateOne {
+	_u.mutation.ClearProjectID()
 	return _u
 }
 
@@ -603,45 +561,51 @@ func (_u *OrderUpdateOne) SetNillableProductSpec(v *string) *OrderUpdateOne {
 	return _u
 }
 
-// SetOrderQuantity sets the "order_quantity" field.
-func (_u *OrderUpdateOne) SetOrderQuantity(v int) *OrderUpdateOne {
-	_u.mutation.ResetOrderQuantity()
-	_u.mutation.SetOrderQuantity(v)
+// ClearProductSpec clears the value of the "product_spec" field.
+func (_u *OrderUpdateOne) ClearProductSpec() *OrderUpdateOne {
+	_u.mutation.ClearProductSpec()
 	return _u
 }
 
-// SetNillableOrderQuantity sets the "order_quantity" field if the given value is not nil.
-func (_u *OrderUpdateOne) SetNillableOrderQuantity(v *int) *OrderUpdateOne {
+// SetTargetQuantity sets the "target_quantity" field.
+func (_u *OrderUpdateOne) SetTargetQuantity(v int) *OrderUpdateOne {
+	_u.mutation.ResetTargetQuantity()
+	_u.mutation.SetTargetQuantity(v)
+	return _u
+}
+
+// SetNillableTargetQuantity sets the "target_quantity" field if the given value is not nil.
+func (_u *OrderUpdateOne) SetNillableTargetQuantity(v *int) *OrderUpdateOne {
 	if v != nil {
-		_u.SetOrderQuantity(*v)
+		_u.SetTargetQuantity(*v)
 	}
 	return _u
 }
 
-// AddOrderQuantity adds value to the "order_quantity" field.
-func (_u *OrderUpdateOne) AddOrderQuantity(v int) *OrderUpdateOne {
-	_u.mutation.AddOrderQuantity(v)
+// AddTargetQuantity adds value to the "target_quantity" field.
+func (_u *OrderUpdateOne) AddTargetQuantity(v int) *OrderUpdateOne {
+	_u.mutation.AddTargetQuantity(v)
 	return _u
 }
 
-// SetProducedQuantity sets the "produced_quantity" field.
-func (_u *OrderUpdateOne) SetProducedQuantity(v int) *OrderUpdateOne {
-	_u.mutation.ResetProducedQuantity()
-	_u.mutation.SetProducedQuantity(v)
+// SetActualQuantity sets the "actual_quantity" field.
+func (_u *OrderUpdateOne) SetActualQuantity(v int) *OrderUpdateOne {
+	_u.mutation.ResetActualQuantity()
+	_u.mutation.SetActualQuantity(v)
 	return _u
 }
 
-// SetNillableProducedQuantity sets the "produced_quantity" field if the given value is not nil.
-func (_u *OrderUpdateOne) SetNillableProducedQuantity(v *int) *OrderUpdateOne {
+// SetNillableActualQuantity sets the "actual_quantity" field if the given value is not nil.
+func (_u *OrderUpdateOne) SetNillableActualQuantity(v *int) *OrderUpdateOne {
 	if v != nil {
-		_u.SetProducedQuantity(*v)
+		_u.SetActualQuantity(*v)
 	}
 	return _u
 }
 
-// AddProducedQuantity adds value to the "produced_quantity" field.
-func (_u *OrderUpdateOne) AddProducedQuantity(v int) *OrderUpdateOne {
-	_u.mutation.AddProducedQuantity(v)
+// AddActualQuantity adds value to the "actual_quantity" field.
+func (_u *OrderUpdateOne) AddActualQuantity(v int) *OrderUpdateOne {
+	_u.mutation.AddActualQuantity(v)
 	return _u
 }
 
@@ -656,6 +620,27 @@ func (_u *OrderUpdateOne) SetNillableStatus(v *order.Status) *OrderUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
+	return _u
+}
+
+// SetPriority sets the "priority" field.
+func (_u *OrderUpdateOne) SetPriority(v int) *OrderUpdateOne {
+	_u.mutation.ResetPriority()
+	_u.mutation.SetPriority(v)
+	return _u
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_u *OrderUpdateOne) SetNillablePriority(v *int) *OrderUpdateOne {
+	if v != nil {
+		_u.SetPriority(*v)
+	}
+	return _u
+}
+
+// AddPriority adds value to the "priority" field.
+func (_u *OrderUpdateOne) AddPriority(v int) *OrderUpdateOne {
+	_u.mutation.AddPriority(v)
 	return _u
 }
 
@@ -813,16 +798,6 @@ func (_u *OrderUpdateOne) check() error {
 			return &ValidationError{Name: "order_number", err: fmt.Errorf(`ent: validator failed for field "Order.order_number": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.CustomerName(); ok {
-		if err := order.CustomerNameValidator(v); err != nil {
-			return &ValidationError{Name: "customer_name", err: fmt.Errorf(`ent: validator failed for field "Order.customer_name": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.CustomerCode(); ok {
-		if err := order.CustomerCodeValidator(v); err != nil {
-			return &ValidationError{Name: "customer_code", err: fmt.Errorf(`ent: validator failed for field "Order.customer_code": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.ProductType(); ok {
 		if err := order.ProductTypeValidator(v); err != nil {
 			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Order.product_type": %w`, err)}
@@ -833,23 +808,20 @@ func (_u *OrderUpdateOne) check() error {
 			return &ValidationError{Name: "product_spec", err: fmt.Errorf(`ent: validator failed for field "Order.product_spec": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.OrderQuantity(); ok {
-		if err := order.OrderQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "order_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.order_quantity": %w`, err)}
+	if v, ok := _u.mutation.TargetQuantity(); ok {
+		if err := order.TargetQuantityValidator(v); err != nil {
+			return &ValidationError{Name: "target_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.target_quantity": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ProducedQuantity(); ok {
-		if err := order.ProducedQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "produced_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.produced_quantity": %w`, err)}
+	if v, ok := _u.mutation.ActualQuantity(); ok {
+		if err := order.ActualQuantityValidator(v); err != nil {
+			return &ValidationError{Name: "actual_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.actual_quantity": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := order.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Order.status": %w`, err)}
 		}
-	}
-	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Order.project"`)
 	}
 	return nil
 }
@@ -886,35 +858,35 @@ func (_u *OrderUpdateOne) sqlSave(ctx context.Context) (_node *Order, err error)
 	if value, ok := _u.mutation.OrderNumber(); ok {
 		_spec.SetField(order.FieldOrderNumber, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.CustomerName(); ok {
-		_spec.SetField(order.FieldCustomerName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.CustomerCode(); ok {
-		_spec.SetField(order.FieldCustomerCode, field.TypeString, value)
-	}
-	if _u.mutation.CustomerCodeCleared() {
-		_spec.ClearField(order.FieldCustomerCode, field.TypeString)
-	}
 	if value, ok := _u.mutation.ProductType(); ok {
 		_spec.SetField(order.FieldProductType, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.ProductSpec(); ok {
 		_spec.SetField(order.FieldProductSpec, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.OrderQuantity(); ok {
-		_spec.SetField(order.FieldOrderQuantity, field.TypeInt, value)
+	if _u.mutation.ProductSpecCleared() {
+		_spec.ClearField(order.FieldProductSpec, field.TypeString)
 	}
-	if value, ok := _u.mutation.AddedOrderQuantity(); ok {
-		_spec.AddField(order.FieldOrderQuantity, field.TypeInt, value)
+	if value, ok := _u.mutation.TargetQuantity(); ok {
+		_spec.SetField(order.FieldTargetQuantity, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.ProducedQuantity(); ok {
-		_spec.SetField(order.FieldProducedQuantity, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedTargetQuantity(); ok {
+		_spec.AddField(order.FieldTargetQuantity, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.AddedProducedQuantity(); ok {
-		_spec.AddField(order.FieldProducedQuantity, field.TypeInt, value)
+	if value, ok := _u.mutation.ActualQuantity(); ok {
+		_spec.SetField(order.FieldActualQuantity, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedActualQuantity(); ok {
+		_spec.AddField(order.FieldActualQuantity, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(order.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Priority(); ok {
+		_spec.SetField(order.FieldPriority, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPriority(); ok {
+		_spec.AddField(order.FieldPriority, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.DeliveryDate(); ok {
 		_spec.SetField(order.FieldDeliveryDate, field.TypeTime, value)

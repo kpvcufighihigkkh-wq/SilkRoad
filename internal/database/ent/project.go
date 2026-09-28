@@ -18,26 +18,18 @@ type Project struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// 项目编号
-	ProjectNumber string `json:"project_number,omitempty"`
 	// 项目名称
 	ProjectName string `json:"project_name,omitempty"`
-	// 产品类型
-	ProductType project.ProductType `json:"product_type,omitempty"`
-	// 产品规格
-	ProductSpec string `json:"product_spec,omitempty"`
+	// 项目描述
+	Description string `json:"description,omitempty"`
+	// 客户名称
+	CustomerName string `json:"customer_name,omitempty"`
 	// 项目状态
 	Status project.Status `json:"status,omitempty"`
-	// 计划生产数量（锭）
-	PlannedQuantity int `json:"planned_quantity,omitempty"`
-	// 实际生产数量（锭）
-	ActualQuantity int `json:"actual_quantity,omitempty"`
-	// 计划开始日期
+	// 开始日期
 	StartDate time.Time `json:"start_date,omitempty"`
-	// 计划结束日期
+	// 结束日期
 	EndDate time.Time `json:"end_date,omitempty"`
-	// 备注信息
-	Notes string `json:"notes,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -71,9 +63,7 @@ func (*Project) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case project.FieldPlannedQuantity, project.FieldActualQuantity:
-			values[i] = new(sql.NullInt64)
-		case project.FieldProjectNumber, project.FieldProjectName, project.FieldProductType, project.FieldProductSpec, project.FieldStatus, project.FieldNotes:
+		case project.FieldProjectName, project.FieldDescription, project.FieldCustomerName, project.FieldStatus:
 			values[i] = new(sql.NullString)
 		case project.FieldStartDate, project.FieldEndDate, project.FieldCreatedAt, project.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -100,47 +90,29 @@ func (_m *Project) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ID = *value
 			}
-		case project.FieldProjectNumber:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field project_number", values[i])
-			} else if value.Valid {
-				_m.ProjectNumber = value.String
-			}
 		case project.FieldProjectName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field project_name", values[i])
 			} else if value.Valid {
 				_m.ProjectName = value.String
 			}
-		case project.FieldProductType:
+		case project.FieldDescription:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field product_type", values[i])
+				return fmt.Errorf("unexpected type %T for field description", values[i])
 			} else if value.Valid {
-				_m.ProductType = project.ProductType(value.String)
+				_m.Description = value.String
 			}
-		case project.FieldProductSpec:
+		case project.FieldCustomerName:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field product_spec", values[i])
+				return fmt.Errorf("unexpected type %T for field customer_name", values[i])
 			} else if value.Valid {
-				_m.ProductSpec = value.String
+				_m.CustomerName = value.String
 			}
 		case project.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = project.Status(value.String)
-			}
-		case project.FieldPlannedQuantity:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field planned_quantity", values[i])
-			} else if value.Valid {
-				_m.PlannedQuantity = int(value.Int64)
-			}
-		case project.FieldActualQuantity:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field actual_quantity", values[i])
-			} else if value.Valid {
-				_m.ActualQuantity = int(value.Int64)
 			}
 		case project.FieldStartDate:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -153,12 +125,6 @@ func (_m *Project) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field end_date", values[i])
 			} else if value.Valid {
 				_m.EndDate = value.Time
-			}
-		case project.FieldNotes:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field notes", values[i])
-			} else if value.Valid {
-				_m.Notes = value.String
 			}
 		case project.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -213,35 +179,23 @@ func (_m *Project) String() string {
 	var builder strings.Builder
 	builder.WriteString("Project(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("project_number=")
-	builder.WriteString(_m.ProjectNumber)
-	builder.WriteString(", ")
 	builder.WriteString("project_name=")
 	builder.WriteString(_m.ProjectName)
 	builder.WriteString(", ")
-	builder.WriteString("product_type=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ProductType))
+	builder.WriteString("description=")
+	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
-	builder.WriteString("product_spec=")
-	builder.WriteString(_m.ProductSpec)
+	builder.WriteString("customer_name=")
+	builder.WriteString(_m.CustomerName)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
-	builder.WriteString(", ")
-	builder.WriteString("planned_quantity=")
-	builder.WriteString(fmt.Sprintf("%v", _m.PlannedQuantity))
-	builder.WriteString(", ")
-	builder.WriteString("actual_quantity=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ActualQuantity))
 	builder.WriteString(", ")
 	builder.WriteString("start_date=")
 	builder.WriteString(_m.StartDate.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("end_date=")
 	builder.WriteString(_m.EndDate.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("notes=")
-	builder.WriteString(_m.Notes)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

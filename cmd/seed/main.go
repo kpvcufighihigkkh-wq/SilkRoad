@@ -51,9 +51,9 @@ func seedSpinningLines(ctx context.Context, client *ent.Client) error {
 	log.Println("🏭 Creating spinning lines...")
 
 	lines := []struct {
-		Name          string
-		Number        string
-		PositionCount int
+		Name     string
+		Number   string
+		Capacity int
 	}{
 		{"Line 1", "L001", 48},
 		{"Line 2", "L002", 48},
@@ -65,8 +65,8 @@ func seedSpinningLines(ctx context.Context, client *ent.Client) error {
 		_, err := client.SpinningLine.Create().
 			SetLineName(line.Name).
 			SetLineNumber(line.Number).
-			SetPositionCount(line.PositionCount).
-			SetStatus("active").
+			SetCapacity(line.Capacity).
+			SetStatus("idle").
 			Save(ctx)
 
 		if err != nil {
@@ -85,12 +85,12 @@ func seedUsers(ctx context.Context, client *ent.Client) error {
 		Username string
 		FullName string
 		Role     user.Role
-		Password string
+		Password string // SHA256 hash
 	}{
-		{"admin", "系统管理员", user.RoleAdmin, "$2a$10$admin_hash"},
-		{"operator1", "操作员1", user.RoleOperator, "$2a$10$operator_hash"},
-		{"inspector1", "质检员1", user.RoleQualityInspector, "$2a$10$inspector_hash"},
-		{"viewer1", "查看员1", user.RoleViewer, "$2a$10$viewer_hash"},
+		{"admin", "系统管理员", user.RoleAdmin, "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"},     // admin123
+		{"operator1", "操作员1", user.RoleOperator, "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"},     // password
+		{"inspector1", "质检员1", user.RoleInspector, "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"}, // password
+		{"viewer1", "查看员1", user.RoleViewer, "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"},        // password
 	}
 
 	for _, u := range users {
@@ -115,11 +115,9 @@ func seedProjects(ctx context.Context, client *ent.Client) error {
 	log.Println("📋 Creating sample project...")
 
 	project, err := client.Project.Create().
-		SetProjectNumber("PRJ-2024-001").
 		SetProjectName("Demo Project").
-		SetProductType("FDY").
-		SetProductSpec("150D/48F").
-		SetStatus("in_progress").
+		SetCustomerName("Demo Customer").
+		SetStatus("active").
 		Save(ctx)
 
 	if err != nil {
@@ -132,10 +130,9 @@ func seedProjects(ctx context.Context, client *ent.Client) error {
 	order, err := client.Order.Create().
 		SetOrderNumber("ORD-2024-001").
 		SetProjectID(project.ID).
-		SetCustomerName("Demo Customer").
 		SetProductType("FDY").
 		SetProductSpec("150D/48F").
-		SetOrderQuantity(1000).
+		SetTargetQuantity(1000).
 		SetStatus("pending").
 		Save(ctx)
 

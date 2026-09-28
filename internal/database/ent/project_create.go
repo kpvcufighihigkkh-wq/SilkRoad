@@ -22,27 +22,37 @@ type ProjectCreate struct {
 	hooks    []Hook
 }
 
-// SetProjectNumber sets the "project_number" field.
-func (_c *ProjectCreate) SetProjectNumber(v string) *ProjectCreate {
-	_c.mutation.SetProjectNumber(v)
-	return _c
-}
-
 // SetProjectName sets the "project_name" field.
 func (_c *ProjectCreate) SetProjectName(v string) *ProjectCreate {
 	_c.mutation.SetProjectName(v)
 	return _c
 }
 
-// SetProductType sets the "product_type" field.
-func (_c *ProjectCreate) SetProductType(v project.ProductType) *ProjectCreate {
-	_c.mutation.SetProductType(v)
+// SetDescription sets the "description" field.
+func (_c *ProjectCreate) SetDescription(v string) *ProjectCreate {
+	_c.mutation.SetDescription(v)
 	return _c
 }
 
-// SetProductSpec sets the "product_spec" field.
-func (_c *ProjectCreate) SetProductSpec(v string) *ProjectCreate {
-	_c.mutation.SetProductSpec(v)
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_c *ProjectCreate) SetNillableDescription(v *string) *ProjectCreate {
+	if v != nil {
+		_c.SetDescription(*v)
+	}
+	return _c
+}
+
+// SetCustomerName sets the "customer_name" field.
+func (_c *ProjectCreate) SetCustomerName(v string) *ProjectCreate {
+	_c.mutation.SetCustomerName(v)
+	return _c
+}
+
+// SetNillableCustomerName sets the "customer_name" field if the given value is not nil.
+func (_c *ProjectCreate) SetNillableCustomerName(v *string) *ProjectCreate {
+	if v != nil {
+		_c.SetCustomerName(*v)
+	}
 	return _c
 }
 
@@ -56,34 +66,6 @@ func (_c *ProjectCreate) SetStatus(v project.Status) *ProjectCreate {
 func (_c *ProjectCreate) SetNillableStatus(v *project.Status) *ProjectCreate {
 	if v != nil {
 		_c.SetStatus(*v)
-	}
-	return _c
-}
-
-// SetPlannedQuantity sets the "planned_quantity" field.
-func (_c *ProjectCreate) SetPlannedQuantity(v int) *ProjectCreate {
-	_c.mutation.SetPlannedQuantity(v)
-	return _c
-}
-
-// SetNillablePlannedQuantity sets the "planned_quantity" field if the given value is not nil.
-func (_c *ProjectCreate) SetNillablePlannedQuantity(v *int) *ProjectCreate {
-	if v != nil {
-		_c.SetPlannedQuantity(*v)
-	}
-	return _c
-}
-
-// SetActualQuantity sets the "actual_quantity" field.
-func (_c *ProjectCreate) SetActualQuantity(v int) *ProjectCreate {
-	_c.mutation.SetActualQuantity(v)
-	return _c
-}
-
-// SetNillableActualQuantity sets the "actual_quantity" field if the given value is not nil.
-func (_c *ProjectCreate) SetNillableActualQuantity(v *int) *ProjectCreate {
-	if v != nil {
-		_c.SetActualQuantity(*v)
 	}
 	return _c
 }
@@ -112,20 +94,6 @@ func (_c *ProjectCreate) SetEndDate(v time.Time) *ProjectCreate {
 func (_c *ProjectCreate) SetNillableEndDate(v *time.Time) *ProjectCreate {
 	if v != nil {
 		_c.SetEndDate(*v)
-	}
-	return _c
-}
-
-// SetNotes sets the "notes" field.
-func (_c *ProjectCreate) SetNotes(v string) *ProjectCreate {
-	_c.mutation.SetNotes(v)
-	return _c
-}
-
-// SetNillableNotes sets the "notes" field if the given value is not nil.
-func (_c *ProjectCreate) SetNillableNotes(v *string) *ProjectCreate {
-	if v != nil {
-		_c.SetNotes(*v)
 	}
 	return _c
 }
@@ -226,10 +194,6 @@ func (_c *ProjectCreate) defaults() {
 		v := project.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
-	if _, ok := _c.mutation.ActualQuantity(); !ok {
-		v := project.DefaultActualQuantity
-		_c.mutation.SetActualQuantity(v)
-	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := project.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -246,14 +210,6 @@ func (_c *ProjectCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *ProjectCreate) check() error {
-	if _, ok := _c.mutation.ProjectNumber(); !ok {
-		return &ValidationError{Name: "project_number", err: errors.New(`ent: missing required field "Project.project_number"`)}
-	}
-	if v, ok := _c.mutation.ProjectNumber(); ok {
-		if err := project.ProjectNumberValidator(v); err != nil {
-			return &ValidationError{Name: "project_number", err: fmt.Errorf(`ent: validator failed for field "Project.project_number": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.ProjectName(); !ok {
 		return &ValidationError{Name: "project_name", err: errors.New(`ent: missing required field "Project.project_name"`)}
 	}
@@ -262,20 +218,9 @@ func (_c *ProjectCreate) check() error {
 			return &ValidationError{Name: "project_name", err: fmt.Errorf(`ent: validator failed for field "Project.project_name": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.ProductType(); !ok {
-		return &ValidationError{Name: "product_type", err: errors.New(`ent: missing required field "Project.product_type"`)}
-	}
-	if v, ok := _c.mutation.ProductType(); ok {
-		if err := project.ProductTypeValidator(v); err != nil {
-			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Project.product_type": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.ProductSpec(); !ok {
-		return &ValidationError{Name: "product_spec", err: errors.New(`ent: missing required field "Project.product_spec"`)}
-	}
-	if v, ok := _c.mutation.ProductSpec(); ok {
-		if err := project.ProductSpecValidator(v); err != nil {
-			return &ValidationError{Name: "product_spec", err: fmt.Errorf(`ent: validator failed for field "Project.product_spec": %w`, err)}
+	if v, ok := _c.mutation.CustomerName(); ok {
+		if err := project.CustomerNameValidator(v); err != nil {
+			return &ValidationError{Name: "customer_name", err: fmt.Errorf(`ent: validator failed for field "Project.customer_name": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
@@ -284,19 +229,6 @@ func (_c *ProjectCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := project.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Project.status": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.PlannedQuantity(); ok {
-		if err := project.PlannedQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "planned_quantity", err: fmt.Errorf(`ent: validator failed for field "Project.planned_quantity": %w`, err)}
-		}
-	}
-	if _, ok := _c.mutation.ActualQuantity(); !ok {
-		return &ValidationError{Name: "actual_quantity", err: errors.New(`ent: missing required field "Project.actual_quantity"`)}
-	}
-	if v, ok := _c.mutation.ActualQuantity(); ok {
-		if err := project.ActualQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "actual_quantity", err: fmt.Errorf(`ent: validator failed for field "Project.actual_quantity": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
@@ -340,33 +272,21 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.ProjectNumber(); ok {
-		_spec.SetField(project.FieldProjectNumber, field.TypeString, value)
-		_node.ProjectNumber = value
-	}
 	if value, ok := _c.mutation.ProjectName(); ok {
 		_spec.SetField(project.FieldProjectName, field.TypeString, value)
 		_node.ProjectName = value
 	}
-	if value, ok := _c.mutation.ProductType(); ok {
-		_spec.SetField(project.FieldProductType, field.TypeEnum, value)
-		_node.ProductType = value
+	if value, ok := _c.mutation.Description(); ok {
+		_spec.SetField(project.FieldDescription, field.TypeString, value)
+		_node.Description = value
 	}
-	if value, ok := _c.mutation.ProductSpec(); ok {
-		_spec.SetField(project.FieldProductSpec, field.TypeString, value)
-		_node.ProductSpec = value
+	if value, ok := _c.mutation.CustomerName(); ok {
+		_spec.SetField(project.FieldCustomerName, field.TypeString, value)
+		_node.CustomerName = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(project.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
-	}
-	if value, ok := _c.mutation.PlannedQuantity(); ok {
-		_spec.SetField(project.FieldPlannedQuantity, field.TypeInt, value)
-		_node.PlannedQuantity = value
-	}
-	if value, ok := _c.mutation.ActualQuantity(); ok {
-		_spec.SetField(project.FieldActualQuantity, field.TypeInt, value)
-		_node.ActualQuantity = value
 	}
 	if value, ok := _c.mutation.StartDate(); ok {
 		_spec.SetField(project.FieldStartDate, field.TypeTime, value)
@@ -375,10 +295,6 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.EndDate(); ok {
 		_spec.SetField(project.FieldEndDate, field.TypeTime, value)
 		_node.EndDate = value
-	}
-	if value, ok := _c.mutation.Notes(); ok {
-		_spec.SetField(project.FieldNotes, field.TypeString, value)
-		_node.Notes = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(project.FieldCreatedAt, field.TypeTime, value)

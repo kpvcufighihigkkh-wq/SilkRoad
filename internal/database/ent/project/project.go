@@ -16,26 +16,18 @@ const (
 	Label = "project"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldProjectNumber holds the string denoting the project_number field in the database.
-	FieldProjectNumber = "project_number"
 	// FieldProjectName holds the string denoting the project_name field in the database.
 	FieldProjectName = "project_name"
-	// FieldProductType holds the string denoting the product_type field in the database.
-	FieldProductType = "product_type"
-	// FieldProductSpec holds the string denoting the product_spec field in the database.
-	FieldProductSpec = "product_spec"
+	// FieldDescription holds the string denoting the description field in the database.
+	FieldDescription = "description"
+	// FieldCustomerName holds the string denoting the customer_name field in the database.
+	FieldCustomerName = "customer_name"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldPlannedQuantity holds the string denoting the planned_quantity field in the database.
-	FieldPlannedQuantity = "planned_quantity"
-	// FieldActualQuantity holds the string denoting the actual_quantity field in the database.
-	FieldActualQuantity = "actual_quantity"
 	// FieldStartDate holds the string denoting the start_date field in the database.
 	FieldStartDate = "start_date"
 	// FieldEndDate holds the string denoting the end_date field in the database.
 	FieldEndDate = "end_date"
-	// FieldNotes holds the string denoting the notes field in the database.
-	FieldNotes = "notes"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -56,16 +48,12 @@ const (
 // Columns holds all SQL columns for project fields.
 var Columns = []string{
 	FieldID,
-	FieldProjectNumber,
 	FieldProjectName,
-	FieldProductType,
-	FieldProductSpec,
+	FieldDescription,
+	FieldCustomerName,
 	FieldStatus,
-	FieldPlannedQuantity,
-	FieldActualQuantity,
 	FieldStartDate,
 	FieldEndDate,
-	FieldNotes,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -81,18 +69,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// ProjectNumberValidator is a validator for the "project_number" field. It is called by the builders before save.
-	ProjectNumberValidator func(string) error
 	// ProjectNameValidator is a validator for the "project_name" field. It is called by the builders before save.
 	ProjectNameValidator func(string) error
-	// ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
-	ProductSpecValidator func(string) error
-	// PlannedQuantityValidator is a validator for the "planned_quantity" field. It is called by the builders before save.
-	PlannedQuantityValidator func(int) error
-	// DefaultActualQuantity holds the default value on creation for the "actual_quantity" field.
-	DefaultActualQuantity int
-	// ActualQuantityValidator is a validator for the "actual_quantity" field. It is called by the builders before save.
-	ActualQuantityValidator func(int) error
+	// CustomerNameValidator is a validator for the "customer_name" field. It is called by the builders before save.
+	CustomerNameValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -103,42 +83,17 @@ var (
 	DefaultID func() uuid.UUID
 )
 
-// ProductType defines the type for the "product_type" enum field.
-type ProductType string
-
-// ProductType values.
-const (
-	ProductTypeFDY ProductType = "FDY"
-	ProductTypePOY ProductType = "POY"
-	ProductTypeDTY ProductType = "DTY"
-)
-
-func (pt ProductType) String() string {
-	return string(pt)
-}
-
-// ProductTypeValidator is a validator for the "product_type" field enum values. It is called by the builders before save.
-func ProductTypeValidator(pt ProductType) error {
-	switch pt {
-	case ProductTypeFDY, ProductTypePOY, ProductTypeDTY:
-		return nil
-	default:
-		return fmt.Errorf("project: invalid enum value for product_type field: %q", pt)
-	}
-}
-
 // Status defines the type for the "status" enum field.
 type Status string
 
-// StatusPlanning is the default value of the Status enum.
-const DefaultStatus = StatusPlanning
+// StatusActive is the default value of the Status enum.
+const DefaultStatus = StatusActive
 
 // Status values.
 const (
-	StatusPlanning   Status = "planning"
-	StatusInProgress Status = "in_progress"
-	StatusCompleted  Status = "completed"
-	StatusCancelled  Status = "cancelled"
+	StatusActive    Status = "active"
+	StatusCompleted Status = "completed"
+	StatusArchived  Status = "archived"
 )
 
 func (s Status) String() string {
@@ -148,7 +103,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusPlanning, StatusInProgress, StatusCompleted, StatusCancelled:
+	case StatusActive, StatusCompleted, StatusArchived:
 		return nil
 	default:
 		return fmt.Errorf("project: invalid enum value for status field: %q", s)
@@ -163,39 +118,24 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByProjectNumber orders the results by the project_number field.
-func ByProjectNumber(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProjectNumber, opts...).ToFunc()
-}
-
 // ByProjectName orders the results by the project_name field.
 func ByProjectName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProjectName, opts...).ToFunc()
 }
 
-// ByProductType orders the results by the product_type field.
-func ByProductType(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProductType, opts...).ToFunc()
+// ByDescription orders the results by the description field.
+func ByDescription(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDescription, opts...).ToFunc()
 }
 
-// ByProductSpec orders the results by the product_spec field.
-func ByProductSpec(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProductSpec, opts...).ToFunc()
+// ByCustomerName orders the results by the customer_name field.
+func ByCustomerName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCustomerName, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
-}
-
-// ByPlannedQuantity orders the results by the planned_quantity field.
-func ByPlannedQuantity(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPlannedQuantity, opts...).ToFunc()
-}
-
-// ByActualQuantity orders the results by the actual_quantity field.
-func ByActualQuantity(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldActualQuantity, opts...).ToFunc()
 }
 
 // ByStartDate orders the results by the start_date field.
@@ -206,11 +146,6 @@ func ByStartDate(opts ...sql.OrderTermOption) OrderOption {
 // ByEndDate orders the results by the end_date field.
 func ByEndDate(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldEndDate, opts...).ToFunc()
-}
-
-// ByNotes orders the results by the notes field.
-func ByNotes(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldNotes, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

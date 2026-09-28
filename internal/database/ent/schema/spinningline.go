@@ -23,62 +23,41 @@ func (SpinningLine) Fields() []ent.Field {
 			Default(uuid.New).
 			StorageKey("id"),
 
-		// 线体编号（唯一）
-		field.String("line_number").
-			Unique().
-			NotEmpty().
-			MaxLen(50).
-			Comment("线体编号"),
-
 		// 线体名称
 		field.String("line_name").
+			Unique().
 			NotEmpty().
 			MaxLen(100).
 			Comment("线体名称"),
 
-		// 位号数量
-		field.Int("position_count").
-			Positive().
-			Comment("纺丝位号数量（多少个位）"),
-
-		// 车间区域
-		field.String("workshop_area").
+		// 线体编号
+		field.String("line_number").
 			Optional().
 			MaxLen(50).
-			Comment("车间区域"),
+			Comment("线体编号"),
 
-		// 产品类型
-		field.Enum("product_type").
-			Values("FDY", "POY", "DTY").
+		// 位置信息
+		field.String("location").
 			Optional().
-			Comment("适用产品类型（可选）"),
+			MaxLen(100).
+			Comment("线体位置"),
+
+		// 产能（位号数量）
+		field.Int("capacity").
+			Optional().
+			Positive().
+			Comment("线体产能（位号数量）"),
 
 		// 状态
 		field.Enum("status").
-			Values("active", "maintenance", "inactive").
-			Default("active").
+			Values("idle", "running", "maintenance", "offline").
+			Default("idle").
 			Comment("线体状态"),
 
-		// PLC连接信息
-		field.String("plc_ip").
+		// 当前批次
+		field.UUID("current_lot_id", uuid.UUID{}).
 			Optional().
-			MaxLen(50).
-			Comment("PLC IP地址"),
-
-		field.Int("plc_port").
-			Optional().
-			Positive().
-			Comment("PLC端口"),
-
-		field.String("plc_protocol").
-			Optional().
-			MaxLen(20).
-			Comment("PLC协议（S7/Modbus/etc）"),
-
-		// 备注
-		field.Text("notes").
-			Optional().
-			Comment("备注信息"),
+			Comment("当前生产批次ID"),
 
 		// 元数据
 		field.Time("created_at").
@@ -95,7 +74,7 @@ func (SpinningLine) Fields() []ent.Field {
 
 // Edges of the SpinningLine.
 func (SpinningLine) Edges() []ent.Edge {
-	return nil // 线体表暂无边关系
+	return nil
 }
 
 // Indexes of the SpinningLine.
@@ -103,11 +82,5 @@ func (SpinningLine) Indexes() []ent.Index {
 	return []ent.Index{
 		// 状态索引
 		index.Fields("status"),
-
-		// 产品类型索引
-		index.Fields("product_type"),
-
-		// 车间区域索引
-		index.Fields("workshop_area"),
 	}
 }

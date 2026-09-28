@@ -300,12 +300,12 @@ func (_q *ProjectQuery) WithOrders(opts ...func(*OrderQuery)) *ProjectQuery {
 // Example:
 //
 //	var v []struct {
-//		ProjectNumber string `json:"project_number,omitempty"`
+//		ProjectName string `json:"project_name,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Project.Query().
-//		GroupBy(project.FieldProjectNumber).
+//		GroupBy(project.FieldProjectName).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *ProjectQuery) GroupBy(field string, fields ...string) *ProjectGroupBy {
@@ -323,11 +323,11 @@ func (_q *ProjectQuery) GroupBy(field string, fields ...string) *ProjectGroupBy 
 // Example:
 //
 //	var v []struct {
-//		ProjectNumber string `json:"project_number,omitempty"`
+//		ProjectName string `json:"project_name,omitempty"`
 //	}
 //
 //	client.Project.Query().
-//		Select(project.FieldProjectNumber).
+//		Select(project.FieldProjectName).
 //		Scan(ctx, &v)
 func (_q *ProjectQuery) Select(fields ...string) *ProjectSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

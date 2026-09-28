@@ -15,26 +15,18 @@ const (
 	Label = "spinning_line"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldLineNumber holds the string denoting the line_number field in the database.
-	FieldLineNumber = "line_number"
 	// FieldLineName holds the string denoting the line_name field in the database.
 	FieldLineName = "line_name"
-	// FieldPositionCount holds the string denoting the position_count field in the database.
-	FieldPositionCount = "position_count"
-	// FieldWorkshopArea holds the string denoting the workshop_area field in the database.
-	FieldWorkshopArea = "workshop_area"
-	// FieldProductType holds the string denoting the product_type field in the database.
-	FieldProductType = "product_type"
+	// FieldLineNumber holds the string denoting the line_number field in the database.
+	FieldLineNumber = "line_number"
+	// FieldLocation holds the string denoting the location field in the database.
+	FieldLocation = "location"
+	// FieldCapacity holds the string denoting the capacity field in the database.
+	FieldCapacity = "capacity"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldPlcIP holds the string denoting the plc_ip field in the database.
-	FieldPlcIP = "plc_ip"
-	// FieldPlcPort holds the string denoting the plc_port field in the database.
-	FieldPlcPort = "plc_port"
-	// FieldPlcProtocol holds the string denoting the plc_protocol field in the database.
-	FieldPlcProtocol = "plc_protocol"
-	// FieldNotes holds the string denoting the notes field in the database.
-	FieldNotes = "notes"
+	// FieldCurrentLotID holds the string denoting the current_lot_id field in the database.
+	FieldCurrentLotID = "current_lot_id"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -46,16 +38,12 @@ const (
 // Columns holds all SQL columns for spinningline fields.
 var Columns = []string{
 	FieldID,
-	FieldLineNumber,
 	FieldLineName,
-	FieldPositionCount,
-	FieldWorkshopArea,
-	FieldProductType,
+	FieldLineNumber,
+	FieldLocation,
+	FieldCapacity,
 	FieldStatus,
-	FieldPlcIP,
-	FieldPlcPort,
-	FieldPlcProtocol,
-	FieldNotes,
+	FieldCurrentLotID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -71,20 +59,14 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// LineNumberValidator is a validator for the "line_number" field. It is called by the builders before save.
-	LineNumberValidator func(string) error
 	// LineNameValidator is a validator for the "line_name" field. It is called by the builders before save.
 	LineNameValidator func(string) error
-	// PositionCountValidator is a validator for the "position_count" field. It is called by the builders before save.
-	PositionCountValidator func(int) error
-	// WorkshopAreaValidator is a validator for the "workshop_area" field. It is called by the builders before save.
-	WorkshopAreaValidator func(string) error
-	// PlcIPValidator is a validator for the "plc_ip" field. It is called by the builders before save.
-	PlcIPValidator func(string) error
-	// PlcPortValidator is a validator for the "plc_port" field. It is called by the builders before save.
-	PlcPortValidator func(int) error
-	// PlcProtocolValidator is a validator for the "plc_protocol" field. It is called by the builders before save.
-	PlcProtocolValidator func(string) error
+	// LineNumberValidator is a validator for the "line_number" field. It is called by the builders before save.
+	LineNumberValidator func(string) error
+	// LocationValidator is a validator for the "location" field. It is called by the builders before save.
+	LocationValidator func(string) error
+	// CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
+	CapacityValidator func(int) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -95,41 +77,18 @@ var (
 	DefaultID func() uuid.UUID
 )
 
-// ProductType defines the type for the "product_type" enum field.
-type ProductType string
-
-// ProductType values.
-const (
-	ProductTypeFDY ProductType = "FDY"
-	ProductTypePOY ProductType = "POY"
-	ProductTypeDTY ProductType = "DTY"
-)
-
-func (pt ProductType) String() string {
-	return string(pt)
-}
-
-// ProductTypeValidator is a validator for the "product_type" field enum values. It is called by the builders before save.
-func ProductTypeValidator(pt ProductType) error {
-	switch pt {
-	case ProductTypeFDY, ProductTypePOY, ProductTypeDTY:
-		return nil
-	default:
-		return fmt.Errorf("spinningline: invalid enum value for product_type field: %q", pt)
-	}
-}
-
 // Status defines the type for the "status" enum field.
 type Status string
 
-// StatusActive is the default value of the Status enum.
-const DefaultStatus = StatusActive
+// StatusIdle is the default value of the Status enum.
+const DefaultStatus = StatusIdle
 
 // Status values.
 const (
-	StatusActive      Status = "active"
+	StatusIdle        Status = "idle"
+	StatusRunning     Status = "running"
 	StatusMaintenance Status = "maintenance"
-	StatusInactive    Status = "inactive"
+	StatusOffline     Status = "offline"
 )
 
 func (s Status) String() string {
@@ -139,7 +98,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusActive, StatusMaintenance, StatusInactive:
+	case StatusIdle, StatusRunning, StatusMaintenance, StatusOffline:
 		return nil
 	default:
 		return fmt.Errorf("spinningline: invalid enum value for status field: %q", s)
@@ -154,29 +113,24 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByLineNumber orders the results by the line_number field.
-func ByLineNumber(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLineNumber, opts...).ToFunc()
-}
-
 // ByLineName orders the results by the line_name field.
 func ByLineName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLineName, opts...).ToFunc()
 }
 
-// ByPositionCount orders the results by the position_count field.
-func ByPositionCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPositionCount, opts...).ToFunc()
+// ByLineNumber orders the results by the line_number field.
+func ByLineNumber(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLineNumber, opts...).ToFunc()
 }
 
-// ByWorkshopArea orders the results by the workshop_area field.
-func ByWorkshopArea(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldWorkshopArea, opts...).ToFunc()
+// ByLocation orders the results by the location field.
+func ByLocation(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLocation, opts...).ToFunc()
 }
 
-// ByProductType orders the results by the product_type field.
-func ByProductType(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProductType, opts...).ToFunc()
+// ByCapacity orders the results by the capacity field.
+func ByCapacity(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCapacity, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.
@@ -184,24 +138,9 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
-// ByPlcIP orders the results by the plc_ip field.
-func ByPlcIP(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPlcIP, opts...).ToFunc()
-}
-
-// ByPlcPort orders the results by the plc_port field.
-func ByPlcPort(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPlcPort, opts...).ToFunc()
-}
-
-// ByPlcProtocol orders the results by the plc_protocol field.
-func ByPlcProtocol(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPlcProtocol, opts...).ToFunc()
-}
-
-// ByNotes orders the results by the notes field.
-func ByNotes(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldNotes, opts...).ToFunc()
+// ByCurrentLotID orders the results by the current_lot_id field.
+func ByCurrentLotID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCurrentLotID, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

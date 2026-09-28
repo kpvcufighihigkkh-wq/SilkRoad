@@ -203,18 +203,17 @@ var (
 	OrdersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "order_number", Type: field.TypeString, Unique: true, Size: 50},
-		{Name: "customer_name", Type: field.TypeString, Size: 200},
-		{Name: "customer_code", Type: field.TypeString, Nullable: true, Size: 50},
 		{Name: "product_type", Type: field.TypeEnum, Enums: []string{"FDY", "POY", "DTY"}},
-		{Name: "product_spec", Type: field.TypeString, Size: 100},
-		{Name: "order_quantity", Type: field.TypeInt},
-		{Name: "produced_quantity", Type: field.TypeInt, Default: 0},
+		{Name: "product_spec", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "target_quantity", Type: field.TypeInt},
+		{Name: "actual_quantity", Type: field.TypeInt, Default: 0},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "in_progress", "completed", "cancelled"}, Default: "pending"},
+		{Name: "priority", Type: field.TypeInt, Default: 0},
 		{Name: "delivery_date", Type: field.TypeTime, Nullable: true},
 		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "project_id", Type: field.TypeUUID},
+		{Name: "project_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// OrdersTable holds the schema information for the "orders" table.
 	OrdersTable = &schema.Table{
@@ -224,41 +223,36 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "orders_projects_orders",
-				Columns:    []*schema.Column{OrdersColumns[13]},
+				Columns:    []*schema.Column{OrdersColumns[12]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
-				OnDelete:   schema.NoAction,
+				OnDelete:   schema.SetNull,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "order_project_id",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[13]},
-			},
-			{
-				Name:    "order_customer_code",
-				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[3]},
+				Columns: []*schema.Column{OrdersColumns[12]},
 			},
 			{
 				Name:    "order_product_type",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[4]},
+				Columns: []*schema.Column{OrdersColumns[2]},
 			},
 			{
 				Name:    "order_status",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[8]},
+				Columns: []*schema.Column{OrdersColumns[6]},
 			},
 			{
-				Name:    "order_created_at",
+				Name:    "order_priority",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[11]},
+				Columns: []*schema.Column{OrdersColumns[7]},
 			},
 			{
 				Name:    "order_delivery_date",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[9]},
+				Columns: []*schema.Column{OrdersColumns[8]},
 			},
 		},
 	}
@@ -307,16 +301,12 @@ var (
 	// ProjectsColumns holds the columns for the "projects" table.
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "project_number", Type: field.TypeString, Unique: true, Size: 50},
-		{Name: "project_name", Type: field.TypeString, Size: 200},
-		{Name: "product_type", Type: field.TypeEnum, Enums: []string{"FDY", "POY", "DTY"}},
-		{Name: "product_spec", Type: field.TypeString, Size: 100},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"planning", "in_progress", "completed", "cancelled"}, Default: "planning"},
-		{Name: "planned_quantity", Type: field.TypeInt, Nullable: true},
-		{Name: "actual_quantity", Type: field.TypeInt, Default: 0},
+		{Name: "project_name", Type: field.TypeString, Unique: true, Size: 100},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "customer_name", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "completed", "archived"}, Default: "active"},
 		{Name: "start_date", Type: field.TypeTime, Nullable: true},
 		{Name: "end_date", Type: field.TypeTime, Nullable: true},
-		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
@@ -327,40 +317,31 @@ var (
 		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "project_product_type",
+				Name:    "project_status",
+				Unique:  false,
+				Columns: []*schema.Column{ProjectsColumns[4]},
+			},
+			{
+				Name:    "project_customer_name",
 				Unique:  false,
 				Columns: []*schema.Column{ProjectsColumns[3]},
 			},
 			{
-				Name:    "project_status",
-				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[5]},
-			},
-			{
 				Name:    "project_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[11]},
-			},
-			{
-				Name:    "project_start_date",
-				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[8]},
+				Columns: []*schema.Column{ProjectsColumns[7]},
 			},
 		},
 	}
 	// SpinningLinesColumns holds the columns for the "spinning_lines" table.
 	SpinningLinesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "line_number", Type: field.TypeString, Unique: true, Size: 50},
-		{Name: "line_name", Type: field.TypeString, Size: 100},
-		{Name: "position_count", Type: field.TypeInt},
-		{Name: "workshop_area", Type: field.TypeString, Nullable: true, Size: 50},
-		{Name: "product_type", Type: field.TypeEnum, Nullable: true, Enums: []string{"FDY", "POY", "DTY"}},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "maintenance", "inactive"}, Default: "active"},
-		{Name: "plc_ip", Type: field.TypeString, Nullable: true, Size: 50},
-		{Name: "plc_port", Type: field.TypeInt, Nullable: true},
-		{Name: "plc_protocol", Type: field.TypeString, Nullable: true, Size: 20},
-		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "line_name", Type: field.TypeString, Unique: true, Size: 100},
+		{Name: "line_number", Type: field.TypeString, Nullable: true, Size: 50},
+		{Name: "location", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "capacity", Type: field.TypeInt, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"idle", "running", "maintenance", "offline"}, Default: "idle"},
+		{Name: "current_lot_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
@@ -373,17 +354,7 @@ var (
 			{
 				Name:    "spinningline_status",
 				Unique:  false,
-				Columns: []*schema.Column{SpinningLinesColumns[6]},
-			},
-			{
-				Name:    "spinningline_product_type",
-				Unique:  false,
 				Columns: []*schema.Column{SpinningLinesColumns[5]},
-			},
-			{
-				Name:    "spinningline_workshop_area",
-				Unique:  false,
-				Columns: []*schema.Column{SpinningLinesColumns[4]},
 			},
 		},
 	}
@@ -393,7 +364,7 @@ var (
 		{Name: "username", Type: field.TypeString, Unique: true, Size: 50},
 		{Name: "password_hash", Type: field.TypeString},
 		{Name: "full_name", Type: field.TypeString, Size: 100},
-		{Name: "role", Type: field.TypeEnum, Enums: []string{"admin", "operator", "quality_inspector", "viewer"}, Default: "viewer"},
+		{Name: "role", Type: field.TypeEnum, Enums: []string{"admin", "operator", "inspector", "viewer"}, Default: "viewer"},
 		{Name: "employee_id", Type: field.TypeString, Nullable: true, Size: 50},
 		{Name: "email", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "phone", Type: field.TypeString, Nullable: true, Size: 20},

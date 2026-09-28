@@ -30,20 +30,6 @@ func (_u *ProjectUpdate) Where(ps ...predicate.Project) *ProjectUpdate {
 	return _u
 }
 
-// SetProjectNumber sets the "project_number" field.
-func (_u *ProjectUpdate) SetProjectNumber(v string) *ProjectUpdate {
-	_u.mutation.SetProjectNumber(v)
-	return _u
-}
-
-// SetNillableProjectNumber sets the "project_number" field if the given value is not nil.
-func (_u *ProjectUpdate) SetNillableProjectNumber(v *string) *ProjectUpdate {
-	if v != nil {
-		_u.SetProjectNumber(*v)
-	}
-	return _u
-}
-
 // SetProjectName sets the "project_name" field.
 func (_u *ProjectUpdate) SetProjectName(v string) *ProjectUpdate {
 	_u.mutation.SetProjectName(v)
@@ -58,31 +44,43 @@ func (_u *ProjectUpdate) SetNillableProjectName(v *string) *ProjectUpdate {
 	return _u
 }
 
-// SetProductType sets the "product_type" field.
-func (_u *ProjectUpdate) SetProductType(v project.ProductType) *ProjectUpdate {
-	_u.mutation.SetProductType(v)
+// SetDescription sets the "description" field.
+func (_u *ProjectUpdate) SetDescription(v string) *ProjectUpdate {
+	_u.mutation.SetDescription(v)
 	return _u
 }
 
-// SetNillableProductType sets the "product_type" field if the given value is not nil.
-func (_u *ProjectUpdate) SetNillableProductType(v *project.ProductType) *ProjectUpdate {
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *ProjectUpdate) SetNillableDescription(v *string) *ProjectUpdate {
 	if v != nil {
-		_u.SetProductType(*v)
+		_u.SetDescription(*v)
 	}
 	return _u
 }
 
-// SetProductSpec sets the "product_spec" field.
-func (_u *ProjectUpdate) SetProductSpec(v string) *ProjectUpdate {
-	_u.mutation.SetProductSpec(v)
+// ClearDescription clears the value of the "description" field.
+func (_u *ProjectUpdate) ClearDescription() *ProjectUpdate {
+	_u.mutation.ClearDescription()
 	return _u
 }
 
-// SetNillableProductSpec sets the "product_spec" field if the given value is not nil.
-func (_u *ProjectUpdate) SetNillableProductSpec(v *string) *ProjectUpdate {
+// SetCustomerName sets the "customer_name" field.
+func (_u *ProjectUpdate) SetCustomerName(v string) *ProjectUpdate {
+	_u.mutation.SetCustomerName(v)
+	return _u
+}
+
+// SetNillableCustomerName sets the "customer_name" field if the given value is not nil.
+func (_u *ProjectUpdate) SetNillableCustomerName(v *string) *ProjectUpdate {
 	if v != nil {
-		_u.SetProductSpec(*v)
+		_u.SetCustomerName(*v)
 	}
+	return _u
+}
+
+// ClearCustomerName clears the value of the "customer_name" field.
+func (_u *ProjectUpdate) ClearCustomerName() *ProjectUpdate {
+	_u.mutation.ClearCustomerName()
 	return _u
 }
 
@@ -97,54 +95,6 @@ func (_u *ProjectUpdate) SetNillableStatus(v *project.Status) *ProjectUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
-	return _u
-}
-
-// SetPlannedQuantity sets the "planned_quantity" field.
-func (_u *ProjectUpdate) SetPlannedQuantity(v int) *ProjectUpdate {
-	_u.mutation.ResetPlannedQuantity()
-	_u.mutation.SetPlannedQuantity(v)
-	return _u
-}
-
-// SetNillablePlannedQuantity sets the "planned_quantity" field if the given value is not nil.
-func (_u *ProjectUpdate) SetNillablePlannedQuantity(v *int) *ProjectUpdate {
-	if v != nil {
-		_u.SetPlannedQuantity(*v)
-	}
-	return _u
-}
-
-// AddPlannedQuantity adds value to the "planned_quantity" field.
-func (_u *ProjectUpdate) AddPlannedQuantity(v int) *ProjectUpdate {
-	_u.mutation.AddPlannedQuantity(v)
-	return _u
-}
-
-// ClearPlannedQuantity clears the value of the "planned_quantity" field.
-func (_u *ProjectUpdate) ClearPlannedQuantity() *ProjectUpdate {
-	_u.mutation.ClearPlannedQuantity()
-	return _u
-}
-
-// SetActualQuantity sets the "actual_quantity" field.
-func (_u *ProjectUpdate) SetActualQuantity(v int) *ProjectUpdate {
-	_u.mutation.ResetActualQuantity()
-	_u.mutation.SetActualQuantity(v)
-	return _u
-}
-
-// SetNillableActualQuantity sets the "actual_quantity" field if the given value is not nil.
-func (_u *ProjectUpdate) SetNillableActualQuantity(v *int) *ProjectUpdate {
-	if v != nil {
-		_u.SetActualQuantity(*v)
-	}
-	return _u
-}
-
-// AddActualQuantity adds value to the "actual_quantity" field.
-func (_u *ProjectUpdate) AddActualQuantity(v int) *ProjectUpdate {
-	_u.mutation.AddActualQuantity(v)
 	return _u
 }
 
@@ -185,26 +135,6 @@ func (_u *ProjectUpdate) SetNillableEndDate(v *time.Time) *ProjectUpdate {
 // ClearEndDate clears the value of the "end_date" field.
 func (_u *ProjectUpdate) ClearEndDate() *ProjectUpdate {
 	_u.mutation.ClearEndDate()
-	return _u
-}
-
-// SetNotes sets the "notes" field.
-func (_u *ProjectUpdate) SetNotes(v string) *ProjectUpdate {
-	_u.mutation.SetNotes(v)
-	return _u
-}
-
-// SetNillableNotes sets the "notes" field if the given value is not nil.
-func (_u *ProjectUpdate) SetNillableNotes(v *string) *ProjectUpdate {
-	if v != nil {
-		_u.SetNotes(*v)
-	}
-	return _u
-}
-
-// ClearNotes clears the value of the "notes" field.
-func (_u *ProjectUpdate) ClearNotes() *ProjectUpdate {
-	_u.mutation.ClearNotes()
 	return _u
 }
 
@@ -293,39 +223,19 @@ func (_u *ProjectUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ProjectUpdate) check() error {
-	if v, ok := _u.mutation.ProjectNumber(); ok {
-		if err := project.ProjectNumberValidator(v); err != nil {
-			return &ValidationError{Name: "project_number", err: fmt.Errorf(`ent: validator failed for field "Project.project_number": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.ProjectName(); ok {
 		if err := project.ProjectNameValidator(v); err != nil {
 			return &ValidationError{Name: "project_name", err: fmt.Errorf(`ent: validator failed for field "Project.project_name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ProductType(); ok {
-		if err := project.ProductTypeValidator(v); err != nil {
-			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Project.product_type": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.ProductSpec(); ok {
-		if err := project.ProductSpecValidator(v); err != nil {
-			return &ValidationError{Name: "product_spec", err: fmt.Errorf(`ent: validator failed for field "Project.product_spec": %w`, err)}
+	if v, ok := _u.mutation.CustomerName(); ok {
+		if err := project.CustomerNameValidator(v); err != nil {
+			return &ValidationError{Name: "customer_name", err: fmt.Errorf(`ent: validator failed for field "Project.customer_name": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := project.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Project.status": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlannedQuantity(); ok {
-		if err := project.PlannedQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "planned_quantity", err: fmt.Errorf(`ent: validator failed for field "Project.planned_quantity": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.ActualQuantity(); ok {
-		if err := project.ActualQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "actual_quantity", err: fmt.Errorf(`ent: validator failed for field "Project.actual_quantity": %w`, err)}
 		}
 	}
 	return nil
@@ -343,35 +253,23 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.ProjectNumber(); ok {
-		_spec.SetField(project.FieldProjectNumber, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.ProjectName(); ok {
 		_spec.SetField(project.FieldProjectName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ProductType(); ok {
-		_spec.SetField(project.FieldProductType, field.TypeEnum, value)
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(project.FieldDescription, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ProductSpec(); ok {
-		_spec.SetField(project.FieldProductSpec, field.TypeString, value)
+	if _u.mutation.DescriptionCleared() {
+		_spec.ClearField(project.FieldDescription, field.TypeString)
+	}
+	if value, ok := _u.mutation.CustomerName(); ok {
+		_spec.SetField(project.FieldCustomerName, field.TypeString, value)
+	}
+	if _u.mutation.CustomerNameCleared() {
+		_spec.ClearField(project.FieldCustomerName, field.TypeString)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(project.FieldStatus, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.PlannedQuantity(); ok {
-		_spec.SetField(project.FieldPlannedQuantity, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedPlannedQuantity(); ok {
-		_spec.AddField(project.FieldPlannedQuantity, field.TypeInt, value)
-	}
-	if _u.mutation.PlannedQuantityCleared() {
-		_spec.ClearField(project.FieldPlannedQuantity, field.TypeInt)
-	}
-	if value, ok := _u.mutation.ActualQuantity(); ok {
-		_spec.SetField(project.FieldActualQuantity, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedActualQuantity(); ok {
-		_spec.AddField(project.FieldActualQuantity, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.StartDate(); ok {
 		_spec.SetField(project.FieldStartDate, field.TypeTime, value)
@@ -384,12 +282,6 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.EndDateCleared() {
 		_spec.ClearField(project.FieldEndDate, field.TypeTime)
-	}
-	if value, ok := _u.mutation.Notes(); ok {
-		_spec.SetField(project.FieldNotes, field.TypeString, value)
-	}
-	if _u.mutation.NotesCleared() {
-		_spec.ClearField(project.FieldNotes, field.TypeString)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)
@@ -459,20 +351,6 @@ type ProjectUpdateOne struct {
 	mutation *ProjectMutation
 }
 
-// SetProjectNumber sets the "project_number" field.
-func (_u *ProjectUpdateOne) SetProjectNumber(v string) *ProjectUpdateOne {
-	_u.mutation.SetProjectNumber(v)
-	return _u
-}
-
-// SetNillableProjectNumber sets the "project_number" field if the given value is not nil.
-func (_u *ProjectUpdateOne) SetNillableProjectNumber(v *string) *ProjectUpdateOne {
-	if v != nil {
-		_u.SetProjectNumber(*v)
-	}
-	return _u
-}
-
 // SetProjectName sets the "project_name" field.
 func (_u *ProjectUpdateOne) SetProjectName(v string) *ProjectUpdateOne {
 	_u.mutation.SetProjectName(v)
@@ -487,31 +365,43 @@ func (_u *ProjectUpdateOne) SetNillableProjectName(v *string) *ProjectUpdateOne 
 	return _u
 }
 
-// SetProductType sets the "product_type" field.
-func (_u *ProjectUpdateOne) SetProductType(v project.ProductType) *ProjectUpdateOne {
-	_u.mutation.SetProductType(v)
+// SetDescription sets the "description" field.
+func (_u *ProjectUpdateOne) SetDescription(v string) *ProjectUpdateOne {
+	_u.mutation.SetDescription(v)
 	return _u
 }
 
-// SetNillableProductType sets the "product_type" field if the given value is not nil.
-func (_u *ProjectUpdateOne) SetNillableProductType(v *project.ProductType) *ProjectUpdateOne {
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *ProjectUpdateOne) SetNillableDescription(v *string) *ProjectUpdateOne {
 	if v != nil {
-		_u.SetProductType(*v)
+		_u.SetDescription(*v)
 	}
 	return _u
 }
 
-// SetProductSpec sets the "product_spec" field.
-func (_u *ProjectUpdateOne) SetProductSpec(v string) *ProjectUpdateOne {
-	_u.mutation.SetProductSpec(v)
+// ClearDescription clears the value of the "description" field.
+func (_u *ProjectUpdateOne) ClearDescription() *ProjectUpdateOne {
+	_u.mutation.ClearDescription()
 	return _u
 }
 
-// SetNillableProductSpec sets the "product_spec" field if the given value is not nil.
-func (_u *ProjectUpdateOne) SetNillableProductSpec(v *string) *ProjectUpdateOne {
+// SetCustomerName sets the "customer_name" field.
+func (_u *ProjectUpdateOne) SetCustomerName(v string) *ProjectUpdateOne {
+	_u.mutation.SetCustomerName(v)
+	return _u
+}
+
+// SetNillableCustomerName sets the "customer_name" field if the given value is not nil.
+func (_u *ProjectUpdateOne) SetNillableCustomerName(v *string) *ProjectUpdateOne {
 	if v != nil {
-		_u.SetProductSpec(*v)
+		_u.SetCustomerName(*v)
 	}
+	return _u
+}
+
+// ClearCustomerName clears the value of the "customer_name" field.
+func (_u *ProjectUpdateOne) ClearCustomerName() *ProjectUpdateOne {
+	_u.mutation.ClearCustomerName()
 	return _u
 }
 
@@ -526,54 +416,6 @@ func (_u *ProjectUpdateOne) SetNillableStatus(v *project.Status) *ProjectUpdateO
 	if v != nil {
 		_u.SetStatus(*v)
 	}
-	return _u
-}
-
-// SetPlannedQuantity sets the "planned_quantity" field.
-func (_u *ProjectUpdateOne) SetPlannedQuantity(v int) *ProjectUpdateOne {
-	_u.mutation.ResetPlannedQuantity()
-	_u.mutation.SetPlannedQuantity(v)
-	return _u
-}
-
-// SetNillablePlannedQuantity sets the "planned_quantity" field if the given value is not nil.
-func (_u *ProjectUpdateOne) SetNillablePlannedQuantity(v *int) *ProjectUpdateOne {
-	if v != nil {
-		_u.SetPlannedQuantity(*v)
-	}
-	return _u
-}
-
-// AddPlannedQuantity adds value to the "planned_quantity" field.
-func (_u *ProjectUpdateOne) AddPlannedQuantity(v int) *ProjectUpdateOne {
-	_u.mutation.AddPlannedQuantity(v)
-	return _u
-}
-
-// ClearPlannedQuantity clears the value of the "planned_quantity" field.
-func (_u *ProjectUpdateOne) ClearPlannedQuantity() *ProjectUpdateOne {
-	_u.mutation.ClearPlannedQuantity()
-	return _u
-}
-
-// SetActualQuantity sets the "actual_quantity" field.
-func (_u *ProjectUpdateOne) SetActualQuantity(v int) *ProjectUpdateOne {
-	_u.mutation.ResetActualQuantity()
-	_u.mutation.SetActualQuantity(v)
-	return _u
-}
-
-// SetNillableActualQuantity sets the "actual_quantity" field if the given value is not nil.
-func (_u *ProjectUpdateOne) SetNillableActualQuantity(v *int) *ProjectUpdateOne {
-	if v != nil {
-		_u.SetActualQuantity(*v)
-	}
-	return _u
-}
-
-// AddActualQuantity adds value to the "actual_quantity" field.
-func (_u *ProjectUpdateOne) AddActualQuantity(v int) *ProjectUpdateOne {
-	_u.mutation.AddActualQuantity(v)
 	return _u
 }
 
@@ -614,26 +456,6 @@ func (_u *ProjectUpdateOne) SetNillableEndDate(v *time.Time) *ProjectUpdateOne {
 // ClearEndDate clears the value of the "end_date" field.
 func (_u *ProjectUpdateOne) ClearEndDate() *ProjectUpdateOne {
 	_u.mutation.ClearEndDate()
-	return _u
-}
-
-// SetNotes sets the "notes" field.
-func (_u *ProjectUpdateOne) SetNotes(v string) *ProjectUpdateOne {
-	_u.mutation.SetNotes(v)
-	return _u
-}
-
-// SetNillableNotes sets the "notes" field if the given value is not nil.
-func (_u *ProjectUpdateOne) SetNillableNotes(v *string) *ProjectUpdateOne {
-	if v != nil {
-		_u.SetNotes(*v)
-	}
-	return _u
-}
-
-// ClearNotes clears the value of the "notes" field.
-func (_u *ProjectUpdateOne) ClearNotes() *ProjectUpdateOne {
-	_u.mutation.ClearNotes()
 	return _u
 }
 
@@ -735,39 +557,19 @@ func (_u *ProjectUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *ProjectUpdateOne) check() error {
-	if v, ok := _u.mutation.ProjectNumber(); ok {
-		if err := project.ProjectNumberValidator(v); err != nil {
-			return &ValidationError{Name: "project_number", err: fmt.Errorf(`ent: validator failed for field "Project.project_number": %w`, err)}
-		}
-	}
 	if v, ok := _u.mutation.ProjectName(); ok {
 		if err := project.ProjectNameValidator(v); err != nil {
 			return &ValidationError{Name: "project_name", err: fmt.Errorf(`ent: validator failed for field "Project.project_name": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ProductType(); ok {
-		if err := project.ProductTypeValidator(v); err != nil {
-			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Project.product_type": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.ProductSpec(); ok {
-		if err := project.ProductSpecValidator(v); err != nil {
-			return &ValidationError{Name: "product_spec", err: fmt.Errorf(`ent: validator failed for field "Project.product_spec": %w`, err)}
+	if v, ok := _u.mutation.CustomerName(); ok {
+		if err := project.CustomerNameValidator(v); err != nil {
+			return &ValidationError{Name: "customer_name", err: fmt.Errorf(`ent: validator failed for field "Project.customer_name": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.Status(); ok {
 		if err := project.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Project.status": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.PlannedQuantity(); ok {
-		if err := project.PlannedQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "planned_quantity", err: fmt.Errorf(`ent: validator failed for field "Project.planned_quantity": %w`, err)}
-		}
-	}
-	if v, ok := _u.mutation.ActualQuantity(); ok {
-		if err := project.ActualQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "actual_quantity", err: fmt.Errorf(`ent: validator failed for field "Project.actual_quantity": %w`, err)}
 		}
 	}
 	return nil
@@ -802,35 +604,23 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			}
 		}
 	}
-	if value, ok := _u.mutation.ProjectNumber(); ok {
-		_spec.SetField(project.FieldProjectNumber, field.TypeString, value)
-	}
 	if value, ok := _u.mutation.ProjectName(); ok {
 		_spec.SetField(project.FieldProjectName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ProductType(); ok {
-		_spec.SetField(project.FieldProductType, field.TypeEnum, value)
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(project.FieldDescription, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ProductSpec(); ok {
-		_spec.SetField(project.FieldProductSpec, field.TypeString, value)
+	if _u.mutation.DescriptionCleared() {
+		_spec.ClearField(project.FieldDescription, field.TypeString)
+	}
+	if value, ok := _u.mutation.CustomerName(); ok {
+		_spec.SetField(project.FieldCustomerName, field.TypeString, value)
+	}
+	if _u.mutation.CustomerNameCleared() {
+		_spec.ClearField(project.FieldCustomerName, field.TypeString)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(project.FieldStatus, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.PlannedQuantity(); ok {
-		_spec.SetField(project.FieldPlannedQuantity, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedPlannedQuantity(); ok {
-		_spec.AddField(project.FieldPlannedQuantity, field.TypeInt, value)
-	}
-	if _u.mutation.PlannedQuantityCleared() {
-		_spec.ClearField(project.FieldPlannedQuantity, field.TypeInt)
-	}
-	if value, ok := _u.mutation.ActualQuantity(); ok {
-		_spec.SetField(project.FieldActualQuantity, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AddedActualQuantity(); ok {
-		_spec.AddField(project.FieldActualQuantity, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.StartDate(); ok {
 		_spec.SetField(project.FieldStartDate, field.TypeTime, value)
@@ -843,12 +633,6 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	}
 	if _u.mutation.EndDateCleared() {
 		_spec.ClearField(project.FieldEndDate, field.TypeTime)
-	}
-	if value, ok := _u.mutation.Notes(); ok {
-		_spec.SetField(project.FieldNotes, field.TypeString, value)
-	}
-	if _u.mutation.NotesCleared() {
-		_spec.ClearField(project.FieldNotes, field.TypeString)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)

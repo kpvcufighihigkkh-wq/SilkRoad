@@ -199,48 +199,30 @@ func init() {
 			return nil
 		}
 	}()
-	// orderDescCustomerName is the schema descriptor for customer_name field.
-	orderDescCustomerName := orderFields[3].Descriptor()
-	// order.CustomerNameValidator is a validator for the "customer_name" field. It is called by the builders before save.
-	order.CustomerNameValidator = func() func(string) error {
-		validators := orderDescCustomerName.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(customer_name string) error {
-			for _, fn := range fns {
-				if err := fn(customer_name); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// orderDescCustomerCode is the schema descriptor for customer_code field.
-	orderDescCustomerCode := orderFields[4].Descriptor()
-	// order.CustomerCodeValidator is a validator for the "customer_code" field. It is called by the builders before save.
-	order.CustomerCodeValidator = orderDescCustomerCode.Validators[0].(func(string) error)
 	// orderDescProductSpec is the schema descriptor for product_spec field.
-	orderDescProductSpec := orderFields[6].Descriptor()
+	orderDescProductSpec := orderFields[4].Descriptor()
 	// order.ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
 	order.ProductSpecValidator = orderDescProductSpec.Validators[0].(func(string) error)
-	// orderDescOrderQuantity is the schema descriptor for order_quantity field.
-	orderDescOrderQuantity := orderFields[7].Descriptor()
-	// order.OrderQuantityValidator is a validator for the "order_quantity" field. It is called by the builders before save.
-	order.OrderQuantityValidator = orderDescOrderQuantity.Validators[0].(func(int) error)
-	// orderDescProducedQuantity is the schema descriptor for produced_quantity field.
-	orderDescProducedQuantity := orderFields[8].Descriptor()
-	// order.DefaultProducedQuantity holds the default value on creation for the produced_quantity field.
-	order.DefaultProducedQuantity = orderDescProducedQuantity.Default.(int)
-	// order.ProducedQuantityValidator is a validator for the "produced_quantity" field. It is called by the builders before save.
-	order.ProducedQuantityValidator = orderDescProducedQuantity.Validators[0].(func(int) error)
+	// orderDescTargetQuantity is the schema descriptor for target_quantity field.
+	orderDescTargetQuantity := orderFields[5].Descriptor()
+	// order.TargetQuantityValidator is a validator for the "target_quantity" field. It is called by the builders before save.
+	order.TargetQuantityValidator = orderDescTargetQuantity.Validators[0].(func(int) error)
+	// orderDescActualQuantity is the schema descriptor for actual_quantity field.
+	orderDescActualQuantity := orderFields[6].Descriptor()
+	// order.DefaultActualQuantity holds the default value on creation for the actual_quantity field.
+	order.DefaultActualQuantity = orderDescActualQuantity.Default.(int)
+	// order.ActualQuantityValidator is a validator for the "actual_quantity" field. It is called by the builders before save.
+	order.ActualQuantityValidator = orderDescActualQuantity.Validators[0].(func(int) error)
+	// orderDescPriority is the schema descriptor for priority field.
+	orderDescPriority := orderFields[8].Descriptor()
+	// order.DefaultPriority holds the default value on creation for the priority field.
+	order.DefaultPriority = orderDescPriority.Default.(int)
 	// orderDescCreatedAt is the schema descriptor for created_at field.
-	orderDescCreatedAt := orderFields[12].Descriptor()
+	orderDescCreatedAt := orderFields[11].Descriptor()
 	// order.DefaultCreatedAt holds the default value on creation for the created_at field.
 	order.DefaultCreatedAt = orderDescCreatedAt.Default.(func() time.Time)
 	// orderDescUpdatedAt is the schema descriptor for updated_at field.
-	orderDescUpdatedAt := orderFields[13].Descriptor()
+	orderDescUpdatedAt := orderFields[12].Descriptor()
 	// order.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	order.DefaultUpdatedAt = orderDescUpdatedAt.Default.(func() time.Time)
 	// order.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -299,26 +281,8 @@ func init() {
 	pallet.DefaultID = palletDescID.Default.(func() uuid.UUID)
 	projectFields := schema.Project{}.Fields()
 	_ = projectFields
-	// projectDescProjectNumber is the schema descriptor for project_number field.
-	projectDescProjectNumber := projectFields[1].Descriptor()
-	// project.ProjectNumberValidator is a validator for the "project_number" field. It is called by the builders before save.
-	project.ProjectNumberValidator = func() func(string) error {
-		validators := projectDescProjectNumber.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(project_number string) error {
-			for _, fn := range fns {
-				if err := fn(project_number); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
 	// projectDescProjectName is the schema descriptor for project_name field.
-	projectDescProjectName := projectFields[2].Descriptor()
+	projectDescProjectName := projectFields[1].Descriptor()
 	// project.ProjectNameValidator is a validator for the "project_name" field. It is called by the builders before save.
 	project.ProjectNameValidator = func() func(string) error {
 		validators := projectDescProjectName.Validators
@@ -335,26 +299,16 @@ func init() {
 			return nil
 		}
 	}()
-	// projectDescProductSpec is the schema descriptor for product_spec field.
-	projectDescProductSpec := projectFields[4].Descriptor()
-	// project.ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
-	project.ProductSpecValidator = projectDescProductSpec.Validators[0].(func(string) error)
-	// projectDescPlannedQuantity is the schema descriptor for planned_quantity field.
-	projectDescPlannedQuantity := projectFields[6].Descriptor()
-	// project.PlannedQuantityValidator is a validator for the "planned_quantity" field. It is called by the builders before save.
-	project.PlannedQuantityValidator = projectDescPlannedQuantity.Validators[0].(func(int) error)
-	// projectDescActualQuantity is the schema descriptor for actual_quantity field.
-	projectDescActualQuantity := projectFields[7].Descriptor()
-	// project.DefaultActualQuantity holds the default value on creation for the actual_quantity field.
-	project.DefaultActualQuantity = projectDescActualQuantity.Default.(int)
-	// project.ActualQuantityValidator is a validator for the "actual_quantity" field. It is called by the builders before save.
-	project.ActualQuantityValidator = projectDescActualQuantity.Validators[0].(func(int) error)
+	// projectDescCustomerName is the schema descriptor for customer_name field.
+	projectDescCustomerName := projectFields[3].Descriptor()
+	// project.CustomerNameValidator is a validator for the "customer_name" field. It is called by the builders before save.
+	project.CustomerNameValidator = projectDescCustomerName.Validators[0].(func(string) error)
 	// projectDescCreatedAt is the schema descriptor for created_at field.
-	projectDescCreatedAt := projectFields[11].Descriptor()
+	projectDescCreatedAt := projectFields[7].Descriptor()
 	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
 	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
 	// projectDescUpdatedAt is the schema descriptor for updated_at field.
-	projectDescUpdatedAt := projectFields[12].Descriptor()
+	projectDescUpdatedAt := projectFields[8].Descriptor()
 	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
 	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -365,26 +319,8 @@ func init() {
 	project.DefaultID = projectDescID.Default.(func() uuid.UUID)
 	spinninglineFields := schema.SpinningLine{}.Fields()
 	_ = spinninglineFields
-	// spinninglineDescLineNumber is the schema descriptor for line_number field.
-	spinninglineDescLineNumber := spinninglineFields[1].Descriptor()
-	// spinningline.LineNumberValidator is a validator for the "line_number" field. It is called by the builders before save.
-	spinningline.LineNumberValidator = func() func(string) error {
-		validators := spinninglineDescLineNumber.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(line_number string) error {
-			for _, fn := range fns {
-				if err := fn(line_number); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
 	// spinninglineDescLineName is the schema descriptor for line_name field.
-	spinninglineDescLineName := spinninglineFields[2].Descriptor()
+	spinninglineDescLineName := spinninglineFields[1].Descriptor()
 	// spinningline.LineNameValidator is a validator for the "line_name" field. It is called by the builders before save.
 	spinningline.LineNameValidator = func() func(string) error {
 		validators := spinninglineDescLineName.Validators
@@ -401,32 +337,24 @@ func init() {
 			return nil
 		}
 	}()
-	// spinninglineDescPositionCount is the schema descriptor for position_count field.
-	spinninglineDescPositionCount := spinninglineFields[3].Descriptor()
-	// spinningline.PositionCountValidator is a validator for the "position_count" field. It is called by the builders before save.
-	spinningline.PositionCountValidator = spinninglineDescPositionCount.Validators[0].(func(int) error)
-	// spinninglineDescWorkshopArea is the schema descriptor for workshop_area field.
-	spinninglineDescWorkshopArea := spinninglineFields[4].Descriptor()
-	// spinningline.WorkshopAreaValidator is a validator for the "workshop_area" field. It is called by the builders before save.
-	spinningline.WorkshopAreaValidator = spinninglineDescWorkshopArea.Validators[0].(func(string) error)
-	// spinninglineDescPlcIP is the schema descriptor for plc_ip field.
-	spinninglineDescPlcIP := spinninglineFields[7].Descriptor()
-	// spinningline.PlcIPValidator is a validator for the "plc_ip" field. It is called by the builders before save.
-	spinningline.PlcIPValidator = spinninglineDescPlcIP.Validators[0].(func(string) error)
-	// spinninglineDescPlcPort is the schema descriptor for plc_port field.
-	spinninglineDescPlcPort := spinninglineFields[8].Descriptor()
-	// spinningline.PlcPortValidator is a validator for the "plc_port" field. It is called by the builders before save.
-	spinningline.PlcPortValidator = spinninglineDescPlcPort.Validators[0].(func(int) error)
-	// spinninglineDescPlcProtocol is the schema descriptor for plc_protocol field.
-	spinninglineDescPlcProtocol := spinninglineFields[9].Descriptor()
-	// spinningline.PlcProtocolValidator is a validator for the "plc_protocol" field. It is called by the builders before save.
-	spinningline.PlcProtocolValidator = spinninglineDescPlcProtocol.Validators[0].(func(string) error)
+	// spinninglineDescLineNumber is the schema descriptor for line_number field.
+	spinninglineDescLineNumber := spinninglineFields[2].Descriptor()
+	// spinningline.LineNumberValidator is a validator for the "line_number" field. It is called by the builders before save.
+	spinningline.LineNumberValidator = spinninglineDescLineNumber.Validators[0].(func(string) error)
+	// spinninglineDescLocation is the schema descriptor for location field.
+	spinninglineDescLocation := spinninglineFields[3].Descriptor()
+	// spinningline.LocationValidator is a validator for the "location" field. It is called by the builders before save.
+	spinningline.LocationValidator = spinninglineDescLocation.Validators[0].(func(string) error)
+	// spinninglineDescCapacity is the schema descriptor for capacity field.
+	spinninglineDescCapacity := spinninglineFields[4].Descriptor()
+	// spinningline.CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
+	spinningline.CapacityValidator = spinninglineDescCapacity.Validators[0].(func(int) error)
 	// spinninglineDescCreatedAt is the schema descriptor for created_at field.
-	spinninglineDescCreatedAt := spinninglineFields[11].Descriptor()
+	spinninglineDescCreatedAt := spinninglineFields[7].Descriptor()
 	// spinningline.DefaultCreatedAt holds the default value on creation for the created_at field.
 	spinningline.DefaultCreatedAt = spinninglineDescCreatedAt.Default.(func() time.Time)
 	// spinninglineDescUpdatedAt is the schema descriptor for updated_at field.
-	spinninglineDescUpdatedAt := spinninglineFields[12].Descriptor()
+	spinninglineDescUpdatedAt := spinninglineFields[8].Descriptor()
 	// spinningline.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	spinningline.DefaultUpdatedAt = spinninglineDescUpdatedAt.Default.(func() time.Time)
 	// spinningline.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

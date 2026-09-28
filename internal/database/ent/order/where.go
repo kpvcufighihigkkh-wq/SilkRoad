@@ -66,29 +66,24 @@ func ProjectID(v uuid.UUID) predicate.Order {
 	return predicate.Order(sql.FieldEQ(FieldProjectID, v))
 }
 
-// CustomerName applies equality check predicate on the "customer_name" field. It's identical to CustomerNameEQ.
-func CustomerName(v string) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldCustomerName, v))
-}
-
-// CustomerCode applies equality check predicate on the "customer_code" field. It's identical to CustomerCodeEQ.
-func CustomerCode(v string) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldCustomerCode, v))
-}
-
 // ProductSpec applies equality check predicate on the "product_spec" field. It's identical to ProductSpecEQ.
 func ProductSpec(v string) predicate.Order {
 	return predicate.Order(sql.FieldEQ(FieldProductSpec, v))
 }
 
-// OrderQuantity applies equality check predicate on the "order_quantity" field. It's identical to OrderQuantityEQ.
-func OrderQuantity(v int) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldOrderQuantity, v))
+// TargetQuantity applies equality check predicate on the "target_quantity" field. It's identical to TargetQuantityEQ.
+func TargetQuantity(v int) predicate.Order {
+	return predicate.Order(sql.FieldEQ(FieldTargetQuantity, v))
 }
 
-// ProducedQuantity applies equality check predicate on the "produced_quantity" field. It's identical to ProducedQuantityEQ.
-func ProducedQuantity(v int) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldProducedQuantity, v))
+// ActualQuantity applies equality check predicate on the "actual_quantity" field. It's identical to ActualQuantityEQ.
+func ActualQuantity(v int) predicate.Order {
+	return predicate.Order(sql.FieldEQ(FieldActualQuantity, v))
+}
+
+// Priority applies equality check predicate on the "priority" field. It's identical to PriorityEQ.
+func Priority(v int) predicate.Order {
+	return predicate.Order(sql.FieldEQ(FieldPriority, v))
 }
 
 // DeliveryDate applies equality check predicate on the "delivery_date" field. It's identical to DeliveryDateEQ.
@@ -196,144 +191,14 @@ func ProjectIDNotIn(vs ...uuid.UUID) predicate.Order {
 	return predicate.Order(sql.FieldNotIn(FieldProjectID, vs...))
 }
 
-// CustomerNameEQ applies the EQ predicate on the "customer_name" field.
-func CustomerNameEQ(v string) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldCustomerName, v))
+// ProjectIDIsNil applies the IsNil predicate on the "project_id" field.
+func ProjectIDIsNil() predicate.Order {
+	return predicate.Order(sql.FieldIsNull(FieldProjectID))
 }
 
-// CustomerNameNEQ applies the NEQ predicate on the "customer_name" field.
-func CustomerNameNEQ(v string) predicate.Order {
-	return predicate.Order(sql.FieldNEQ(FieldCustomerName, v))
-}
-
-// CustomerNameIn applies the In predicate on the "customer_name" field.
-func CustomerNameIn(vs ...string) predicate.Order {
-	return predicate.Order(sql.FieldIn(FieldCustomerName, vs...))
-}
-
-// CustomerNameNotIn applies the NotIn predicate on the "customer_name" field.
-func CustomerNameNotIn(vs ...string) predicate.Order {
-	return predicate.Order(sql.FieldNotIn(FieldCustomerName, vs...))
-}
-
-// CustomerNameGT applies the GT predicate on the "customer_name" field.
-func CustomerNameGT(v string) predicate.Order {
-	return predicate.Order(sql.FieldGT(FieldCustomerName, v))
-}
-
-// CustomerNameGTE applies the GTE predicate on the "customer_name" field.
-func CustomerNameGTE(v string) predicate.Order {
-	return predicate.Order(sql.FieldGTE(FieldCustomerName, v))
-}
-
-// CustomerNameLT applies the LT predicate on the "customer_name" field.
-func CustomerNameLT(v string) predicate.Order {
-	return predicate.Order(sql.FieldLT(FieldCustomerName, v))
-}
-
-// CustomerNameLTE applies the LTE predicate on the "customer_name" field.
-func CustomerNameLTE(v string) predicate.Order {
-	return predicate.Order(sql.FieldLTE(FieldCustomerName, v))
-}
-
-// CustomerNameContains applies the Contains predicate on the "customer_name" field.
-func CustomerNameContains(v string) predicate.Order {
-	return predicate.Order(sql.FieldContains(FieldCustomerName, v))
-}
-
-// CustomerNameHasPrefix applies the HasPrefix predicate on the "customer_name" field.
-func CustomerNameHasPrefix(v string) predicate.Order {
-	return predicate.Order(sql.FieldHasPrefix(FieldCustomerName, v))
-}
-
-// CustomerNameHasSuffix applies the HasSuffix predicate on the "customer_name" field.
-func CustomerNameHasSuffix(v string) predicate.Order {
-	return predicate.Order(sql.FieldHasSuffix(FieldCustomerName, v))
-}
-
-// CustomerNameEqualFold applies the EqualFold predicate on the "customer_name" field.
-func CustomerNameEqualFold(v string) predicate.Order {
-	return predicate.Order(sql.FieldEqualFold(FieldCustomerName, v))
-}
-
-// CustomerNameContainsFold applies the ContainsFold predicate on the "customer_name" field.
-func CustomerNameContainsFold(v string) predicate.Order {
-	return predicate.Order(sql.FieldContainsFold(FieldCustomerName, v))
-}
-
-// CustomerCodeEQ applies the EQ predicate on the "customer_code" field.
-func CustomerCodeEQ(v string) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldCustomerCode, v))
-}
-
-// CustomerCodeNEQ applies the NEQ predicate on the "customer_code" field.
-func CustomerCodeNEQ(v string) predicate.Order {
-	return predicate.Order(sql.FieldNEQ(FieldCustomerCode, v))
-}
-
-// CustomerCodeIn applies the In predicate on the "customer_code" field.
-func CustomerCodeIn(vs ...string) predicate.Order {
-	return predicate.Order(sql.FieldIn(FieldCustomerCode, vs...))
-}
-
-// CustomerCodeNotIn applies the NotIn predicate on the "customer_code" field.
-func CustomerCodeNotIn(vs ...string) predicate.Order {
-	return predicate.Order(sql.FieldNotIn(FieldCustomerCode, vs...))
-}
-
-// CustomerCodeGT applies the GT predicate on the "customer_code" field.
-func CustomerCodeGT(v string) predicate.Order {
-	return predicate.Order(sql.FieldGT(FieldCustomerCode, v))
-}
-
-// CustomerCodeGTE applies the GTE predicate on the "customer_code" field.
-func CustomerCodeGTE(v string) predicate.Order {
-	return predicate.Order(sql.FieldGTE(FieldCustomerCode, v))
-}
-
-// CustomerCodeLT applies the LT predicate on the "customer_code" field.
-func CustomerCodeLT(v string) predicate.Order {
-	return predicate.Order(sql.FieldLT(FieldCustomerCode, v))
-}
-
-// CustomerCodeLTE applies the LTE predicate on the "customer_code" field.
-func CustomerCodeLTE(v string) predicate.Order {
-	return predicate.Order(sql.FieldLTE(FieldCustomerCode, v))
-}
-
-// CustomerCodeContains applies the Contains predicate on the "customer_code" field.
-func CustomerCodeContains(v string) predicate.Order {
-	return predicate.Order(sql.FieldContains(FieldCustomerCode, v))
-}
-
-// CustomerCodeHasPrefix applies the HasPrefix predicate on the "customer_code" field.
-func CustomerCodeHasPrefix(v string) predicate.Order {
-	return predicate.Order(sql.FieldHasPrefix(FieldCustomerCode, v))
-}
-
-// CustomerCodeHasSuffix applies the HasSuffix predicate on the "customer_code" field.
-func CustomerCodeHasSuffix(v string) predicate.Order {
-	return predicate.Order(sql.FieldHasSuffix(FieldCustomerCode, v))
-}
-
-// CustomerCodeIsNil applies the IsNil predicate on the "customer_code" field.
-func CustomerCodeIsNil() predicate.Order {
-	return predicate.Order(sql.FieldIsNull(FieldCustomerCode))
-}
-
-// CustomerCodeNotNil applies the NotNil predicate on the "customer_code" field.
-func CustomerCodeNotNil() predicate.Order {
-	return predicate.Order(sql.FieldNotNull(FieldCustomerCode))
-}
-
-// CustomerCodeEqualFold applies the EqualFold predicate on the "customer_code" field.
-func CustomerCodeEqualFold(v string) predicate.Order {
-	return predicate.Order(sql.FieldEqualFold(FieldCustomerCode, v))
-}
-
-// CustomerCodeContainsFold applies the ContainsFold predicate on the "customer_code" field.
-func CustomerCodeContainsFold(v string) predicate.Order {
-	return predicate.Order(sql.FieldContainsFold(FieldCustomerCode, v))
+// ProjectIDNotNil applies the NotNil predicate on the "project_id" field.
+func ProjectIDNotNil() predicate.Order {
+	return predicate.Order(sql.FieldNotNull(FieldProjectID))
 }
 
 // ProductTypeEQ applies the EQ predicate on the "product_type" field.
@@ -411,6 +276,16 @@ func ProductSpecHasSuffix(v string) predicate.Order {
 	return predicate.Order(sql.FieldHasSuffix(FieldProductSpec, v))
 }
 
+// ProductSpecIsNil applies the IsNil predicate on the "product_spec" field.
+func ProductSpecIsNil() predicate.Order {
+	return predicate.Order(sql.FieldIsNull(FieldProductSpec))
+}
+
+// ProductSpecNotNil applies the NotNil predicate on the "product_spec" field.
+func ProductSpecNotNil() predicate.Order {
+	return predicate.Order(sql.FieldNotNull(FieldProductSpec))
+}
+
 // ProductSpecEqualFold applies the EqualFold predicate on the "product_spec" field.
 func ProductSpecEqualFold(v string) predicate.Order {
 	return predicate.Order(sql.FieldEqualFold(FieldProductSpec, v))
@@ -421,84 +296,84 @@ func ProductSpecContainsFold(v string) predicate.Order {
 	return predicate.Order(sql.FieldContainsFold(FieldProductSpec, v))
 }
 
-// OrderQuantityEQ applies the EQ predicate on the "order_quantity" field.
-func OrderQuantityEQ(v int) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldOrderQuantity, v))
+// TargetQuantityEQ applies the EQ predicate on the "target_quantity" field.
+func TargetQuantityEQ(v int) predicate.Order {
+	return predicate.Order(sql.FieldEQ(FieldTargetQuantity, v))
 }
 
-// OrderQuantityNEQ applies the NEQ predicate on the "order_quantity" field.
-func OrderQuantityNEQ(v int) predicate.Order {
-	return predicate.Order(sql.FieldNEQ(FieldOrderQuantity, v))
+// TargetQuantityNEQ applies the NEQ predicate on the "target_quantity" field.
+func TargetQuantityNEQ(v int) predicate.Order {
+	return predicate.Order(sql.FieldNEQ(FieldTargetQuantity, v))
 }
 
-// OrderQuantityIn applies the In predicate on the "order_quantity" field.
-func OrderQuantityIn(vs ...int) predicate.Order {
-	return predicate.Order(sql.FieldIn(FieldOrderQuantity, vs...))
+// TargetQuantityIn applies the In predicate on the "target_quantity" field.
+func TargetQuantityIn(vs ...int) predicate.Order {
+	return predicate.Order(sql.FieldIn(FieldTargetQuantity, vs...))
 }
 
-// OrderQuantityNotIn applies the NotIn predicate on the "order_quantity" field.
-func OrderQuantityNotIn(vs ...int) predicate.Order {
-	return predicate.Order(sql.FieldNotIn(FieldOrderQuantity, vs...))
+// TargetQuantityNotIn applies the NotIn predicate on the "target_quantity" field.
+func TargetQuantityNotIn(vs ...int) predicate.Order {
+	return predicate.Order(sql.FieldNotIn(FieldTargetQuantity, vs...))
 }
 
-// OrderQuantityGT applies the GT predicate on the "order_quantity" field.
-func OrderQuantityGT(v int) predicate.Order {
-	return predicate.Order(sql.FieldGT(FieldOrderQuantity, v))
+// TargetQuantityGT applies the GT predicate on the "target_quantity" field.
+func TargetQuantityGT(v int) predicate.Order {
+	return predicate.Order(sql.FieldGT(FieldTargetQuantity, v))
 }
 
-// OrderQuantityGTE applies the GTE predicate on the "order_quantity" field.
-func OrderQuantityGTE(v int) predicate.Order {
-	return predicate.Order(sql.FieldGTE(FieldOrderQuantity, v))
+// TargetQuantityGTE applies the GTE predicate on the "target_quantity" field.
+func TargetQuantityGTE(v int) predicate.Order {
+	return predicate.Order(sql.FieldGTE(FieldTargetQuantity, v))
 }
 
-// OrderQuantityLT applies the LT predicate on the "order_quantity" field.
-func OrderQuantityLT(v int) predicate.Order {
-	return predicate.Order(sql.FieldLT(FieldOrderQuantity, v))
+// TargetQuantityLT applies the LT predicate on the "target_quantity" field.
+func TargetQuantityLT(v int) predicate.Order {
+	return predicate.Order(sql.FieldLT(FieldTargetQuantity, v))
 }
 
-// OrderQuantityLTE applies the LTE predicate on the "order_quantity" field.
-func OrderQuantityLTE(v int) predicate.Order {
-	return predicate.Order(sql.FieldLTE(FieldOrderQuantity, v))
+// TargetQuantityLTE applies the LTE predicate on the "target_quantity" field.
+func TargetQuantityLTE(v int) predicate.Order {
+	return predicate.Order(sql.FieldLTE(FieldTargetQuantity, v))
 }
 
-// ProducedQuantityEQ applies the EQ predicate on the "produced_quantity" field.
-func ProducedQuantityEQ(v int) predicate.Order {
-	return predicate.Order(sql.FieldEQ(FieldProducedQuantity, v))
+// ActualQuantityEQ applies the EQ predicate on the "actual_quantity" field.
+func ActualQuantityEQ(v int) predicate.Order {
+	return predicate.Order(sql.FieldEQ(FieldActualQuantity, v))
 }
 
-// ProducedQuantityNEQ applies the NEQ predicate on the "produced_quantity" field.
-func ProducedQuantityNEQ(v int) predicate.Order {
-	return predicate.Order(sql.FieldNEQ(FieldProducedQuantity, v))
+// ActualQuantityNEQ applies the NEQ predicate on the "actual_quantity" field.
+func ActualQuantityNEQ(v int) predicate.Order {
+	return predicate.Order(sql.FieldNEQ(FieldActualQuantity, v))
 }
 
-// ProducedQuantityIn applies the In predicate on the "produced_quantity" field.
-func ProducedQuantityIn(vs ...int) predicate.Order {
-	return predicate.Order(sql.FieldIn(FieldProducedQuantity, vs...))
+// ActualQuantityIn applies the In predicate on the "actual_quantity" field.
+func ActualQuantityIn(vs ...int) predicate.Order {
+	return predicate.Order(sql.FieldIn(FieldActualQuantity, vs...))
 }
 
-// ProducedQuantityNotIn applies the NotIn predicate on the "produced_quantity" field.
-func ProducedQuantityNotIn(vs ...int) predicate.Order {
-	return predicate.Order(sql.FieldNotIn(FieldProducedQuantity, vs...))
+// ActualQuantityNotIn applies the NotIn predicate on the "actual_quantity" field.
+func ActualQuantityNotIn(vs ...int) predicate.Order {
+	return predicate.Order(sql.FieldNotIn(FieldActualQuantity, vs...))
 }
 
-// ProducedQuantityGT applies the GT predicate on the "produced_quantity" field.
-func ProducedQuantityGT(v int) predicate.Order {
-	return predicate.Order(sql.FieldGT(FieldProducedQuantity, v))
+// ActualQuantityGT applies the GT predicate on the "actual_quantity" field.
+func ActualQuantityGT(v int) predicate.Order {
+	return predicate.Order(sql.FieldGT(FieldActualQuantity, v))
 }
 
-// ProducedQuantityGTE applies the GTE predicate on the "produced_quantity" field.
-func ProducedQuantityGTE(v int) predicate.Order {
-	return predicate.Order(sql.FieldGTE(FieldProducedQuantity, v))
+// ActualQuantityGTE applies the GTE predicate on the "actual_quantity" field.
+func ActualQuantityGTE(v int) predicate.Order {
+	return predicate.Order(sql.FieldGTE(FieldActualQuantity, v))
 }
 
-// ProducedQuantityLT applies the LT predicate on the "produced_quantity" field.
-func ProducedQuantityLT(v int) predicate.Order {
-	return predicate.Order(sql.FieldLT(FieldProducedQuantity, v))
+// ActualQuantityLT applies the LT predicate on the "actual_quantity" field.
+func ActualQuantityLT(v int) predicate.Order {
+	return predicate.Order(sql.FieldLT(FieldActualQuantity, v))
 }
 
-// ProducedQuantityLTE applies the LTE predicate on the "produced_quantity" field.
-func ProducedQuantityLTE(v int) predicate.Order {
-	return predicate.Order(sql.FieldLTE(FieldProducedQuantity, v))
+// ActualQuantityLTE applies the LTE predicate on the "actual_quantity" field.
+func ActualQuantityLTE(v int) predicate.Order {
+	return predicate.Order(sql.FieldLTE(FieldActualQuantity, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.
@@ -519,6 +394,46 @@ func StatusIn(vs ...Status) predicate.Order {
 // StatusNotIn applies the NotIn predicate on the "status" field.
 func StatusNotIn(vs ...Status) predicate.Order {
 	return predicate.Order(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// PriorityEQ applies the EQ predicate on the "priority" field.
+func PriorityEQ(v int) predicate.Order {
+	return predicate.Order(sql.FieldEQ(FieldPriority, v))
+}
+
+// PriorityNEQ applies the NEQ predicate on the "priority" field.
+func PriorityNEQ(v int) predicate.Order {
+	return predicate.Order(sql.FieldNEQ(FieldPriority, v))
+}
+
+// PriorityIn applies the In predicate on the "priority" field.
+func PriorityIn(vs ...int) predicate.Order {
+	return predicate.Order(sql.FieldIn(FieldPriority, vs...))
+}
+
+// PriorityNotIn applies the NotIn predicate on the "priority" field.
+func PriorityNotIn(vs ...int) predicate.Order {
+	return predicate.Order(sql.FieldNotIn(FieldPriority, vs...))
+}
+
+// PriorityGT applies the GT predicate on the "priority" field.
+func PriorityGT(v int) predicate.Order {
+	return predicate.Order(sql.FieldGT(FieldPriority, v))
+}
+
+// PriorityGTE applies the GTE predicate on the "priority" field.
+func PriorityGTE(v int) predicate.Order {
+	return predicate.Order(sql.FieldGTE(FieldPriority, v))
+}
+
+// PriorityLT applies the LT predicate on the "priority" field.
+func PriorityLT(v int) predicate.Order {
+	return predicate.Order(sql.FieldLT(FieldPriority, v))
+}
+
+// PriorityLTE applies the LTE predicate on the "priority" field.
+func PriorityLTE(v int) predicate.Order {
+	return predicate.Order(sql.FieldLTE(FieldPriority, v))
 }
 
 // DeliveryDateEQ applies the EQ predicate on the "delivery_date" field.

@@ -21,48 +21,50 @@ type SpinningLineCreate struct {
 	hooks    []Hook
 }
 
-// SetLineNumber sets the "line_number" field.
-func (_c *SpinningLineCreate) SetLineNumber(v string) *SpinningLineCreate {
-	_c.mutation.SetLineNumber(v)
-	return _c
-}
-
 // SetLineName sets the "line_name" field.
 func (_c *SpinningLineCreate) SetLineName(v string) *SpinningLineCreate {
 	_c.mutation.SetLineName(v)
 	return _c
 }
 
-// SetPositionCount sets the "position_count" field.
-func (_c *SpinningLineCreate) SetPositionCount(v int) *SpinningLineCreate {
-	_c.mutation.SetPositionCount(v)
+// SetLineNumber sets the "line_number" field.
+func (_c *SpinningLineCreate) SetLineNumber(v string) *SpinningLineCreate {
+	_c.mutation.SetLineNumber(v)
 	return _c
 }
 
-// SetWorkshopArea sets the "workshop_area" field.
-func (_c *SpinningLineCreate) SetWorkshopArea(v string) *SpinningLineCreate {
-	_c.mutation.SetWorkshopArea(v)
-	return _c
-}
-
-// SetNillableWorkshopArea sets the "workshop_area" field if the given value is not nil.
-func (_c *SpinningLineCreate) SetNillableWorkshopArea(v *string) *SpinningLineCreate {
+// SetNillableLineNumber sets the "line_number" field if the given value is not nil.
+func (_c *SpinningLineCreate) SetNillableLineNumber(v *string) *SpinningLineCreate {
 	if v != nil {
-		_c.SetWorkshopArea(*v)
+		_c.SetLineNumber(*v)
 	}
 	return _c
 }
 
-// SetProductType sets the "product_type" field.
-func (_c *SpinningLineCreate) SetProductType(v spinningline.ProductType) *SpinningLineCreate {
-	_c.mutation.SetProductType(v)
+// SetLocation sets the "location" field.
+func (_c *SpinningLineCreate) SetLocation(v string) *SpinningLineCreate {
+	_c.mutation.SetLocation(v)
 	return _c
 }
 
-// SetNillableProductType sets the "product_type" field if the given value is not nil.
-func (_c *SpinningLineCreate) SetNillableProductType(v *spinningline.ProductType) *SpinningLineCreate {
+// SetNillableLocation sets the "location" field if the given value is not nil.
+func (_c *SpinningLineCreate) SetNillableLocation(v *string) *SpinningLineCreate {
 	if v != nil {
-		_c.SetProductType(*v)
+		_c.SetLocation(*v)
+	}
+	return _c
+}
+
+// SetCapacity sets the "capacity" field.
+func (_c *SpinningLineCreate) SetCapacity(v int) *SpinningLineCreate {
+	_c.mutation.SetCapacity(v)
+	return _c
+}
+
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
+func (_c *SpinningLineCreate) SetNillableCapacity(v *int) *SpinningLineCreate {
+	if v != nil {
+		_c.SetCapacity(*v)
 	}
 	return _c
 }
@@ -81,58 +83,16 @@ func (_c *SpinningLineCreate) SetNillableStatus(v *spinningline.Status) *Spinnin
 	return _c
 }
 
-// SetPlcIP sets the "plc_ip" field.
-func (_c *SpinningLineCreate) SetPlcIP(v string) *SpinningLineCreate {
-	_c.mutation.SetPlcIP(v)
+// SetCurrentLotID sets the "current_lot_id" field.
+func (_c *SpinningLineCreate) SetCurrentLotID(v uuid.UUID) *SpinningLineCreate {
+	_c.mutation.SetCurrentLotID(v)
 	return _c
 }
 
-// SetNillablePlcIP sets the "plc_ip" field if the given value is not nil.
-func (_c *SpinningLineCreate) SetNillablePlcIP(v *string) *SpinningLineCreate {
+// SetNillableCurrentLotID sets the "current_lot_id" field if the given value is not nil.
+func (_c *SpinningLineCreate) SetNillableCurrentLotID(v *uuid.UUID) *SpinningLineCreate {
 	if v != nil {
-		_c.SetPlcIP(*v)
-	}
-	return _c
-}
-
-// SetPlcPort sets the "plc_port" field.
-func (_c *SpinningLineCreate) SetPlcPort(v int) *SpinningLineCreate {
-	_c.mutation.SetPlcPort(v)
-	return _c
-}
-
-// SetNillablePlcPort sets the "plc_port" field if the given value is not nil.
-func (_c *SpinningLineCreate) SetNillablePlcPort(v *int) *SpinningLineCreate {
-	if v != nil {
-		_c.SetPlcPort(*v)
-	}
-	return _c
-}
-
-// SetPlcProtocol sets the "plc_protocol" field.
-func (_c *SpinningLineCreate) SetPlcProtocol(v string) *SpinningLineCreate {
-	_c.mutation.SetPlcProtocol(v)
-	return _c
-}
-
-// SetNillablePlcProtocol sets the "plc_protocol" field if the given value is not nil.
-func (_c *SpinningLineCreate) SetNillablePlcProtocol(v *string) *SpinningLineCreate {
-	if v != nil {
-		_c.SetPlcProtocol(*v)
-	}
-	return _c
-}
-
-// SetNotes sets the "notes" field.
-func (_c *SpinningLineCreate) SetNotes(v string) *SpinningLineCreate {
-	_c.mutation.SetNotes(v)
-	return _c
-}
-
-// SetNillableNotes sets the "notes" field if the given value is not nil.
-func (_c *SpinningLineCreate) SetNillableNotes(v *string) *SpinningLineCreate {
-	if v != nil {
-		_c.SetNotes(*v)
+		_c.SetCurrentLotID(*v)
 	}
 	return _c
 }
@@ -234,14 +194,6 @@ func (_c *SpinningLineCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *SpinningLineCreate) check() error {
-	if _, ok := _c.mutation.LineNumber(); !ok {
-		return &ValidationError{Name: "line_number", err: errors.New(`ent: missing required field "SpinningLine.line_number"`)}
-	}
-	if v, ok := _c.mutation.LineNumber(); ok {
-		if err := spinningline.LineNumberValidator(v); err != nil {
-			return &ValidationError{Name: "line_number", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_number": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.LineName(); !ok {
 		return &ValidationError{Name: "line_name", err: errors.New(`ent: missing required field "SpinningLine.line_name"`)}
 	}
@@ -250,22 +202,19 @@ func (_c *SpinningLineCreate) check() error {
 			return &ValidationError{Name: "line_name", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_name": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.PositionCount(); !ok {
-		return &ValidationError{Name: "position_count", err: errors.New(`ent: missing required field "SpinningLine.position_count"`)}
-	}
-	if v, ok := _c.mutation.PositionCount(); ok {
-		if err := spinningline.PositionCountValidator(v); err != nil {
-			return &ValidationError{Name: "position_count", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.position_count": %w`, err)}
+	if v, ok := _c.mutation.LineNumber(); ok {
+		if err := spinningline.LineNumberValidator(v); err != nil {
+			return &ValidationError{Name: "line_number", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.line_number": %w`, err)}
 		}
 	}
-	if v, ok := _c.mutation.WorkshopArea(); ok {
-		if err := spinningline.WorkshopAreaValidator(v); err != nil {
-			return &ValidationError{Name: "workshop_area", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.workshop_area": %w`, err)}
+	if v, ok := _c.mutation.Location(); ok {
+		if err := spinningline.LocationValidator(v); err != nil {
+			return &ValidationError{Name: "location", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.location": %w`, err)}
 		}
 	}
-	if v, ok := _c.mutation.ProductType(); ok {
-		if err := spinningline.ProductTypeValidator(v); err != nil {
-			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.product_type": %w`, err)}
+	if v, ok := _c.mutation.Capacity(); ok {
+		if err := spinningline.CapacityValidator(v); err != nil {
+			return &ValidationError{Name: "capacity", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.capacity": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
@@ -274,21 +223,6 @@ func (_c *SpinningLineCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := spinningline.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.status": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.PlcIP(); ok {
-		if err := spinningline.PlcIPValidator(v); err != nil {
-			return &ValidationError{Name: "plc_ip", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_ip": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.PlcPort(); ok {
-		if err := spinningline.PlcPortValidator(v); err != nil {
-			return &ValidationError{Name: "plc_port", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_port": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.PlcProtocol(); ok {
-		if err := spinningline.PlcProtocolValidator(v); err != nil {
-			return &ValidationError{Name: "plc_protocol", err: fmt.Errorf(`ent: validator failed for field "SpinningLine.plc_protocol": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
@@ -332,45 +266,29 @@ func (_c *SpinningLineCreate) createSpec() (*SpinningLine, *sqlgraph.CreateSpec)
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.LineNumber(); ok {
-		_spec.SetField(spinningline.FieldLineNumber, field.TypeString, value)
-		_node.LineNumber = value
-	}
 	if value, ok := _c.mutation.LineName(); ok {
 		_spec.SetField(spinningline.FieldLineName, field.TypeString, value)
 		_node.LineName = value
 	}
-	if value, ok := _c.mutation.PositionCount(); ok {
-		_spec.SetField(spinningline.FieldPositionCount, field.TypeInt, value)
-		_node.PositionCount = value
+	if value, ok := _c.mutation.LineNumber(); ok {
+		_spec.SetField(spinningline.FieldLineNumber, field.TypeString, value)
+		_node.LineNumber = value
 	}
-	if value, ok := _c.mutation.WorkshopArea(); ok {
-		_spec.SetField(spinningline.FieldWorkshopArea, field.TypeString, value)
-		_node.WorkshopArea = value
+	if value, ok := _c.mutation.Location(); ok {
+		_spec.SetField(spinningline.FieldLocation, field.TypeString, value)
+		_node.Location = value
 	}
-	if value, ok := _c.mutation.ProductType(); ok {
-		_spec.SetField(spinningline.FieldProductType, field.TypeEnum, value)
-		_node.ProductType = value
+	if value, ok := _c.mutation.Capacity(); ok {
+		_spec.SetField(spinningline.FieldCapacity, field.TypeInt, value)
+		_node.Capacity = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(spinningline.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
-	if value, ok := _c.mutation.PlcIP(); ok {
-		_spec.SetField(spinningline.FieldPlcIP, field.TypeString, value)
-		_node.PlcIP = value
-	}
-	if value, ok := _c.mutation.PlcPort(); ok {
-		_spec.SetField(spinningline.FieldPlcPort, field.TypeInt, value)
-		_node.PlcPort = value
-	}
-	if value, ok := _c.mutation.PlcProtocol(); ok {
-		_spec.SetField(spinningline.FieldPlcProtocol, field.TypeString, value)
-		_node.PlcProtocol = value
-	}
-	if value, ok := _c.mutation.Notes(); ok {
-		_spec.SetField(spinningline.FieldNotes, field.TypeString, value)
-		_node.Notes = value
+	if value, ok := _c.mutation.CurrentLotID(); ok {
+		_spec.SetField(spinningline.FieldCurrentLotID, field.TypeUUID, value)
+		_node.CurrentLotID = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(spinningline.FieldCreatedAt, field.TypeTime, value)

@@ -20,20 +20,18 @@ const (
 	FieldOrderNumber = "order_number"
 	// FieldProjectID holds the string denoting the project_id field in the database.
 	FieldProjectID = "project_id"
-	// FieldCustomerName holds the string denoting the customer_name field in the database.
-	FieldCustomerName = "customer_name"
-	// FieldCustomerCode holds the string denoting the customer_code field in the database.
-	FieldCustomerCode = "customer_code"
 	// FieldProductType holds the string denoting the product_type field in the database.
 	FieldProductType = "product_type"
 	// FieldProductSpec holds the string denoting the product_spec field in the database.
 	FieldProductSpec = "product_spec"
-	// FieldOrderQuantity holds the string denoting the order_quantity field in the database.
-	FieldOrderQuantity = "order_quantity"
-	// FieldProducedQuantity holds the string denoting the produced_quantity field in the database.
-	FieldProducedQuantity = "produced_quantity"
+	// FieldTargetQuantity holds the string denoting the target_quantity field in the database.
+	FieldTargetQuantity = "target_quantity"
+	// FieldActualQuantity holds the string denoting the actual_quantity field in the database.
+	FieldActualQuantity = "actual_quantity"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldPriority holds the string denoting the priority field in the database.
+	FieldPriority = "priority"
 	// FieldDeliveryDate holds the string denoting the delivery_date field in the database.
 	FieldDeliveryDate = "delivery_date"
 	// FieldNotes holds the string denoting the notes field in the database.
@@ -69,13 +67,12 @@ var Columns = []string{
 	FieldID,
 	FieldOrderNumber,
 	FieldProjectID,
-	FieldCustomerName,
-	FieldCustomerCode,
 	FieldProductType,
 	FieldProductSpec,
-	FieldOrderQuantity,
-	FieldProducedQuantity,
+	FieldTargetQuantity,
+	FieldActualQuantity,
 	FieldStatus,
+	FieldPriority,
 	FieldDeliveryDate,
 	FieldNotes,
 	FieldCreatedAt,
@@ -95,18 +92,16 @@ func ValidColumn(column string) bool {
 var (
 	// OrderNumberValidator is a validator for the "order_number" field. It is called by the builders before save.
 	OrderNumberValidator func(string) error
-	// CustomerNameValidator is a validator for the "customer_name" field. It is called by the builders before save.
-	CustomerNameValidator func(string) error
-	// CustomerCodeValidator is a validator for the "customer_code" field. It is called by the builders before save.
-	CustomerCodeValidator func(string) error
 	// ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
 	ProductSpecValidator func(string) error
-	// OrderQuantityValidator is a validator for the "order_quantity" field. It is called by the builders before save.
-	OrderQuantityValidator func(int) error
-	// DefaultProducedQuantity holds the default value on creation for the "produced_quantity" field.
-	DefaultProducedQuantity int
-	// ProducedQuantityValidator is a validator for the "produced_quantity" field. It is called by the builders before save.
-	ProducedQuantityValidator func(int) error
+	// TargetQuantityValidator is a validator for the "target_quantity" field. It is called by the builders before save.
+	TargetQuantityValidator func(int) error
+	// DefaultActualQuantity holds the default value on creation for the "actual_quantity" field.
+	DefaultActualQuantity int
+	// ActualQuantityValidator is a validator for the "actual_quantity" field. It is called by the builders before save.
+	ActualQuantityValidator func(int) error
+	// DefaultPriority holds the default value on creation for the "priority" field.
+	DefaultPriority int
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -187,16 +182,6 @@ func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProjectID, opts...).ToFunc()
 }
 
-// ByCustomerName orders the results by the customer_name field.
-func ByCustomerName(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCustomerName, opts...).ToFunc()
-}
-
-// ByCustomerCode orders the results by the customer_code field.
-func ByCustomerCode(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCustomerCode, opts...).ToFunc()
-}
-
 // ByProductType orders the results by the product_type field.
 func ByProductType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProductType, opts...).ToFunc()
@@ -207,19 +192,24 @@ func ByProductSpec(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProductSpec, opts...).ToFunc()
 }
 
-// ByOrderQuantity orders the results by the order_quantity field.
-func ByOrderQuantity(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldOrderQuantity, opts...).ToFunc()
+// ByTargetQuantity orders the results by the target_quantity field.
+func ByTargetQuantity(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTargetQuantity, opts...).ToFunc()
 }
 
-// ByProducedQuantity orders the results by the produced_quantity field.
-func ByProducedQuantity(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldProducedQuantity, opts...).ToFunc()
+// ByActualQuantity orders the results by the actual_quantity field.
+func ByActualQuantity(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldActualQuantity, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByPriority orders the results by the priority field.
+func ByPriority(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPriority, opts...).ToFunc()
 }
 
 // ByDeliveryDate orders the results by the delivery_date field.

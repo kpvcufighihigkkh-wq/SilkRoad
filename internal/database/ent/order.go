@@ -23,20 +23,18 @@ type Order struct {
 	OrderNumber string `json:"order_number,omitempty"`
 	// 关联项目ID
 	ProjectID uuid.UUID `json:"project_id,omitempty"`
-	// 客户名称
-	CustomerName string `json:"customer_name,omitempty"`
-	// 客户编码
-	CustomerCode string `json:"customer_code,omitempty"`
 	// 产品类型
 	ProductType order.ProductType `json:"product_type,omitempty"`
 	// 产品规格
 	ProductSpec string `json:"product_spec,omitempty"`
-	// 订单数量（锭）
-	OrderQuantity int `json:"order_quantity,omitempty"`
-	// 已生产数量（锭）
-	ProducedQuantity int `json:"produced_quantity,omitempty"`
+	// 目标数量（锭）
+	TargetQuantity int `json:"target_quantity,omitempty"`
+	// 实际完成数量（锭）
+	ActualQuantity int `json:"actual_quantity,omitempty"`
 	// 订单状态
 	Status order.Status `json:"status,omitempty"`
+	// 优先级
+	Priority int `json:"priority,omitempty"`
 	// 交货日期
 	DeliveryDate time.Time `json:"delivery_date,omitempty"`
 	// 备注信息
@@ -87,9 +85,9 @@ func (*Order) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case order.FieldOrderQuantity, order.FieldProducedQuantity:
+		case order.FieldTargetQuantity, order.FieldActualQuantity, order.FieldPriority:
 			values[i] = new(sql.NullInt64)
-		case order.FieldOrderNumber, order.FieldCustomerName, order.FieldCustomerCode, order.FieldProductType, order.FieldProductSpec, order.FieldStatus, order.FieldNotes:
+		case order.FieldOrderNumber, order.FieldProductType, order.FieldProductSpec, order.FieldStatus, order.FieldNotes:
 			values[i] = new(sql.NullString)
 		case order.FieldDeliveryDate, order.FieldCreatedAt, order.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -128,18 +126,6 @@ func (_m *Order) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ProjectID = *value
 			}
-		case order.FieldCustomerName:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field customer_name", values[i])
-			} else if value.Valid {
-				_m.CustomerName = value.String
-			}
-		case order.FieldCustomerCode:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field customer_code", values[i])
-			} else if value.Valid {
-				_m.CustomerCode = value.String
-			}
 		case order.FieldProductType:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field product_type", values[i])
@@ -152,23 +138,29 @@ func (_m *Order) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ProductSpec = value.String
 			}
-		case order.FieldOrderQuantity:
+		case order.FieldTargetQuantity:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field order_quantity", values[i])
+				return fmt.Errorf("unexpected type %T for field target_quantity", values[i])
 			} else if value.Valid {
-				_m.OrderQuantity = int(value.Int64)
+				_m.TargetQuantity = int(value.Int64)
 			}
-		case order.FieldProducedQuantity:
+		case order.FieldActualQuantity:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field produced_quantity", values[i])
+				return fmt.Errorf("unexpected type %T for field actual_quantity", values[i])
 			} else if value.Valid {
-				_m.ProducedQuantity = int(value.Int64)
+				_m.ActualQuantity = int(value.Int64)
 			}
 		case order.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = order.Status(value.String)
+			}
+		case order.FieldPriority:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field priority", values[i])
+			} else if value.Valid {
+				_m.Priority = int(value.Int64)
 			}
 		case order.FieldDeliveryDate:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -246,26 +238,23 @@ func (_m *Order) String() string {
 	builder.WriteString("project_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
 	builder.WriteString(", ")
-	builder.WriteString("customer_name=")
-	builder.WriteString(_m.CustomerName)
-	builder.WriteString(", ")
-	builder.WriteString("customer_code=")
-	builder.WriteString(_m.CustomerCode)
-	builder.WriteString(", ")
 	builder.WriteString("product_type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProductType))
 	builder.WriteString(", ")
 	builder.WriteString("product_spec=")
 	builder.WriteString(_m.ProductSpec)
 	builder.WriteString(", ")
-	builder.WriteString("order_quantity=")
-	builder.WriteString(fmt.Sprintf("%v", _m.OrderQuantity))
+	builder.WriteString("target_quantity=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TargetQuantity))
 	builder.WriteString(", ")
-	builder.WriteString("produced_quantity=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ProducedQuantity))
+	builder.WriteString("actual_quantity=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ActualQuantity))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("priority=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Priority))
 	builder.WriteString(", ")
 	builder.WriteString("delivery_date=")
 	builder.WriteString(_m.DeliveryDate.Format(time.ANSIC))

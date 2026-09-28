@@ -3786,32 +3786,32 @@ func (m *LotMutation) ResetEdge(name string) error {
 // OrderMutation represents an operation that mutates the Order nodes in the graph.
 type OrderMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *uuid.UUID
-	order_number         *string
-	customer_name        *string
-	customer_code        *string
-	product_type         *order.ProductType
-	product_spec         *string
-	order_quantity       *int
-	addorder_quantity    *int
-	produced_quantity    *int
-	addproduced_quantity *int
-	status               *order.Status
-	delivery_date        *time.Time
-	notes                *string
-	created_at           *time.Time
-	updated_at           *time.Time
-	clearedFields        map[string]struct{}
-	project              *uuid.UUID
-	clearedproject       bool
-	lots                 map[uuid.UUID]struct{}
-	removedlots          map[uuid.UUID]struct{}
-	clearedlots          bool
-	done                 bool
-	oldValue             func(context.Context) (*Order, error)
-	predicates           []predicate.Order
+	op                 Op
+	typ                string
+	id                 *uuid.UUID
+	order_number       *string
+	product_type       *order.ProductType
+	product_spec       *string
+	target_quantity    *int
+	addtarget_quantity *int
+	actual_quantity    *int
+	addactual_quantity *int
+	status             *order.Status
+	priority           *int
+	addpriority        *int
+	delivery_date      *time.Time
+	notes              *string
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	project            *uuid.UUID
+	clearedproject     bool
+	lots               map[uuid.UUID]struct{}
+	removedlots        map[uuid.UUID]struct{}
+	clearedlots        bool
+	done               bool
+	oldValue           func(context.Context) (*Order, error)
+	predicates         []predicate.Order
 }
 
 var _ ent.Mutation = (*OrderMutation)(nil)
@@ -3985,94 +3985,22 @@ func (m *OrderMutation) OldProjectID(ctx context.Context) (v uuid.UUID, err erro
 	return oldValue.ProjectID, nil
 }
 
-// ResetProjectID resets all changes to the "project_id" field.
-func (m *OrderMutation) ResetProjectID() {
+// ClearProjectID clears the value of the "project_id" field.
+func (m *OrderMutation) ClearProjectID() {
 	m.project = nil
+	m.clearedFields[order.FieldProjectID] = struct{}{}
 }
 
-// SetCustomerName sets the "customer_name" field.
-func (m *OrderMutation) SetCustomerName(s string) {
-	m.customer_name = &s
-}
-
-// CustomerName returns the value of the "customer_name" field in the mutation.
-func (m *OrderMutation) CustomerName() (r string, exists bool) {
-	v := m.customer_name
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCustomerName returns the old "customer_name" field's value of the Order entity.
-// If the Order object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *OrderMutation) OldCustomerName(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCustomerName is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCustomerName requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCustomerName: %w", err)
-	}
-	return oldValue.CustomerName, nil
-}
-
-// ResetCustomerName resets all changes to the "customer_name" field.
-func (m *OrderMutation) ResetCustomerName() {
-	m.customer_name = nil
-}
-
-// SetCustomerCode sets the "customer_code" field.
-func (m *OrderMutation) SetCustomerCode(s string) {
-	m.customer_code = &s
-}
-
-// CustomerCode returns the value of the "customer_code" field in the mutation.
-func (m *OrderMutation) CustomerCode() (r string, exists bool) {
-	v := m.customer_code
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCustomerCode returns the old "customer_code" field's value of the Order entity.
-// If the Order object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *OrderMutation) OldCustomerCode(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCustomerCode is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCustomerCode requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCustomerCode: %w", err)
-	}
-	return oldValue.CustomerCode, nil
-}
-
-// ClearCustomerCode clears the value of the "customer_code" field.
-func (m *OrderMutation) ClearCustomerCode() {
-	m.customer_code = nil
-	m.clearedFields[order.FieldCustomerCode] = struct{}{}
-}
-
-// CustomerCodeCleared returns if the "customer_code" field was cleared in this mutation.
-func (m *OrderMutation) CustomerCodeCleared() bool {
-	_, ok := m.clearedFields[order.FieldCustomerCode]
+// ProjectIDCleared returns if the "project_id" field was cleared in this mutation.
+func (m *OrderMutation) ProjectIDCleared() bool {
+	_, ok := m.clearedFields[order.FieldProjectID]
 	return ok
 }
 
-// ResetCustomerCode resets all changes to the "customer_code" field.
-func (m *OrderMutation) ResetCustomerCode() {
-	m.customer_code = nil
-	delete(m.clearedFields, order.FieldCustomerCode)
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *OrderMutation) ResetProjectID() {
+	m.project = nil
+	delete(m.clearedFields, order.FieldProjectID)
 }
 
 // SetProductType sets the "product_type" field.
@@ -4142,121 +4070,134 @@ func (m *OrderMutation) OldProductSpec(ctx context.Context) (v string, err error
 	return oldValue.ProductSpec, nil
 }
 
+// ClearProductSpec clears the value of the "product_spec" field.
+func (m *OrderMutation) ClearProductSpec() {
+	m.product_spec = nil
+	m.clearedFields[order.FieldProductSpec] = struct{}{}
+}
+
+// ProductSpecCleared returns if the "product_spec" field was cleared in this mutation.
+func (m *OrderMutation) ProductSpecCleared() bool {
+	_, ok := m.clearedFields[order.FieldProductSpec]
+	return ok
+}
+
 // ResetProductSpec resets all changes to the "product_spec" field.
 func (m *OrderMutation) ResetProductSpec() {
 	m.product_spec = nil
+	delete(m.clearedFields, order.FieldProductSpec)
 }
 
-// SetOrderQuantity sets the "order_quantity" field.
-func (m *OrderMutation) SetOrderQuantity(i int) {
-	m.order_quantity = &i
-	m.addorder_quantity = nil
+// SetTargetQuantity sets the "target_quantity" field.
+func (m *OrderMutation) SetTargetQuantity(i int) {
+	m.target_quantity = &i
+	m.addtarget_quantity = nil
 }
 
-// OrderQuantity returns the value of the "order_quantity" field in the mutation.
-func (m *OrderMutation) OrderQuantity() (r int, exists bool) {
-	v := m.order_quantity
+// TargetQuantity returns the value of the "target_quantity" field in the mutation.
+func (m *OrderMutation) TargetQuantity() (r int, exists bool) {
+	v := m.target_quantity
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldOrderQuantity returns the old "order_quantity" field's value of the Order entity.
+// OldTargetQuantity returns the old "target_quantity" field's value of the Order entity.
 // If the Order object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *OrderMutation) OldOrderQuantity(ctx context.Context) (v int, err error) {
+func (m *OrderMutation) OldTargetQuantity(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldOrderQuantity is only allowed on UpdateOne operations")
+		return v, errors.New("OldTargetQuantity is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldOrderQuantity requires an ID field in the mutation")
+		return v, errors.New("OldTargetQuantity requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldOrderQuantity: %w", err)
+		return v, fmt.Errorf("querying old value for OldTargetQuantity: %w", err)
 	}
-	return oldValue.OrderQuantity, nil
+	return oldValue.TargetQuantity, nil
 }
 
-// AddOrderQuantity adds i to the "order_quantity" field.
-func (m *OrderMutation) AddOrderQuantity(i int) {
-	if m.addorder_quantity != nil {
-		*m.addorder_quantity += i
+// AddTargetQuantity adds i to the "target_quantity" field.
+func (m *OrderMutation) AddTargetQuantity(i int) {
+	if m.addtarget_quantity != nil {
+		*m.addtarget_quantity += i
 	} else {
-		m.addorder_quantity = &i
+		m.addtarget_quantity = &i
 	}
 }
 
-// AddedOrderQuantity returns the value that was added to the "order_quantity" field in this mutation.
-func (m *OrderMutation) AddedOrderQuantity() (r int, exists bool) {
-	v := m.addorder_quantity
+// AddedTargetQuantity returns the value that was added to the "target_quantity" field in this mutation.
+func (m *OrderMutation) AddedTargetQuantity() (r int, exists bool) {
+	v := m.addtarget_quantity
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetOrderQuantity resets all changes to the "order_quantity" field.
-func (m *OrderMutation) ResetOrderQuantity() {
-	m.order_quantity = nil
-	m.addorder_quantity = nil
+// ResetTargetQuantity resets all changes to the "target_quantity" field.
+func (m *OrderMutation) ResetTargetQuantity() {
+	m.target_quantity = nil
+	m.addtarget_quantity = nil
 }
 
-// SetProducedQuantity sets the "produced_quantity" field.
-func (m *OrderMutation) SetProducedQuantity(i int) {
-	m.produced_quantity = &i
-	m.addproduced_quantity = nil
+// SetActualQuantity sets the "actual_quantity" field.
+func (m *OrderMutation) SetActualQuantity(i int) {
+	m.actual_quantity = &i
+	m.addactual_quantity = nil
 }
 
-// ProducedQuantity returns the value of the "produced_quantity" field in the mutation.
-func (m *OrderMutation) ProducedQuantity() (r int, exists bool) {
-	v := m.produced_quantity
+// ActualQuantity returns the value of the "actual_quantity" field in the mutation.
+func (m *OrderMutation) ActualQuantity() (r int, exists bool) {
+	v := m.actual_quantity
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldProducedQuantity returns the old "produced_quantity" field's value of the Order entity.
+// OldActualQuantity returns the old "actual_quantity" field's value of the Order entity.
 // If the Order object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *OrderMutation) OldProducedQuantity(ctx context.Context) (v int, err error) {
+func (m *OrderMutation) OldActualQuantity(ctx context.Context) (v int, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProducedQuantity is only allowed on UpdateOne operations")
+		return v, errors.New("OldActualQuantity is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProducedQuantity requires an ID field in the mutation")
+		return v, errors.New("OldActualQuantity requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProducedQuantity: %w", err)
+		return v, fmt.Errorf("querying old value for OldActualQuantity: %w", err)
 	}
-	return oldValue.ProducedQuantity, nil
+	return oldValue.ActualQuantity, nil
 }
 
-// AddProducedQuantity adds i to the "produced_quantity" field.
-func (m *OrderMutation) AddProducedQuantity(i int) {
-	if m.addproduced_quantity != nil {
-		*m.addproduced_quantity += i
+// AddActualQuantity adds i to the "actual_quantity" field.
+func (m *OrderMutation) AddActualQuantity(i int) {
+	if m.addactual_quantity != nil {
+		*m.addactual_quantity += i
 	} else {
-		m.addproduced_quantity = &i
+		m.addactual_quantity = &i
 	}
 }
 
-// AddedProducedQuantity returns the value that was added to the "produced_quantity" field in this mutation.
-func (m *OrderMutation) AddedProducedQuantity() (r int, exists bool) {
-	v := m.addproduced_quantity
+// AddedActualQuantity returns the value that was added to the "actual_quantity" field in this mutation.
+func (m *OrderMutation) AddedActualQuantity() (r int, exists bool) {
+	v := m.addactual_quantity
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetProducedQuantity resets all changes to the "produced_quantity" field.
-func (m *OrderMutation) ResetProducedQuantity() {
-	m.produced_quantity = nil
-	m.addproduced_quantity = nil
+// ResetActualQuantity resets all changes to the "actual_quantity" field.
+func (m *OrderMutation) ResetActualQuantity() {
+	m.actual_quantity = nil
+	m.addactual_quantity = nil
 }
 
 // SetStatus sets the "status" field.
@@ -4293,6 +4234,62 @@ func (m *OrderMutation) OldStatus(ctx context.Context) (v order.Status, err erro
 // ResetStatus resets all changes to the "status" field.
 func (m *OrderMutation) ResetStatus() {
 	m.status = nil
+}
+
+// SetPriority sets the "priority" field.
+func (m *OrderMutation) SetPriority(i int) {
+	m.priority = &i
+	m.addpriority = nil
+}
+
+// Priority returns the value of the "priority" field in the mutation.
+func (m *OrderMutation) Priority() (r int, exists bool) {
+	v := m.priority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPriority returns the old "priority" field's value of the Order entity.
+// If the Order object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *OrderMutation) OldPriority(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPriority is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPriority requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPriority: %w", err)
+	}
+	return oldValue.Priority, nil
+}
+
+// AddPriority adds i to the "priority" field.
+func (m *OrderMutation) AddPriority(i int) {
+	if m.addpriority != nil {
+		*m.addpriority += i
+	} else {
+		m.addpriority = &i
+	}
+}
+
+// AddedPriority returns the value that was added to the "priority" field in this mutation.
+func (m *OrderMutation) AddedPriority() (r int, exists bool) {
+	v := m.addpriority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPriority resets all changes to the "priority" field.
+func (m *OrderMutation) ResetPriority() {
+	m.priority = nil
+	m.addpriority = nil
 }
 
 // SetDeliveryDate sets the "delivery_date" field.
@@ -4473,7 +4470,7 @@ func (m *OrderMutation) ClearProject() {
 
 // ProjectCleared reports if the "project" edge to the Project entity was cleared.
 func (m *OrderMutation) ProjectCleared() bool {
-	return m.clearedproject
+	return m.ProjectIDCleared() || m.clearedproject
 }
 
 // ProjectIDs returns the "project" edge IDs in the mutation.
@@ -4580,18 +4577,12 @@ func (m *OrderMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *OrderMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 12)
 	if m.order_number != nil {
 		fields = append(fields, order.FieldOrderNumber)
 	}
 	if m.project != nil {
 		fields = append(fields, order.FieldProjectID)
-	}
-	if m.customer_name != nil {
-		fields = append(fields, order.FieldCustomerName)
-	}
-	if m.customer_code != nil {
-		fields = append(fields, order.FieldCustomerCode)
 	}
 	if m.product_type != nil {
 		fields = append(fields, order.FieldProductType)
@@ -4599,14 +4590,17 @@ func (m *OrderMutation) Fields() []string {
 	if m.product_spec != nil {
 		fields = append(fields, order.FieldProductSpec)
 	}
-	if m.order_quantity != nil {
-		fields = append(fields, order.FieldOrderQuantity)
+	if m.target_quantity != nil {
+		fields = append(fields, order.FieldTargetQuantity)
 	}
-	if m.produced_quantity != nil {
-		fields = append(fields, order.FieldProducedQuantity)
+	if m.actual_quantity != nil {
+		fields = append(fields, order.FieldActualQuantity)
 	}
 	if m.status != nil {
 		fields = append(fields, order.FieldStatus)
+	}
+	if m.priority != nil {
+		fields = append(fields, order.FieldPriority)
 	}
 	if m.delivery_date != nil {
 		fields = append(fields, order.FieldDeliveryDate)
@@ -4632,20 +4626,18 @@ func (m *OrderMutation) Field(name string) (ent.Value, bool) {
 		return m.OrderNumber()
 	case order.FieldProjectID:
 		return m.ProjectID()
-	case order.FieldCustomerName:
-		return m.CustomerName()
-	case order.FieldCustomerCode:
-		return m.CustomerCode()
 	case order.FieldProductType:
 		return m.ProductType()
 	case order.FieldProductSpec:
 		return m.ProductSpec()
-	case order.FieldOrderQuantity:
-		return m.OrderQuantity()
-	case order.FieldProducedQuantity:
-		return m.ProducedQuantity()
+	case order.FieldTargetQuantity:
+		return m.TargetQuantity()
+	case order.FieldActualQuantity:
+		return m.ActualQuantity()
 	case order.FieldStatus:
 		return m.Status()
+	case order.FieldPriority:
+		return m.Priority()
 	case order.FieldDeliveryDate:
 		return m.DeliveryDate()
 	case order.FieldNotes:
@@ -4667,20 +4659,18 @@ func (m *OrderMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldOrderNumber(ctx)
 	case order.FieldProjectID:
 		return m.OldProjectID(ctx)
-	case order.FieldCustomerName:
-		return m.OldCustomerName(ctx)
-	case order.FieldCustomerCode:
-		return m.OldCustomerCode(ctx)
 	case order.FieldProductType:
 		return m.OldProductType(ctx)
 	case order.FieldProductSpec:
 		return m.OldProductSpec(ctx)
-	case order.FieldOrderQuantity:
-		return m.OldOrderQuantity(ctx)
-	case order.FieldProducedQuantity:
-		return m.OldProducedQuantity(ctx)
+	case order.FieldTargetQuantity:
+		return m.OldTargetQuantity(ctx)
+	case order.FieldActualQuantity:
+		return m.OldActualQuantity(ctx)
 	case order.FieldStatus:
 		return m.OldStatus(ctx)
+	case order.FieldPriority:
+		return m.OldPriority(ctx)
 	case order.FieldDeliveryDate:
 		return m.OldDeliveryDate(ctx)
 	case order.FieldNotes:
@@ -4712,20 +4702,6 @@ func (m *OrderMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProjectID(v)
 		return nil
-	case order.FieldCustomerName:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCustomerName(v)
-		return nil
-	case order.FieldCustomerCode:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCustomerCode(v)
-		return nil
 	case order.FieldProductType:
 		v, ok := value.(order.ProductType)
 		if !ok {
@@ -4740,19 +4716,19 @@ func (m *OrderMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProductSpec(v)
 		return nil
-	case order.FieldOrderQuantity:
+	case order.FieldTargetQuantity:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetOrderQuantity(v)
+		m.SetTargetQuantity(v)
 		return nil
-	case order.FieldProducedQuantity:
+	case order.FieldActualQuantity:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetProducedQuantity(v)
+		m.SetActualQuantity(v)
 		return nil
 	case order.FieldStatus:
 		v, ok := value.(order.Status)
@@ -4760,6 +4736,13 @@ func (m *OrderMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case order.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPriority(v)
 		return nil
 	case order.FieldDeliveryDate:
 		v, ok := value.(time.Time)
@@ -4797,11 +4780,14 @@ func (m *OrderMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *OrderMutation) AddedFields() []string {
 	var fields []string
-	if m.addorder_quantity != nil {
-		fields = append(fields, order.FieldOrderQuantity)
+	if m.addtarget_quantity != nil {
+		fields = append(fields, order.FieldTargetQuantity)
 	}
-	if m.addproduced_quantity != nil {
-		fields = append(fields, order.FieldProducedQuantity)
+	if m.addactual_quantity != nil {
+		fields = append(fields, order.FieldActualQuantity)
+	}
+	if m.addpriority != nil {
+		fields = append(fields, order.FieldPriority)
 	}
 	return fields
 }
@@ -4811,10 +4797,12 @@ func (m *OrderMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *OrderMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case order.FieldOrderQuantity:
-		return m.AddedOrderQuantity()
-	case order.FieldProducedQuantity:
-		return m.AddedProducedQuantity()
+	case order.FieldTargetQuantity:
+		return m.AddedTargetQuantity()
+	case order.FieldActualQuantity:
+		return m.AddedActualQuantity()
+	case order.FieldPriority:
+		return m.AddedPriority()
 	}
 	return nil, false
 }
@@ -4824,19 +4812,26 @@ func (m *OrderMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *OrderMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case order.FieldOrderQuantity:
+	case order.FieldTargetQuantity:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddOrderQuantity(v)
+		m.AddTargetQuantity(v)
 		return nil
-	case order.FieldProducedQuantity:
+	case order.FieldActualQuantity:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddProducedQuantity(v)
+		m.AddActualQuantity(v)
+		return nil
+	case order.FieldPriority:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPriority(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Order numeric field %s", name)
@@ -4846,8 +4841,11 @@ func (m *OrderMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *OrderMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(order.FieldCustomerCode) {
-		fields = append(fields, order.FieldCustomerCode)
+	if m.FieldCleared(order.FieldProjectID) {
+		fields = append(fields, order.FieldProjectID)
+	}
+	if m.FieldCleared(order.FieldProductSpec) {
+		fields = append(fields, order.FieldProductSpec)
 	}
 	if m.FieldCleared(order.FieldDeliveryDate) {
 		fields = append(fields, order.FieldDeliveryDate)
@@ -4869,8 +4867,11 @@ func (m *OrderMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *OrderMutation) ClearField(name string) error {
 	switch name {
-	case order.FieldCustomerCode:
-		m.ClearCustomerCode()
+	case order.FieldProjectID:
+		m.ClearProjectID()
+		return nil
+	case order.FieldProductSpec:
+		m.ClearProductSpec()
 		return nil
 	case order.FieldDeliveryDate:
 		m.ClearDeliveryDate()
@@ -4892,26 +4893,23 @@ func (m *OrderMutation) ResetField(name string) error {
 	case order.FieldProjectID:
 		m.ResetProjectID()
 		return nil
-	case order.FieldCustomerName:
-		m.ResetCustomerName()
-		return nil
-	case order.FieldCustomerCode:
-		m.ResetCustomerCode()
-		return nil
 	case order.FieldProductType:
 		m.ResetProductType()
 		return nil
 	case order.FieldProductSpec:
 		m.ResetProductSpec()
 		return nil
-	case order.FieldOrderQuantity:
-		m.ResetOrderQuantity()
+	case order.FieldTargetQuantity:
+		m.ResetTargetQuantity()
 		return nil
-	case order.FieldProducedQuantity:
-		m.ResetProducedQuantity()
+	case order.FieldActualQuantity:
+		m.ResetActualQuantity()
 		return nil
 	case order.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case order.FieldPriority:
+		m.ResetPriority()
 		return nil
 	case order.FieldDeliveryDate:
 		m.ResetDeliveryDate()
@@ -6094,30 +6092,24 @@ func (m *PalletMutation) ResetEdge(name string) error {
 // ProjectMutation represents an operation that mutates the Project nodes in the graph.
 type ProjectMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *uuid.UUID
-	project_number      *string
-	project_name        *string
-	product_type        *project.ProductType
-	product_spec        *string
-	status              *project.Status
-	planned_quantity    *int
-	addplanned_quantity *int
-	actual_quantity     *int
-	addactual_quantity  *int
-	start_date          *time.Time
-	end_date            *time.Time
-	notes               *string
-	created_at          *time.Time
-	updated_at          *time.Time
-	clearedFields       map[string]struct{}
-	orders              map[uuid.UUID]struct{}
-	removedorders       map[uuid.UUID]struct{}
-	clearedorders       bool
-	done                bool
-	oldValue            func(context.Context) (*Project, error)
-	predicates          []predicate.Project
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	project_name  *string
+	description   *string
+	customer_name *string
+	status        *project.Status
+	start_date    *time.Time
+	end_date      *time.Time
+	created_at    *time.Time
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	orders        map[uuid.UUID]struct{}
+	removedorders map[uuid.UUID]struct{}
+	clearedorders bool
+	done          bool
+	oldValue      func(context.Context) (*Project, error)
+	predicates    []predicate.Project
 }
 
 var _ ent.Mutation = (*ProjectMutation)(nil)
@@ -6224,42 +6216,6 @@ func (m *ProjectMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 }
 
-// SetProjectNumber sets the "project_number" field.
-func (m *ProjectMutation) SetProjectNumber(s string) {
-	m.project_number = &s
-}
-
-// ProjectNumber returns the value of the "project_number" field in the mutation.
-func (m *ProjectMutation) ProjectNumber() (r string, exists bool) {
-	v := m.project_number
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldProjectNumber returns the old "project_number" field's value of the Project entity.
-// If the Project object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldProjectNumber(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProjectNumber is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProjectNumber requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProjectNumber: %w", err)
-	}
-	return oldValue.ProjectNumber, nil
-}
-
-// ResetProjectNumber resets all changes to the "project_number" field.
-func (m *ProjectMutation) ResetProjectNumber() {
-	m.project_number = nil
-}
-
 // SetProjectName sets the "project_name" field.
 func (m *ProjectMutation) SetProjectName(s string) {
 	m.project_name = &s
@@ -6296,76 +6252,102 @@ func (m *ProjectMutation) ResetProjectName() {
 	m.project_name = nil
 }
 
-// SetProductType sets the "product_type" field.
-func (m *ProjectMutation) SetProductType(pt project.ProductType) {
-	m.product_type = &pt
+// SetDescription sets the "description" field.
+func (m *ProjectMutation) SetDescription(s string) {
+	m.description = &s
 }
 
-// ProductType returns the value of the "product_type" field in the mutation.
-func (m *ProjectMutation) ProductType() (r project.ProductType, exists bool) {
-	v := m.product_type
+// Description returns the value of the "description" field in the mutation.
+func (m *ProjectMutation) Description() (r string, exists bool) {
+	v := m.description
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldProductType returns the old "product_type" field's value of the Project entity.
+// OldDescription returns the old "description" field's value of the Project entity.
 // If the Project object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldProductType(ctx context.Context) (v project.ProductType, err error) {
+func (m *ProjectMutation) OldDescription(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProductType is only allowed on UpdateOne operations")
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProductType requires an ID field in the mutation")
+		return v, errors.New("OldDescription requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProductType: %w", err)
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
 	}
-	return oldValue.ProductType, nil
+	return oldValue.Description, nil
 }
 
-// ResetProductType resets all changes to the "product_type" field.
-func (m *ProjectMutation) ResetProductType() {
-	m.product_type = nil
+// ClearDescription clears the value of the "description" field.
+func (m *ProjectMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[project.FieldDescription] = struct{}{}
 }
 
-// SetProductSpec sets the "product_spec" field.
-func (m *ProjectMutation) SetProductSpec(s string) {
-	m.product_spec = &s
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *ProjectMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[project.FieldDescription]
+	return ok
 }
 
-// ProductSpec returns the value of the "product_spec" field in the mutation.
-func (m *ProjectMutation) ProductSpec() (r string, exists bool) {
-	v := m.product_spec
+// ResetDescription resets all changes to the "description" field.
+func (m *ProjectMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, project.FieldDescription)
+}
+
+// SetCustomerName sets the "customer_name" field.
+func (m *ProjectMutation) SetCustomerName(s string) {
+	m.customer_name = &s
+}
+
+// CustomerName returns the value of the "customer_name" field in the mutation.
+func (m *ProjectMutation) CustomerName() (r string, exists bool) {
+	v := m.customer_name
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldProductSpec returns the old "product_spec" field's value of the Project entity.
+// OldCustomerName returns the old "customer_name" field's value of the Project entity.
 // If the Project object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldProductSpec(ctx context.Context) (v string, err error) {
+func (m *ProjectMutation) OldCustomerName(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProductSpec is only allowed on UpdateOne operations")
+		return v, errors.New("OldCustomerName is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProductSpec requires an ID field in the mutation")
+		return v, errors.New("OldCustomerName requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProductSpec: %w", err)
+		return v, fmt.Errorf("querying old value for OldCustomerName: %w", err)
 	}
-	return oldValue.ProductSpec, nil
+	return oldValue.CustomerName, nil
 }
 
-// ResetProductSpec resets all changes to the "product_spec" field.
-func (m *ProjectMutation) ResetProductSpec() {
-	m.product_spec = nil
+// ClearCustomerName clears the value of the "customer_name" field.
+func (m *ProjectMutation) ClearCustomerName() {
+	m.customer_name = nil
+	m.clearedFields[project.FieldCustomerName] = struct{}{}
+}
+
+// CustomerNameCleared returns if the "customer_name" field was cleared in this mutation.
+func (m *ProjectMutation) CustomerNameCleared() bool {
+	_, ok := m.clearedFields[project.FieldCustomerName]
+	return ok
+}
+
+// ResetCustomerName resets all changes to the "customer_name" field.
+func (m *ProjectMutation) ResetCustomerName() {
+	m.customer_name = nil
+	delete(m.clearedFields, project.FieldCustomerName)
 }
 
 // SetStatus sets the "status" field.
@@ -6402,132 +6384,6 @@ func (m *ProjectMutation) OldStatus(ctx context.Context) (v project.Status, err 
 // ResetStatus resets all changes to the "status" field.
 func (m *ProjectMutation) ResetStatus() {
 	m.status = nil
-}
-
-// SetPlannedQuantity sets the "planned_quantity" field.
-func (m *ProjectMutation) SetPlannedQuantity(i int) {
-	m.planned_quantity = &i
-	m.addplanned_quantity = nil
-}
-
-// PlannedQuantity returns the value of the "planned_quantity" field in the mutation.
-func (m *ProjectMutation) PlannedQuantity() (r int, exists bool) {
-	v := m.planned_quantity
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPlannedQuantity returns the old "planned_quantity" field's value of the Project entity.
-// If the Project object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldPlannedQuantity(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPlannedQuantity is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPlannedQuantity requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPlannedQuantity: %w", err)
-	}
-	return oldValue.PlannedQuantity, nil
-}
-
-// AddPlannedQuantity adds i to the "planned_quantity" field.
-func (m *ProjectMutation) AddPlannedQuantity(i int) {
-	if m.addplanned_quantity != nil {
-		*m.addplanned_quantity += i
-	} else {
-		m.addplanned_quantity = &i
-	}
-}
-
-// AddedPlannedQuantity returns the value that was added to the "planned_quantity" field in this mutation.
-func (m *ProjectMutation) AddedPlannedQuantity() (r int, exists bool) {
-	v := m.addplanned_quantity
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearPlannedQuantity clears the value of the "planned_quantity" field.
-func (m *ProjectMutation) ClearPlannedQuantity() {
-	m.planned_quantity = nil
-	m.addplanned_quantity = nil
-	m.clearedFields[project.FieldPlannedQuantity] = struct{}{}
-}
-
-// PlannedQuantityCleared returns if the "planned_quantity" field was cleared in this mutation.
-func (m *ProjectMutation) PlannedQuantityCleared() bool {
-	_, ok := m.clearedFields[project.FieldPlannedQuantity]
-	return ok
-}
-
-// ResetPlannedQuantity resets all changes to the "planned_quantity" field.
-func (m *ProjectMutation) ResetPlannedQuantity() {
-	m.planned_quantity = nil
-	m.addplanned_quantity = nil
-	delete(m.clearedFields, project.FieldPlannedQuantity)
-}
-
-// SetActualQuantity sets the "actual_quantity" field.
-func (m *ProjectMutation) SetActualQuantity(i int) {
-	m.actual_quantity = &i
-	m.addactual_quantity = nil
-}
-
-// ActualQuantity returns the value of the "actual_quantity" field in the mutation.
-func (m *ProjectMutation) ActualQuantity() (r int, exists bool) {
-	v := m.actual_quantity
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldActualQuantity returns the old "actual_quantity" field's value of the Project entity.
-// If the Project object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldActualQuantity(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldActualQuantity is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldActualQuantity requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldActualQuantity: %w", err)
-	}
-	return oldValue.ActualQuantity, nil
-}
-
-// AddActualQuantity adds i to the "actual_quantity" field.
-func (m *ProjectMutation) AddActualQuantity(i int) {
-	if m.addactual_quantity != nil {
-		*m.addactual_quantity += i
-	} else {
-		m.addactual_quantity = &i
-	}
-}
-
-// AddedActualQuantity returns the value that was added to the "actual_quantity" field in this mutation.
-func (m *ProjectMutation) AddedActualQuantity() (r int, exists bool) {
-	v := m.addactual_quantity
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetActualQuantity resets all changes to the "actual_quantity" field.
-func (m *ProjectMutation) ResetActualQuantity() {
-	m.actual_quantity = nil
-	m.addactual_quantity = nil
 }
 
 // SetStartDate sets the "start_date" field.
@@ -6626,55 +6482,6 @@ func (m *ProjectMutation) EndDateCleared() bool {
 func (m *ProjectMutation) ResetEndDate() {
 	m.end_date = nil
 	delete(m.clearedFields, project.FieldEndDate)
-}
-
-// SetNotes sets the "notes" field.
-func (m *ProjectMutation) SetNotes(s string) {
-	m.notes = &s
-}
-
-// Notes returns the value of the "notes" field in the mutation.
-func (m *ProjectMutation) Notes() (r string, exists bool) {
-	v := m.notes
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldNotes returns the old "notes" field's value of the Project entity.
-// If the Project object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ProjectMutation) OldNotes(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldNotes is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldNotes requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldNotes: %w", err)
-	}
-	return oldValue.Notes, nil
-}
-
-// ClearNotes clears the value of the "notes" field.
-func (m *ProjectMutation) ClearNotes() {
-	m.notes = nil
-	m.clearedFields[project.FieldNotes] = struct{}{}
-}
-
-// NotesCleared returns if the "notes" field was cleared in this mutation.
-func (m *ProjectMutation) NotesCleared() bool {
-	_, ok := m.clearedFields[project.FieldNotes]
-	return ok
-}
-
-// ResetNotes resets all changes to the "notes" field.
-func (m *ProjectMutation) ResetNotes() {
-	m.notes = nil
-	delete(m.clearedFields, project.FieldNotes)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -6837,36 +6644,24 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 12)
-	if m.project_number != nil {
-		fields = append(fields, project.FieldProjectNumber)
-	}
+	fields := make([]string, 0, 8)
 	if m.project_name != nil {
 		fields = append(fields, project.FieldProjectName)
 	}
-	if m.product_type != nil {
-		fields = append(fields, project.FieldProductType)
+	if m.description != nil {
+		fields = append(fields, project.FieldDescription)
 	}
-	if m.product_spec != nil {
-		fields = append(fields, project.FieldProductSpec)
+	if m.customer_name != nil {
+		fields = append(fields, project.FieldCustomerName)
 	}
 	if m.status != nil {
 		fields = append(fields, project.FieldStatus)
-	}
-	if m.planned_quantity != nil {
-		fields = append(fields, project.FieldPlannedQuantity)
-	}
-	if m.actual_quantity != nil {
-		fields = append(fields, project.FieldActualQuantity)
 	}
 	if m.start_date != nil {
 		fields = append(fields, project.FieldStartDate)
 	}
 	if m.end_date != nil {
 		fields = append(fields, project.FieldEndDate)
-	}
-	if m.notes != nil {
-		fields = append(fields, project.FieldNotes)
 	}
 	if m.created_at != nil {
 		fields = append(fields, project.FieldCreatedAt)
@@ -6882,26 +6677,18 @@ func (m *ProjectMutation) Fields() []string {
 // schema.
 func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case project.FieldProjectNumber:
-		return m.ProjectNumber()
 	case project.FieldProjectName:
 		return m.ProjectName()
-	case project.FieldProductType:
-		return m.ProductType()
-	case project.FieldProductSpec:
-		return m.ProductSpec()
+	case project.FieldDescription:
+		return m.Description()
+	case project.FieldCustomerName:
+		return m.CustomerName()
 	case project.FieldStatus:
 		return m.Status()
-	case project.FieldPlannedQuantity:
-		return m.PlannedQuantity()
-	case project.FieldActualQuantity:
-		return m.ActualQuantity()
 	case project.FieldStartDate:
 		return m.StartDate()
 	case project.FieldEndDate:
 		return m.EndDate()
-	case project.FieldNotes:
-		return m.Notes()
 	case project.FieldCreatedAt:
 		return m.CreatedAt()
 	case project.FieldUpdatedAt:
@@ -6915,26 +6702,18 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case project.FieldProjectNumber:
-		return m.OldProjectNumber(ctx)
 	case project.FieldProjectName:
 		return m.OldProjectName(ctx)
-	case project.FieldProductType:
-		return m.OldProductType(ctx)
-	case project.FieldProductSpec:
-		return m.OldProductSpec(ctx)
+	case project.FieldDescription:
+		return m.OldDescription(ctx)
+	case project.FieldCustomerName:
+		return m.OldCustomerName(ctx)
 	case project.FieldStatus:
 		return m.OldStatus(ctx)
-	case project.FieldPlannedQuantity:
-		return m.OldPlannedQuantity(ctx)
-	case project.FieldActualQuantity:
-		return m.OldActualQuantity(ctx)
 	case project.FieldStartDate:
 		return m.OldStartDate(ctx)
 	case project.FieldEndDate:
 		return m.OldEndDate(ctx)
-	case project.FieldNotes:
-		return m.OldNotes(ctx)
 	case project.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case project.FieldUpdatedAt:
@@ -6948,13 +6727,6 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case project.FieldProjectNumber:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetProjectNumber(v)
-		return nil
 	case project.FieldProjectName:
 		v, ok := value.(string)
 		if !ok {
@@ -6962,19 +6734,19 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetProjectName(v)
 		return nil
-	case project.FieldProductType:
-		v, ok := value.(project.ProductType)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetProductType(v)
-		return nil
-	case project.FieldProductSpec:
+	case project.FieldDescription:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetProductSpec(v)
+		m.SetDescription(v)
+		return nil
+	case project.FieldCustomerName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCustomerName(v)
 		return nil
 	case project.FieldStatus:
 		v, ok := value.(project.Status)
@@ -6982,20 +6754,6 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
-		return nil
-	case project.FieldPlannedQuantity:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPlannedQuantity(v)
-		return nil
-	case project.FieldActualQuantity:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetActualQuantity(v)
 		return nil
 	case project.FieldStartDate:
 		v, ok := value.(time.Time)
@@ -7010,13 +6768,6 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEndDate(v)
-		return nil
-	case project.FieldNotes:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetNotes(v)
 		return nil
 	case project.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -7039,26 +6790,13 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ProjectMutation) AddedFields() []string {
-	var fields []string
-	if m.addplanned_quantity != nil {
-		fields = append(fields, project.FieldPlannedQuantity)
-	}
-	if m.addactual_quantity != nil {
-		fields = append(fields, project.FieldActualQuantity)
-	}
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ProjectMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case project.FieldPlannedQuantity:
-		return m.AddedPlannedQuantity()
-	case project.FieldActualQuantity:
-		return m.AddedActualQuantity()
-	}
 	return nil, false
 }
 
@@ -7067,20 +6805,6 @@ func (m *ProjectMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ProjectMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case project.FieldPlannedQuantity:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddPlannedQuantity(v)
-		return nil
-	case project.FieldActualQuantity:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddActualQuantity(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Project numeric field %s", name)
 }
@@ -7089,17 +6813,17 @@ func (m *ProjectMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ProjectMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(project.FieldPlannedQuantity) {
-		fields = append(fields, project.FieldPlannedQuantity)
+	if m.FieldCleared(project.FieldDescription) {
+		fields = append(fields, project.FieldDescription)
+	}
+	if m.FieldCleared(project.FieldCustomerName) {
+		fields = append(fields, project.FieldCustomerName)
 	}
 	if m.FieldCleared(project.FieldStartDate) {
 		fields = append(fields, project.FieldStartDate)
 	}
 	if m.FieldCleared(project.FieldEndDate) {
 		fields = append(fields, project.FieldEndDate)
-	}
-	if m.FieldCleared(project.FieldNotes) {
-		fields = append(fields, project.FieldNotes)
 	}
 	return fields
 }
@@ -7115,17 +6839,17 @@ func (m *ProjectMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ProjectMutation) ClearField(name string) error {
 	switch name {
-	case project.FieldPlannedQuantity:
-		m.ClearPlannedQuantity()
+	case project.FieldDescription:
+		m.ClearDescription()
+		return nil
+	case project.FieldCustomerName:
+		m.ClearCustomerName()
 		return nil
 	case project.FieldStartDate:
 		m.ClearStartDate()
 		return nil
 	case project.FieldEndDate:
 		m.ClearEndDate()
-		return nil
-	case project.FieldNotes:
-		m.ClearNotes()
 		return nil
 	}
 	return fmt.Errorf("unknown Project nullable field %s", name)
@@ -7135,35 +6859,23 @@ func (m *ProjectMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *ProjectMutation) ResetField(name string) error {
 	switch name {
-	case project.FieldProjectNumber:
-		m.ResetProjectNumber()
-		return nil
 	case project.FieldProjectName:
 		m.ResetProjectName()
 		return nil
-	case project.FieldProductType:
-		m.ResetProductType()
+	case project.FieldDescription:
+		m.ResetDescription()
 		return nil
-	case project.FieldProductSpec:
-		m.ResetProductSpec()
+	case project.FieldCustomerName:
+		m.ResetCustomerName()
 		return nil
 	case project.FieldStatus:
 		m.ResetStatus()
-		return nil
-	case project.FieldPlannedQuantity:
-		m.ResetPlannedQuantity()
-		return nil
-	case project.FieldActualQuantity:
-		m.ResetActualQuantity()
 		return nil
 	case project.FieldStartDate:
 		m.ResetStartDate()
 		return nil
 	case project.FieldEndDate:
 		m.ResetEndDate()
-		return nil
-	case project.FieldNotes:
-		m.ResetNotes()
 		return nil
 	case project.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -7262,27 +6974,22 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 // SpinningLineMutation represents an operation that mutates the SpinningLine nodes in the graph.
 type SpinningLineMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *uuid.UUID
-	line_number       *string
-	line_name         *string
-	position_count    *int
-	addposition_count *int
-	workshop_area     *string
-	product_type      *spinningline.ProductType
-	status            *spinningline.Status
-	plc_ip            *string
-	plc_port          *int
-	addplc_port       *int
-	plc_protocol      *string
-	notes             *string
-	created_at        *time.Time
-	updated_at        *time.Time
-	clearedFields     map[string]struct{}
-	done              bool
-	oldValue          func(context.Context) (*SpinningLine, error)
-	predicates        []predicate.SpinningLine
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	line_name      *string
+	line_number    *string
+	location       *string
+	capacity       *int
+	addcapacity    *int
+	status         *spinningline.Status
+	current_lot_id *uuid.UUID
+	created_at     *time.Time
+	updated_at     *time.Time
+	clearedFields  map[string]struct{}
+	done           bool
+	oldValue       func(context.Context) (*SpinningLine, error)
+	predicates     []predicate.SpinningLine
 }
 
 var _ ent.Mutation = (*SpinningLineMutation)(nil)
@@ -7389,42 +7096,6 @@ func (m *SpinningLineMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	}
 }
 
-// SetLineNumber sets the "line_number" field.
-func (m *SpinningLineMutation) SetLineNumber(s string) {
-	m.line_number = &s
-}
-
-// LineNumber returns the value of the "line_number" field in the mutation.
-func (m *SpinningLineMutation) LineNumber() (r string, exists bool) {
-	v := m.line_number
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldLineNumber returns the old "line_number" field's value of the SpinningLine entity.
-// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldLineNumber(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLineNumber is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLineNumber requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLineNumber: %w", err)
-	}
-	return oldValue.LineNumber, nil
-}
-
-// ResetLineNumber resets all changes to the "line_number" field.
-func (m *SpinningLineMutation) ResetLineNumber() {
-	m.line_number = nil
-}
-
 // SetLineName sets the "line_name" field.
 func (m *SpinningLineMutation) SetLineName(s string) {
 	m.line_name = &s
@@ -7461,158 +7132,172 @@ func (m *SpinningLineMutation) ResetLineName() {
 	m.line_name = nil
 }
 
-// SetPositionCount sets the "position_count" field.
-func (m *SpinningLineMutation) SetPositionCount(i int) {
-	m.position_count = &i
-	m.addposition_count = nil
+// SetLineNumber sets the "line_number" field.
+func (m *SpinningLineMutation) SetLineNumber(s string) {
+	m.line_number = &s
 }
 
-// PositionCount returns the value of the "position_count" field in the mutation.
-func (m *SpinningLineMutation) PositionCount() (r int, exists bool) {
-	v := m.position_count
+// LineNumber returns the value of the "line_number" field in the mutation.
+func (m *SpinningLineMutation) LineNumber() (r string, exists bool) {
+	v := m.line_number
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldPositionCount returns the old "position_count" field's value of the SpinningLine entity.
+// OldLineNumber returns the old "line_number" field's value of the SpinningLine entity.
 // If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldPositionCount(ctx context.Context) (v int, err error) {
+func (m *SpinningLineMutation) OldLineNumber(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPositionCount is only allowed on UpdateOne operations")
+		return v, errors.New("OldLineNumber is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPositionCount requires an ID field in the mutation")
+		return v, errors.New("OldLineNumber requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPositionCount: %w", err)
+		return v, fmt.Errorf("querying old value for OldLineNumber: %w", err)
 	}
-	return oldValue.PositionCount, nil
+	return oldValue.LineNumber, nil
 }
 
-// AddPositionCount adds i to the "position_count" field.
-func (m *SpinningLineMutation) AddPositionCount(i int) {
-	if m.addposition_count != nil {
-		*m.addposition_count += i
+// ClearLineNumber clears the value of the "line_number" field.
+func (m *SpinningLineMutation) ClearLineNumber() {
+	m.line_number = nil
+	m.clearedFields[spinningline.FieldLineNumber] = struct{}{}
+}
+
+// LineNumberCleared returns if the "line_number" field was cleared in this mutation.
+func (m *SpinningLineMutation) LineNumberCleared() bool {
+	_, ok := m.clearedFields[spinningline.FieldLineNumber]
+	return ok
+}
+
+// ResetLineNumber resets all changes to the "line_number" field.
+func (m *SpinningLineMutation) ResetLineNumber() {
+	m.line_number = nil
+	delete(m.clearedFields, spinningline.FieldLineNumber)
+}
+
+// SetLocation sets the "location" field.
+func (m *SpinningLineMutation) SetLocation(s string) {
+	m.location = &s
+}
+
+// Location returns the value of the "location" field in the mutation.
+func (m *SpinningLineMutation) Location() (r string, exists bool) {
+	v := m.location
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocation returns the old "location" field's value of the SpinningLine entity.
+// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpinningLineMutation) OldLocation(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocation: %w", err)
+	}
+	return oldValue.Location, nil
+}
+
+// ClearLocation clears the value of the "location" field.
+func (m *SpinningLineMutation) ClearLocation() {
+	m.location = nil
+	m.clearedFields[spinningline.FieldLocation] = struct{}{}
+}
+
+// LocationCleared returns if the "location" field was cleared in this mutation.
+func (m *SpinningLineMutation) LocationCleared() bool {
+	_, ok := m.clearedFields[spinningline.FieldLocation]
+	return ok
+}
+
+// ResetLocation resets all changes to the "location" field.
+func (m *SpinningLineMutation) ResetLocation() {
+	m.location = nil
+	delete(m.clearedFields, spinningline.FieldLocation)
+}
+
+// SetCapacity sets the "capacity" field.
+func (m *SpinningLineMutation) SetCapacity(i int) {
+	m.capacity = &i
+	m.addcapacity = nil
+}
+
+// Capacity returns the value of the "capacity" field in the mutation.
+func (m *SpinningLineMutation) Capacity() (r int, exists bool) {
+	v := m.capacity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCapacity returns the old "capacity" field's value of the SpinningLine entity.
+// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpinningLineMutation) OldCapacity(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCapacity is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCapacity requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCapacity: %w", err)
+	}
+	return oldValue.Capacity, nil
+}
+
+// AddCapacity adds i to the "capacity" field.
+func (m *SpinningLineMutation) AddCapacity(i int) {
+	if m.addcapacity != nil {
+		*m.addcapacity += i
 	} else {
-		m.addposition_count = &i
+		m.addcapacity = &i
 	}
 }
 
-// AddedPositionCount returns the value that was added to the "position_count" field in this mutation.
-func (m *SpinningLineMutation) AddedPositionCount() (r int, exists bool) {
-	v := m.addposition_count
+// AddedCapacity returns the value that was added to the "capacity" field in this mutation.
+func (m *SpinningLineMutation) AddedCapacity() (r int, exists bool) {
+	v := m.addcapacity
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetPositionCount resets all changes to the "position_count" field.
-func (m *SpinningLineMutation) ResetPositionCount() {
-	m.position_count = nil
-	m.addposition_count = nil
+// ClearCapacity clears the value of the "capacity" field.
+func (m *SpinningLineMutation) ClearCapacity() {
+	m.capacity = nil
+	m.addcapacity = nil
+	m.clearedFields[spinningline.FieldCapacity] = struct{}{}
 }
 
-// SetWorkshopArea sets the "workshop_area" field.
-func (m *SpinningLineMutation) SetWorkshopArea(s string) {
-	m.workshop_area = &s
-}
-
-// WorkshopArea returns the value of the "workshop_area" field in the mutation.
-func (m *SpinningLineMutation) WorkshopArea() (r string, exists bool) {
-	v := m.workshop_area
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldWorkshopArea returns the old "workshop_area" field's value of the SpinningLine entity.
-// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldWorkshopArea(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldWorkshopArea is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldWorkshopArea requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldWorkshopArea: %w", err)
-	}
-	return oldValue.WorkshopArea, nil
-}
-
-// ClearWorkshopArea clears the value of the "workshop_area" field.
-func (m *SpinningLineMutation) ClearWorkshopArea() {
-	m.workshop_area = nil
-	m.clearedFields[spinningline.FieldWorkshopArea] = struct{}{}
-}
-
-// WorkshopAreaCleared returns if the "workshop_area" field was cleared in this mutation.
-func (m *SpinningLineMutation) WorkshopAreaCleared() bool {
-	_, ok := m.clearedFields[spinningline.FieldWorkshopArea]
+// CapacityCleared returns if the "capacity" field was cleared in this mutation.
+func (m *SpinningLineMutation) CapacityCleared() bool {
+	_, ok := m.clearedFields[spinningline.FieldCapacity]
 	return ok
 }
 
-// ResetWorkshopArea resets all changes to the "workshop_area" field.
-func (m *SpinningLineMutation) ResetWorkshopArea() {
-	m.workshop_area = nil
-	delete(m.clearedFields, spinningline.FieldWorkshopArea)
-}
-
-// SetProductType sets the "product_type" field.
-func (m *SpinningLineMutation) SetProductType(st spinningline.ProductType) {
-	m.product_type = &st
-}
-
-// ProductType returns the value of the "product_type" field in the mutation.
-func (m *SpinningLineMutation) ProductType() (r spinningline.ProductType, exists bool) {
-	v := m.product_type
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldProductType returns the old "product_type" field's value of the SpinningLine entity.
-// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldProductType(ctx context.Context) (v spinningline.ProductType, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldProductType is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldProductType requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldProductType: %w", err)
-	}
-	return oldValue.ProductType, nil
-}
-
-// ClearProductType clears the value of the "product_type" field.
-func (m *SpinningLineMutation) ClearProductType() {
-	m.product_type = nil
-	m.clearedFields[spinningline.FieldProductType] = struct{}{}
-}
-
-// ProductTypeCleared returns if the "product_type" field was cleared in this mutation.
-func (m *SpinningLineMutation) ProductTypeCleared() bool {
-	_, ok := m.clearedFields[spinningline.FieldProductType]
-	return ok
-}
-
-// ResetProductType resets all changes to the "product_type" field.
-func (m *SpinningLineMutation) ResetProductType() {
-	m.product_type = nil
-	delete(m.clearedFields, spinningline.FieldProductType)
+// ResetCapacity resets all changes to the "capacity" field.
+func (m *SpinningLineMutation) ResetCapacity() {
+	m.capacity = nil
+	m.addcapacity = nil
+	delete(m.clearedFields, spinningline.FieldCapacity)
 }
 
 // SetStatus sets the "status" field.
@@ -7651,221 +7336,53 @@ func (m *SpinningLineMutation) ResetStatus() {
 	m.status = nil
 }
 
-// SetPlcIP sets the "plc_ip" field.
-func (m *SpinningLineMutation) SetPlcIP(s string) {
-	m.plc_ip = &s
+// SetCurrentLotID sets the "current_lot_id" field.
+func (m *SpinningLineMutation) SetCurrentLotID(u uuid.UUID) {
+	m.current_lot_id = &u
 }
 
-// PlcIP returns the value of the "plc_ip" field in the mutation.
-func (m *SpinningLineMutation) PlcIP() (r string, exists bool) {
-	v := m.plc_ip
+// CurrentLotID returns the value of the "current_lot_id" field in the mutation.
+func (m *SpinningLineMutation) CurrentLotID() (r uuid.UUID, exists bool) {
+	v := m.current_lot_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldPlcIP returns the old "plc_ip" field's value of the SpinningLine entity.
+// OldCurrentLotID returns the old "current_lot_id" field's value of the SpinningLine entity.
 // If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldPlcIP(ctx context.Context) (v string, err error) {
+func (m *SpinningLineMutation) OldCurrentLotID(ctx context.Context) (v uuid.UUID, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPlcIP is only allowed on UpdateOne operations")
+		return v, errors.New("OldCurrentLotID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPlcIP requires an ID field in the mutation")
+		return v, errors.New("OldCurrentLotID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPlcIP: %w", err)
+		return v, fmt.Errorf("querying old value for OldCurrentLotID: %w", err)
 	}
-	return oldValue.PlcIP, nil
+	return oldValue.CurrentLotID, nil
 }
 
-// ClearPlcIP clears the value of the "plc_ip" field.
-func (m *SpinningLineMutation) ClearPlcIP() {
-	m.plc_ip = nil
-	m.clearedFields[spinningline.FieldPlcIP] = struct{}{}
+// ClearCurrentLotID clears the value of the "current_lot_id" field.
+func (m *SpinningLineMutation) ClearCurrentLotID() {
+	m.current_lot_id = nil
+	m.clearedFields[spinningline.FieldCurrentLotID] = struct{}{}
 }
 
-// PlcIPCleared returns if the "plc_ip" field was cleared in this mutation.
-func (m *SpinningLineMutation) PlcIPCleared() bool {
-	_, ok := m.clearedFields[spinningline.FieldPlcIP]
+// CurrentLotIDCleared returns if the "current_lot_id" field was cleared in this mutation.
+func (m *SpinningLineMutation) CurrentLotIDCleared() bool {
+	_, ok := m.clearedFields[spinningline.FieldCurrentLotID]
 	return ok
 }
 
-// ResetPlcIP resets all changes to the "plc_ip" field.
-func (m *SpinningLineMutation) ResetPlcIP() {
-	m.plc_ip = nil
-	delete(m.clearedFields, spinningline.FieldPlcIP)
-}
-
-// SetPlcPort sets the "plc_port" field.
-func (m *SpinningLineMutation) SetPlcPort(i int) {
-	m.plc_port = &i
-	m.addplc_port = nil
-}
-
-// PlcPort returns the value of the "plc_port" field in the mutation.
-func (m *SpinningLineMutation) PlcPort() (r int, exists bool) {
-	v := m.plc_port
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPlcPort returns the old "plc_port" field's value of the SpinningLine entity.
-// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldPlcPort(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPlcPort is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPlcPort requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPlcPort: %w", err)
-	}
-	return oldValue.PlcPort, nil
-}
-
-// AddPlcPort adds i to the "plc_port" field.
-func (m *SpinningLineMutation) AddPlcPort(i int) {
-	if m.addplc_port != nil {
-		*m.addplc_port += i
-	} else {
-		m.addplc_port = &i
-	}
-}
-
-// AddedPlcPort returns the value that was added to the "plc_port" field in this mutation.
-func (m *SpinningLineMutation) AddedPlcPort() (r int, exists bool) {
-	v := m.addplc_port
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearPlcPort clears the value of the "plc_port" field.
-func (m *SpinningLineMutation) ClearPlcPort() {
-	m.plc_port = nil
-	m.addplc_port = nil
-	m.clearedFields[spinningline.FieldPlcPort] = struct{}{}
-}
-
-// PlcPortCleared returns if the "plc_port" field was cleared in this mutation.
-func (m *SpinningLineMutation) PlcPortCleared() bool {
-	_, ok := m.clearedFields[spinningline.FieldPlcPort]
-	return ok
-}
-
-// ResetPlcPort resets all changes to the "plc_port" field.
-func (m *SpinningLineMutation) ResetPlcPort() {
-	m.plc_port = nil
-	m.addplc_port = nil
-	delete(m.clearedFields, spinningline.FieldPlcPort)
-}
-
-// SetPlcProtocol sets the "plc_protocol" field.
-func (m *SpinningLineMutation) SetPlcProtocol(s string) {
-	m.plc_protocol = &s
-}
-
-// PlcProtocol returns the value of the "plc_protocol" field in the mutation.
-func (m *SpinningLineMutation) PlcProtocol() (r string, exists bool) {
-	v := m.plc_protocol
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPlcProtocol returns the old "plc_protocol" field's value of the SpinningLine entity.
-// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldPlcProtocol(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPlcProtocol is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPlcProtocol requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPlcProtocol: %w", err)
-	}
-	return oldValue.PlcProtocol, nil
-}
-
-// ClearPlcProtocol clears the value of the "plc_protocol" field.
-func (m *SpinningLineMutation) ClearPlcProtocol() {
-	m.plc_protocol = nil
-	m.clearedFields[spinningline.FieldPlcProtocol] = struct{}{}
-}
-
-// PlcProtocolCleared returns if the "plc_protocol" field was cleared in this mutation.
-func (m *SpinningLineMutation) PlcProtocolCleared() bool {
-	_, ok := m.clearedFields[spinningline.FieldPlcProtocol]
-	return ok
-}
-
-// ResetPlcProtocol resets all changes to the "plc_protocol" field.
-func (m *SpinningLineMutation) ResetPlcProtocol() {
-	m.plc_protocol = nil
-	delete(m.clearedFields, spinningline.FieldPlcProtocol)
-}
-
-// SetNotes sets the "notes" field.
-func (m *SpinningLineMutation) SetNotes(s string) {
-	m.notes = &s
-}
-
-// Notes returns the value of the "notes" field in the mutation.
-func (m *SpinningLineMutation) Notes() (r string, exists bool) {
-	v := m.notes
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldNotes returns the old "notes" field's value of the SpinningLine entity.
-// If the SpinningLine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SpinningLineMutation) OldNotes(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldNotes is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldNotes requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldNotes: %w", err)
-	}
-	return oldValue.Notes, nil
-}
-
-// ClearNotes clears the value of the "notes" field.
-func (m *SpinningLineMutation) ClearNotes() {
-	m.notes = nil
-	m.clearedFields[spinningline.FieldNotes] = struct{}{}
-}
-
-// NotesCleared returns if the "notes" field was cleared in this mutation.
-func (m *SpinningLineMutation) NotesCleared() bool {
-	_, ok := m.clearedFields[spinningline.FieldNotes]
-	return ok
-}
-
-// ResetNotes resets all changes to the "notes" field.
-func (m *SpinningLineMutation) ResetNotes() {
-	m.notes = nil
-	delete(m.clearedFields, spinningline.FieldNotes)
+// ResetCurrentLotID resets all changes to the "current_lot_id" field.
+func (m *SpinningLineMutation) ResetCurrentLotID() {
+	m.current_lot_id = nil
+	delete(m.clearedFields, spinningline.FieldCurrentLotID)
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -7974,36 +7491,24 @@ func (m *SpinningLineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SpinningLineMutation) Fields() []string {
-	fields := make([]string, 0, 12)
-	if m.line_number != nil {
-		fields = append(fields, spinningline.FieldLineNumber)
-	}
+	fields := make([]string, 0, 8)
 	if m.line_name != nil {
 		fields = append(fields, spinningline.FieldLineName)
 	}
-	if m.position_count != nil {
-		fields = append(fields, spinningline.FieldPositionCount)
+	if m.line_number != nil {
+		fields = append(fields, spinningline.FieldLineNumber)
 	}
-	if m.workshop_area != nil {
-		fields = append(fields, spinningline.FieldWorkshopArea)
+	if m.location != nil {
+		fields = append(fields, spinningline.FieldLocation)
 	}
-	if m.product_type != nil {
-		fields = append(fields, spinningline.FieldProductType)
+	if m.capacity != nil {
+		fields = append(fields, spinningline.FieldCapacity)
 	}
 	if m.status != nil {
 		fields = append(fields, spinningline.FieldStatus)
 	}
-	if m.plc_ip != nil {
-		fields = append(fields, spinningline.FieldPlcIP)
-	}
-	if m.plc_port != nil {
-		fields = append(fields, spinningline.FieldPlcPort)
-	}
-	if m.plc_protocol != nil {
-		fields = append(fields, spinningline.FieldPlcProtocol)
-	}
-	if m.notes != nil {
-		fields = append(fields, spinningline.FieldNotes)
+	if m.current_lot_id != nil {
+		fields = append(fields, spinningline.FieldCurrentLotID)
 	}
 	if m.created_at != nil {
 		fields = append(fields, spinningline.FieldCreatedAt)
@@ -8019,26 +7524,18 @@ func (m *SpinningLineMutation) Fields() []string {
 // schema.
 func (m *SpinningLineMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case spinningline.FieldLineNumber:
-		return m.LineNumber()
 	case spinningline.FieldLineName:
 		return m.LineName()
-	case spinningline.FieldPositionCount:
-		return m.PositionCount()
-	case spinningline.FieldWorkshopArea:
-		return m.WorkshopArea()
-	case spinningline.FieldProductType:
-		return m.ProductType()
+	case spinningline.FieldLineNumber:
+		return m.LineNumber()
+	case spinningline.FieldLocation:
+		return m.Location()
+	case spinningline.FieldCapacity:
+		return m.Capacity()
 	case spinningline.FieldStatus:
 		return m.Status()
-	case spinningline.FieldPlcIP:
-		return m.PlcIP()
-	case spinningline.FieldPlcPort:
-		return m.PlcPort()
-	case spinningline.FieldPlcProtocol:
-		return m.PlcProtocol()
-	case spinningline.FieldNotes:
-		return m.Notes()
+	case spinningline.FieldCurrentLotID:
+		return m.CurrentLotID()
 	case spinningline.FieldCreatedAt:
 		return m.CreatedAt()
 	case spinningline.FieldUpdatedAt:
@@ -8052,26 +7549,18 @@ func (m *SpinningLineMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *SpinningLineMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case spinningline.FieldLineNumber:
-		return m.OldLineNumber(ctx)
 	case spinningline.FieldLineName:
 		return m.OldLineName(ctx)
-	case spinningline.FieldPositionCount:
-		return m.OldPositionCount(ctx)
-	case spinningline.FieldWorkshopArea:
-		return m.OldWorkshopArea(ctx)
-	case spinningline.FieldProductType:
-		return m.OldProductType(ctx)
+	case spinningline.FieldLineNumber:
+		return m.OldLineNumber(ctx)
+	case spinningline.FieldLocation:
+		return m.OldLocation(ctx)
+	case spinningline.FieldCapacity:
+		return m.OldCapacity(ctx)
 	case spinningline.FieldStatus:
 		return m.OldStatus(ctx)
-	case spinningline.FieldPlcIP:
-		return m.OldPlcIP(ctx)
-	case spinningline.FieldPlcPort:
-		return m.OldPlcPort(ctx)
-	case spinningline.FieldPlcProtocol:
-		return m.OldPlcProtocol(ctx)
-	case spinningline.FieldNotes:
-		return m.OldNotes(ctx)
+	case spinningline.FieldCurrentLotID:
+		return m.OldCurrentLotID(ctx)
 	case spinningline.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case spinningline.FieldUpdatedAt:
@@ -8085,13 +7574,6 @@ func (m *SpinningLineMutation) OldField(ctx context.Context, name string) (ent.V
 // type.
 func (m *SpinningLineMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case spinningline.FieldLineNumber:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetLineNumber(v)
-		return nil
 	case spinningline.FieldLineName:
 		v, ok := value.(string)
 		if !ok {
@@ -8099,26 +7581,26 @@ func (m *SpinningLineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLineName(v)
 		return nil
-	case spinningline.FieldPositionCount:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPositionCount(v)
-		return nil
-	case spinningline.FieldWorkshopArea:
+	case spinningline.FieldLineNumber:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetWorkshopArea(v)
+		m.SetLineNumber(v)
 		return nil
-	case spinningline.FieldProductType:
-		v, ok := value.(spinningline.ProductType)
+	case spinningline.FieldLocation:
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetProductType(v)
+		m.SetLocation(v)
+		return nil
+	case spinningline.FieldCapacity:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCapacity(v)
 		return nil
 	case spinningline.FieldStatus:
 		v, ok := value.(spinningline.Status)
@@ -8127,33 +7609,12 @@ func (m *SpinningLineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetStatus(v)
 		return nil
-	case spinningline.FieldPlcIP:
-		v, ok := value.(string)
+	case spinningline.FieldCurrentLotID:
+		v, ok := value.(uuid.UUID)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetPlcIP(v)
-		return nil
-	case spinningline.FieldPlcPort:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPlcPort(v)
-		return nil
-	case spinningline.FieldPlcProtocol:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPlcProtocol(v)
-		return nil
-	case spinningline.FieldNotes:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetNotes(v)
+		m.SetCurrentLotID(v)
 		return nil
 	case spinningline.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -8177,11 +7638,8 @@ func (m *SpinningLineMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *SpinningLineMutation) AddedFields() []string {
 	var fields []string
-	if m.addposition_count != nil {
-		fields = append(fields, spinningline.FieldPositionCount)
-	}
-	if m.addplc_port != nil {
-		fields = append(fields, spinningline.FieldPlcPort)
+	if m.addcapacity != nil {
+		fields = append(fields, spinningline.FieldCapacity)
 	}
 	return fields
 }
@@ -8191,10 +7649,8 @@ func (m *SpinningLineMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *SpinningLineMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case spinningline.FieldPositionCount:
-		return m.AddedPositionCount()
-	case spinningline.FieldPlcPort:
-		return m.AddedPlcPort()
+	case spinningline.FieldCapacity:
+		return m.AddedCapacity()
 	}
 	return nil, false
 }
@@ -8204,19 +7660,12 @@ func (m *SpinningLineMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *SpinningLineMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case spinningline.FieldPositionCount:
+	case spinningline.FieldCapacity:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddPositionCount(v)
-		return nil
-	case spinningline.FieldPlcPort:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddPlcPort(v)
+		m.AddCapacity(v)
 		return nil
 	}
 	return fmt.Errorf("unknown SpinningLine numeric field %s", name)
@@ -8226,23 +7675,17 @@ func (m *SpinningLineMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *SpinningLineMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(spinningline.FieldWorkshopArea) {
-		fields = append(fields, spinningline.FieldWorkshopArea)
+	if m.FieldCleared(spinningline.FieldLineNumber) {
+		fields = append(fields, spinningline.FieldLineNumber)
 	}
-	if m.FieldCleared(spinningline.FieldProductType) {
-		fields = append(fields, spinningline.FieldProductType)
+	if m.FieldCleared(spinningline.FieldLocation) {
+		fields = append(fields, spinningline.FieldLocation)
 	}
-	if m.FieldCleared(spinningline.FieldPlcIP) {
-		fields = append(fields, spinningline.FieldPlcIP)
+	if m.FieldCleared(spinningline.FieldCapacity) {
+		fields = append(fields, spinningline.FieldCapacity)
 	}
-	if m.FieldCleared(spinningline.FieldPlcPort) {
-		fields = append(fields, spinningline.FieldPlcPort)
-	}
-	if m.FieldCleared(spinningline.FieldPlcProtocol) {
-		fields = append(fields, spinningline.FieldPlcProtocol)
-	}
-	if m.FieldCleared(spinningline.FieldNotes) {
-		fields = append(fields, spinningline.FieldNotes)
+	if m.FieldCleared(spinningline.FieldCurrentLotID) {
+		fields = append(fields, spinningline.FieldCurrentLotID)
 	}
 	return fields
 }
@@ -8258,23 +7701,17 @@ func (m *SpinningLineMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *SpinningLineMutation) ClearField(name string) error {
 	switch name {
-	case spinningline.FieldWorkshopArea:
-		m.ClearWorkshopArea()
+	case spinningline.FieldLineNumber:
+		m.ClearLineNumber()
 		return nil
-	case spinningline.FieldProductType:
-		m.ClearProductType()
+	case spinningline.FieldLocation:
+		m.ClearLocation()
 		return nil
-	case spinningline.FieldPlcIP:
-		m.ClearPlcIP()
+	case spinningline.FieldCapacity:
+		m.ClearCapacity()
 		return nil
-	case spinningline.FieldPlcPort:
-		m.ClearPlcPort()
-		return nil
-	case spinningline.FieldPlcProtocol:
-		m.ClearPlcProtocol()
-		return nil
-	case spinningline.FieldNotes:
-		m.ClearNotes()
+	case spinningline.FieldCurrentLotID:
+		m.ClearCurrentLotID()
 		return nil
 	}
 	return fmt.Errorf("unknown SpinningLine nullable field %s", name)
@@ -8284,35 +7721,23 @@ func (m *SpinningLineMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *SpinningLineMutation) ResetField(name string) error {
 	switch name {
-	case spinningline.FieldLineNumber:
-		m.ResetLineNumber()
-		return nil
 	case spinningline.FieldLineName:
 		m.ResetLineName()
 		return nil
-	case spinningline.FieldPositionCount:
-		m.ResetPositionCount()
+	case spinningline.FieldLineNumber:
+		m.ResetLineNumber()
 		return nil
-	case spinningline.FieldWorkshopArea:
-		m.ResetWorkshopArea()
+	case spinningline.FieldLocation:
+		m.ResetLocation()
 		return nil
-	case spinningline.FieldProductType:
-		m.ResetProductType()
+	case spinningline.FieldCapacity:
+		m.ResetCapacity()
 		return nil
 	case spinningline.FieldStatus:
 		m.ResetStatus()
 		return nil
-	case spinningline.FieldPlcIP:
-		m.ResetPlcIP()
-		return nil
-	case spinningline.FieldPlcPort:
-		m.ResetPlcPort()
-		return nil
-	case spinningline.FieldPlcProtocol:
-		m.ResetPlcProtocol()
-		return nil
-	case spinningline.FieldNotes:
-		m.ResetNotes()
+	case spinningline.FieldCurrentLotID:
+		m.ResetCurrentLotID()
 		return nil
 	case spinningline.FieldCreatedAt:
 		m.ResetCreatedAt()

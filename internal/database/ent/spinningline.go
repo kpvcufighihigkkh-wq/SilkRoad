@@ -18,26 +18,18 @@ type SpinningLine struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// 线体编号
-	LineNumber string `json:"line_number,omitempty"`
 	// 线体名称
 	LineName string `json:"line_name,omitempty"`
-	// 纺丝位号数量（多少个位）
-	PositionCount int `json:"position_count,omitempty"`
-	// 车间区域
-	WorkshopArea string `json:"workshop_area,omitempty"`
-	// 适用产品类型（可选）
-	ProductType spinningline.ProductType `json:"product_type,omitempty"`
+	// 线体编号
+	LineNumber string `json:"line_number,omitempty"`
+	// 线体位置
+	Location string `json:"location,omitempty"`
+	// 线体产能（位号数量）
+	Capacity int `json:"capacity,omitempty"`
 	// 线体状态
 	Status spinningline.Status `json:"status,omitempty"`
-	// PLC IP地址
-	PlcIP string `json:"plc_ip,omitempty"`
-	// PLC端口
-	PlcPort int `json:"plc_port,omitempty"`
-	// PLC协议（S7/Modbus/etc）
-	PlcProtocol string `json:"plc_protocol,omitempty"`
-	// 备注信息
-	Notes string `json:"notes,omitempty"`
+	// 当前生产批次ID
+	CurrentLotID uuid.UUID `json:"current_lot_id,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -50,13 +42,13 @@ func (*SpinningLine) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case spinningline.FieldPositionCount, spinningline.FieldPlcPort:
+		case spinningline.FieldCapacity:
 			values[i] = new(sql.NullInt64)
-		case spinningline.FieldLineNumber, spinningline.FieldLineName, spinningline.FieldWorkshopArea, spinningline.FieldProductType, spinningline.FieldStatus, spinningline.FieldPlcIP, spinningline.FieldPlcProtocol, spinningline.FieldNotes:
+		case spinningline.FieldLineName, spinningline.FieldLineNumber, spinningline.FieldLocation, spinningline.FieldStatus:
 			values[i] = new(sql.NullString)
 		case spinningline.FieldCreatedAt, spinningline.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case spinningline.FieldID:
+		case spinningline.FieldID, spinningline.FieldCurrentLotID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -79,35 +71,29 @@ func (_m *SpinningLine) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ID = *value
 			}
-		case spinningline.FieldLineNumber:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field line_number", values[i])
-			} else if value.Valid {
-				_m.LineNumber = value.String
-			}
 		case spinningline.FieldLineName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field line_name", values[i])
 			} else if value.Valid {
 				_m.LineName = value.String
 			}
-		case spinningline.FieldPositionCount:
+		case spinningline.FieldLineNumber:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field line_number", values[i])
+			} else if value.Valid {
+				_m.LineNumber = value.String
+			}
+		case spinningline.FieldLocation:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field location", values[i])
+			} else if value.Valid {
+				_m.Location = value.String
+			}
+		case spinningline.FieldCapacity:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field position_count", values[i])
+				return fmt.Errorf("unexpected type %T for field capacity", values[i])
 			} else if value.Valid {
-				_m.PositionCount = int(value.Int64)
-			}
-		case spinningline.FieldWorkshopArea:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field workshop_area", values[i])
-			} else if value.Valid {
-				_m.WorkshopArea = value.String
-			}
-		case spinningline.FieldProductType:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field product_type", values[i])
-			} else if value.Valid {
-				_m.ProductType = spinningline.ProductType(value.String)
+				_m.Capacity = int(value.Int64)
 			}
 		case spinningline.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -115,29 +101,11 @@ func (_m *SpinningLine) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = spinningline.Status(value.String)
 			}
-		case spinningline.FieldPlcIP:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field plc_ip", values[i])
-			} else if value.Valid {
-				_m.PlcIP = value.String
-			}
-		case spinningline.FieldPlcPort:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field plc_port", values[i])
-			} else if value.Valid {
-				_m.PlcPort = int(value.Int64)
-			}
-		case spinningline.FieldPlcProtocol:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field plc_protocol", values[i])
-			} else if value.Valid {
-				_m.PlcProtocol = value.String
-			}
-		case spinningline.FieldNotes:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field notes", values[i])
-			} else if value.Valid {
-				_m.Notes = value.String
+		case spinningline.FieldCurrentLotID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field current_lot_id", values[i])
+			} else if value != nil {
+				_m.CurrentLotID = *value
 			}
 		case spinningline.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -187,35 +155,23 @@ func (_m *SpinningLine) String() string {
 	var builder strings.Builder
 	builder.WriteString("SpinningLine(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("line_number=")
-	builder.WriteString(_m.LineNumber)
-	builder.WriteString(", ")
 	builder.WriteString("line_name=")
 	builder.WriteString(_m.LineName)
 	builder.WriteString(", ")
-	builder.WriteString("position_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.PositionCount))
+	builder.WriteString("line_number=")
+	builder.WriteString(_m.LineNumber)
 	builder.WriteString(", ")
-	builder.WriteString("workshop_area=")
-	builder.WriteString(_m.WorkshopArea)
+	builder.WriteString("location=")
+	builder.WriteString(_m.Location)
 	builder.WriteString(", ")
-	builder.WriteString("product_type=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ProductType))
+	builder.WriteString("capacity=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Capacity))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
-	builder.WriteString("plc_ip=")
-	builder.WriteString(_m.PlcIP)
-	builder.WriteString(", ")
-	builder.WriteString("plc_port=")
-	builder.WriteString(fmt.Sprintf("%v", _m.PlcPort))
-	builder.WriteString(", ")
-	builder.WriteString("plc_protocol=")
-	builder.WriteString(_m.PlcProtocol)
-	builder.WriteString(", ")
-	builder.WriteString("notes=")
-	builder.WriteString(_m.Notes)
+	builder.WriteString("current_lot_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CurrentLotID))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

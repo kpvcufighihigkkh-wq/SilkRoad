@@ -55,44 +55,29 @@ func IDLTE(id uuid.UUID) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldLTE(FieldID, id))
 }
 
-// LineNumber applies equality check predicate on the "line_number" field. It's identical to LineNumberEQ.
-func LineNumber(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldLineNumber, v))
-}
-
 // LineName applies equality check predicate on the "line_name" field. It's identical to LineNameEQ.
 func LineName(v string) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldEQ(FieldLineName, v))
 }
 
-// PositionCount applies equality check predicate on the "position_count" field. It's identical to PositionCountEQ.
-func PositionCount(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPositionCount, v))
+// LineNumber applies equality check predicate on the "line_number" field. It's identical to LineNumberEQ.
+func LineNumber(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldLineNumber, v))
 }
 
-// WorkshopArea applies equality check predicate on the "workshop_area" field. It's identical to WorkshopAreaEQ.
-func WorkshopArea(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldWorkshopArea, v))
+// Location applies equality check predicate on the "location" field. It's identical to LocationEQ.
+func Location(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldLocation, v))
 }
 
-// PlcIP applies equality check predicate on the "plc_ip" field. It's identical to PlcIPEQ.
-func PlcIP(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPlcIP, v))
+// Capacity applies equality check predicate on the "capacity" field. It's identical to CapacityEQ.
+func Capacity(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldCapacity, v))
 }
 
-// PlcPort applies equality check predicate on the "plc_port" field. It's identical to PlcPortEQ.
-func PlcPort(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPlcPort, v))
-}
-
-// PlcProtocol applies equality check predicate on the "plc_protocol" field. It's identical to PlcProtocolEQ.
-func PlcProtocol(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPlcProtocol, v))
-}
-
-// Notes applies equality check predicate on the "notes" field. It's identical to NotesEQ.
-func Notes(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldNotes, v))
+// CurrentLotID applies equality check predicate on the "current_lot_id" field. It's identical to CurrentLotIDEQ.
+func CurrentLotID(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldCurrentLotID, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -103,71 +88,6 @@ func CreatedAt(v time.Time) predicate.SpinningLine {
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldEQ(FieldUpdatedAt, v))
-}
-
-// LineNumberEQ applies the EQ predicate on the "line_number" field.
-func LineNumberEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldLineNumber, v))
-}
-
-// LineNumberNEQ applies the NEQ predicate on the "line_number" field.
-func LineNumberNEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldLineNumber, v))
-}
-
-// LineNumberIn applies the In predicate on the "line_number" field.
-func LineNumberIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldLineNumber, vs...))
-}
-
-// LineNumberNotIn applies the NotIn predicate on the "line_number" field.
-func LineNumberNotIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldLineNumber, vs...))
-}
-
-// LineNumberGT applies the GT predicate on the "line_number" field.
-func LineNumberGT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldLineNumber, v))
-}
-
-// LineNumberGTE applies the GTE predicate on the "line_number" field.
-func LineNumberGTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldLineNumber, v))
-}
-
-// LineNumberLT applies the LT predicate on the "line_number" field.
-func LineNumberLT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldLineNumber, v))
-}
-
-// LineNumberLTE applies the LTE predicate on the "line_number" field.
-func LineNumberLTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldLineNumber, v))
-}
-
-// LineNumberContains applies the Contains predicate on the "line_number" field.
-func LineNumberContains(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContains(FieldLineNumber, v))
-}
-
-// LineNumberHasPrefix applies the HasPrefix predicate on the "line_number" field.
-func LineNumberHasPrefix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasPrefix(FieldLineNumber, v))
-}
-
-// LineNumberHasSuffix applies the HasSuffix predicate on the "line_number" field.
-func LineNumberHasSuffix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasSuffix(FieldLineNumber, v))
-}
-
-// LineNumberEqualFold applies the EqualFold predicate on the "line_number" field.
-func LineNumberEqualFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEqualFold(FieldLineNumber, v))
-}
-
-// LineNumberContainsFold applies the ContainsFold predicate on the "line_number" field.
-func LineNumberContainsFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContainsFold(FieldLineNumber, v))
 }
 
 // LineNameEQ applies the EQ predicate on the "line_name" field.
@@ -235,149 +155,204 @@ func LineNameContainsFold(v string) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldContainsFold(FieldLineName, v))
 }
 
-// PositionCountEQ applies the EQ predicate on the "position_count" field.
-func PositionCountEQ(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPositionCount, v))
+// LineNumberEQ applies the EQ predicate on the "line_number" field.
+func LineNumberEQ(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldLineNumber, v))
 }
 
-// PositionCountNEQ applies the NEQ predicate on the "position_count" field.
-func PositionCountNEQ(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldPositionCount, v))
+// LineNumberNEQ applies the NEQ predicate on the "line_number" field.
+func LineNumberNEQ(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNEQ(FieldLineNumber, v))
 }
 
-// PositionCountIn applies the In predicate on the "position_count" field.
-func PositionCountIn(vs ...int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldPositionCount, vs...))
+// LineNumberIn applies the In predicate on the "line_number" field.
+func LineNumberIn(vs ...string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIn(FieldLineNumber, vs...))
 }
 
-// PositionCountNotIn applies the NotIn predicate on the "position_count" field.
-func PositionCountNotIn(vs ...int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldPositionCount, vs...))
+// LineNumberNotIn applies the NotIn predicate on the "line_number" field.
+func LineNumberNotIn(vs ...string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotIn(FieldLineNumber, vs...))
 }
 
-// PositionCountGT applies the GT predicate on the "position_count" field.
-func PositionCountGT(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldPositionCount, v))
+// LineNumberGT applies the GT predicate on the "line_number" field.
+func LineNumberGT(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGT(FieldLineNumber, v))
 }
 
-// PositionCountGTE applies the GTE predicate on the "position_count" field.
-func PositionCountGTE(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldPositionCount, v))
+// LineNumberGTE applies the GTE predicate on the "line_number" field.
+func LineNumberGTE(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGTE(FieldLineNumber, v))
 }
 
-// PositionCountLT applies the LT predicate on the "position_count" field.
-func PositionCountLT(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldPositionCount, v))
+// LineNumberLT applies the LT predicate on the "line_number" field.
+func LineNumberLT(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLT(FieldLineNumber, v))
 }
 
-// PositionCountLTE applies the LTE predicate on the "position_count" field.
-func PositionCountLTE(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldPositionCount, v))
+// LineNumberLTE applies the LTE predicate on the "line_number" field.
+func LineNumberLTE(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLTE(FieldLineNumber, v))
 }
 
-// WorkshopAreaEQ applies the EQ predicate on the "workshop_area" field.
-func WorkshopAreaEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldWorkshopArea, v))
+// LineNumberContains applies the Contains predicate on the "line_number" field.
+func LineNumberContains(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldContains(FieldLineNumber, v))
 }
 
-// WorkshopAreaNEQ applies the NEQ predicate on the "workshop_area" field.
-func WorkshopAreaNEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldWorkshopArea, v))
+// LineNumberHasPrefix applies the HasPrefix predicate on the "line_number" field.
+func LineNumberHasPrefix(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldHasPrefix(FieldLineNumber, v))
 }
 
-// WorkshopAreaIn applies the In predicate on the "workshop_area" field.
-func WorkshopAreaIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldWorkshopArea, vs...))
+// LineNumberHasSuffix applies the HasSuffix predicate on the "line_number" field.
+func LineNumberHasSuffix(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldHasSuffix(FieldLineNumber, v))
 }
 
-// WorkshopAreaNotIn applies the NotIn predicate on the "workshop_area" field.
-func WorkshopAreaNotIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldWorkshopArea, vs...))
+// LineNumberIsNil applies the IsNil predicate on the "line_number" field.
+func LineNumberIsNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIsNull(FieldLineNumber))
 }
 
-// WorkshopAreaGT applies the GT predicate on the "workshop_area" field.
-func WorkshopAreaGT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldWorkshopArea, v))
+// LineNumberNotNil applies the NotNil predicate on the "line_number" field.
+func LineNumberNotNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotNull(FieldLineNumber))
 }
 
-// WorkshopAreaGTE applies the GTE predicate on the "workshop_area" field.
-func WorkshopAreaGTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldWorkshopArea, v))
+// LineNumberEqualFold applies the EqualFold predicate on the "line_number" field.
+func LineNumberEqualFold(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEqualFold(FieldLineNumber, v))
 }
 
-// WorkshopAreaLT applies the LT predicate on the "workshop_area" field.
-func WorkshopAreaLT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldWorkshopArea, v))
+// LineNumberContainsFold applies the ContainsFold predicate on the "line_number" field.
+func LineNumberContainsFold(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldContainsFold(FieldLineNumber, v))
 }
 
-// WorkshopAreaLTE applies the LTE predicate on the "workshop_area" field.
-func WorkshopAreaLTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldWorkshopArea, v))
+// LocationEQ applies the EQ predicate on the "location" field.
+func LocationEQ(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldLocation, v))
 }
 
-// WorkshopAreaContains applies the Contains predicate on the "workshop_area" field.
-func WorkshopAreaContains(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContains(FieldWorkshopArea, v))
+// LocationNEQ applies the NEQ predicate on the "location" field.
+func LocationNEQ(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNEQ(FieldLocation, v))
 }
 
-// WorkshopAreaHasPrefix applies the HasPrefix predicate on the "workshop_area" field.
-func WorkshopAreaHasPrefix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasPrefix(FieldWorkshopArea, v))
+// LocationIn applies the In predicate on the "location" field.
+func LocationIn(vs ...string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIn(FieldLocation, vs...))
 }
 
-// WorkshopAreaHasSuffix applies the HasSuffix predicate on the "workshop_area" field.
-func WorkshopAreaHasSuffix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasSuffix(FieldWorkshopArea, v))
+// LocationNotIn applies the NotIn predicate on the "location" field.
+func LocationNotIn(vs ...string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotIn(FieldLocation, vs...))
 }
 
-// WorkshopAreaIsNil applies the IsNil predicate on the "workshop_area" field.
-func WorkshopAreaIsNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIsNull(FieldWorkshopArea))
+// LocationGT applies the GT predicate on the "location" field.
+func LocationGT(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGT(FieldLocation, v))
 }
 
-// WorkshopAreaNotNil applies the NotNil predicate on the "workshop_area" field.
-func WorkshopAreaNotNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotNull(FieldWorkshopArea))
+// LocationGTE applies the GTE predicate on the "location" field.
+func LocationGTE(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGTE(FieldLocation, v))
 }
 
-// WorkshopAreaEqualFold applies the EqualFold predicate on the "workshop_area" field.
-func WorkshopAreaEqualFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEqualFold(FieldWorkshopArea, v))
+// LocationLT applies the LT predicate on the "location" field.
+func LocationLT(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLT(FieldLocation, v))
 }
 
-// WorkshopAreaContainsFold applies the ContainsFold predicate on the "workshop_area" field.
-func WorkshopAreaContainsFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContainsFold(FieldWorkshopArea, v))
+// LocationLTE applies the LTE predicate on the "location" field.
+func LocationLTE(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLTE(FieldLocation, v))
 }
 
-// ProductTypeEQ applies the EQ predicate on the "product_type" field.
-func ProductTypeEQ(v ProductType) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldProductType, v))
+// LocationContains applies the Contains predicate on the "location" field.
+func LocationContains(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldContains(FieldLocation, v))
 }
 
-// ProductTypeNEQ applies the NEQ predicate on the "product_type" field.
-func ProductTypeNEQ(v ProductType) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldProductType, v))
+// LocationHasPrefix applies the HasPrefix predicate on the "location" field.
+func LocationHasPrefix(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldHasPrefix(FieldLocation, v))
 }
 
-// ProductTypeIn applies the In predicate on the "product_type" field.
-func ProductTypeIn(vs ...ProductType) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldProductType, vs...))
+// LocationHasSuffix applies the HasSuffix predicate on the "location" field.
+func LocationHasSuffix(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldHasSuffix(FieldLocation, v))
 }
 
-// ProductTypeNotIn applies the NotIn predicate on the "product_type" field.
-func ProductTypeNotIn(vs ...ProductType) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldProductType, vs...))
+// LocationIsNil applies the IsNil predicate on the "location" field.
+func LocationIsNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIsNull(FieldLocation))
 }
 
-// ProductTypeIsNil applies the IsNil predicate on the "product_type" field.
-func ProductTypeIsNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIsNull(FieldProductType))
+// LocationNotNil applies the NotNil predicate on the "location" field.
+func LocationNotNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotNull(FieldLocation))
 }
 
-// ProductTypeNotNil applies the NotNil predicate on the "product_type" field.
-func ProductTypeNotNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotNull(FieldProductType))
+// LocationEqualFold applies the EqualFold predicate on the "location" field.
+func LocationEqualFold(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEqualFold(FieldLocation, v))
+}
+
+// LocationContainsFold applies the ContainsFold predicate on the "location" field.
+func LocationContainsFold(v string) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldContainsFold(FieldLocation, v))
+}
+
+// CapacityEQ applies the EQ predicate on the "capacity" field.
+func CapacityEQ(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldCapacity, v))
+}
+
+// CapacityNEQ applies the NEQ predicate on the "capacity" field.
+func CapacityNEQ(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNEQ(FieldCapacity, v))
+}
+
+// CapacityIn applies the In predicate on the "capacity" field.
+func CapacityIn(vs ...int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIn(FieldCapacity, vs...))
+}
+
+// CapacityNotIn applies the NotIn predicate on the "capacity" field.
+func CapacityNotIn(vs ...int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotIn(FieldCapacity, vs...))
+}
+
+// CapacityGT applies the GT predicate on the "capacity" field.
+func CapacityGT(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGT(FieldCapacity, v))
+}
+
+// CapacityGTE applies the GTE predicate on the "capacity" field.
+func CapacityGTE(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGTE(FieldCapacity, v))
+}
+
+// CapacityLT applies the LT predicate on the "capacity" field.
+func CapacityLT(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLT(FieldCapacity, v))
+}
+
+// CapacityLTE applies the LTE predicate on the "capacity" field.
+func CapacityLTE(v int) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLTE(FieldCapacity, v))
+}
+
+// CapacityIsNil applies the IsNil predicate on the "capacity" field.
+func CapacityIsNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIsNull(FieldCapacity))
+}
+
+// CapacityNotNil applies the NotNil predicate on the "capacity" field.
+func CapacityNotNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotNull(FieldCapacity))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.
@@ -400,279 +375,54 @@ func StatusNotIn(vs ...Status) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldNotIn(FieldStatus, vs...))
 }
 
-// PlcIPEQ applies the EQ predicate on the "plc_ip" field.
-func PlcIPEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPlcIP, v))
+// CurrentLotIDEQ applies the EQ predicate on the "current_lot_id" field.
+func CurrentLotIDEQ(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldCurrentLotID, v))
 }
 
-// PlcIPNEQ applies the NEQ predicate on the "plc_ip" field.
-func PlcIPNEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldPlcIP, v))
+// CurrentLotIDNEQ applies the NEQ predicate on the "current_lot_id" field.
+func CurrentLotIDNEQ(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNEQ(FieldCurrentLotID, v))
 }
 
-// PlcIPIn applies the In predicate on the "plc_ip" field.
-func PlcIPIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldPlcIP, vs...))
+// CurrentLotIDIn applies the In predicate on the "current_lot_id" field.
+func CurrentLotIDIn(vs ...uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIn(FieldCurrentLotID, vs...))
 }
 
-// PlcIPNotIn applies the NotIn predicate on the "plc_ip" field.
-func PlcIPNotIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldPlcIP, vs...))
+// CurrentLotIDNotIn applies the NotIn predicate on the "current_lot_id" field.
+func CurrentLotIDNotIn(vs ...uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotIn(FieldCurrentLotID, vs...))
 }
 
-// PlcIPGT applies the GT predicate on the "plc_ip" field.
-func PlcIPGT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldPlcIP, v))
+// CurrentLotIDGT applies the GT predicate on the "current_lot_id" field.
+func CurrentLotIDGT(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGT(FieldCurrentLotID, v))
 }
 
-// PlcIPGTE applies the GTE predicate on the "plc_ip" field.
-func PlcIPGTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldPlcIP, v))
+// CurrentLotIDGTE applies the GTE predicate on the "current_lot_id" field.
+func CurrentLotIDGTE(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldGTE(FieldCurrentLotID, v))
 }
 
-// PlcIPLT applies the LT predicate on the "plc_ip" field.
-func PlcIPLT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldPlcIP, v))
+// CurrentLotIDLT applies the LT predicate on the "current_lot_id" field.
+func CurrentLotIDLT(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLT(FieldCurrentLotID, v))
 }
 
-// PlcIPLTE applies the LTE predicate on the "plc_ip" field.
-func PlcIPLTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldPlcIP, v))
+// CurrentLotIDLTE applies the LTE predicate on the "current_lot_id" field.
+func CurrentLotIDLTE(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldLTE(FieldCurrentLotID, v))
 }
 
-// PlcIPContains applies the Contains predicate on the "plc_ip" field.
-func PlcIPContains(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContains(FieldPlcIP, v))
+// CurrentLotIDIsNil applies the IsNil predicate on the "current_lot_id" field.
+func CurrentLotIDIsNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIsNull(FieldCurrentLotID))
 }
 
-// PlcIPHasPrefix applies the HasPrefix predicate on the "plc_ip" field.
-func PlcIPHasPrefix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasPrefix(FieldPlcIP, v))
-}
-
-// PlcIPHasSuffix applies the HasSuffix predicate on the "plc_ip" field.
-func PlcIPHasSuffix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasSuffix(FieldPlcIP, v))
-}
-
-// PlcIPIsNil applies the IsNil predicate on the "plc_ip" field.
-func PlcIPIsNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIsNull(FieldPlcIP))
-}
-
-// PlcIPNotNil applies the NotNil predicate on the "plc_ip" field.
-func PlcIPNotNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotNull(FieldPlcIP))
-}
-
-// PlcIPEqualFold applies the EqualFold predicate on the "plc_ip" field.
-func PlcIPEqualFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEqualFold(FieldPlcIP, v))
-}
-
-// PlcIPContainsFold applies the ContainsFold predicate on the "plc_ip" field.
-func PlcIPContainsFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContainsFold(FieldPlcIP, v))
-}
-
-// PlcPortEQ applies the EQ predicate on the "plc_port" field.
-func PlcPortEQ(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPlcPort, v))
-}
-
-// PlcPortNEQ applies the NEQ predicate on the "plc_port" field.
-func PlcPortNEQ(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldPlcPort, v))
-}
-
-// PlcPortIn applies the In predicate on the "plc_port" field.
-func PlcPortIn(vs ...int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldPlcPort, vs...))
-}
-
-// PlcPortNotIn applies the NotIn predicate on the "plc_port" field.
-func PlcPortNotIn(vs ...int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldPlcPort, vs...))
-}
-
-// PlcPortGT applies the GT predicate on the "plc_port" field.
-func PlcPortGT(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldPlcPort, v))
-}
-
-// PlcPortGTE applies the GTE predicate on the "plc_port" field.
-func PlcPortGTE(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldPlcPort, v))
-}
-
-// PlcPortLT applies the LT predicate on the "plc_port" field.
-func PlcPortLT(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldPlcPort, v))
-}
-
-// PlcPortLTE applies the LTE predicate on the "plc_port" field.
-func PlcPortLTE(v int) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldPlcPort, v))
-}
-
-// PlcPortIsNil applies the IsNil predicate on the "plc_port" field.
-func PlcPortIsNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIsNull(FieldPlcPort))
-}
-
-// PlcPortNotNil applies the NotNil predicate on the "plc_port" field.
-func PlcPortNotNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotNull(FieldPlcPort))
-}
-
-// PlcProtocolEQ applies the EQ predicate on the "plc_protocol" field.
-func PlcProtocolEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldPlcProtocol, v))
-}
-
-// PlcProtocolNEQ applies the NEQ predicate on the "plc_protocol" field.
-func PlcProtocolNEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldPlcProtocol, v))
-}
-
-// PlcProtocolIn applies the In predicate on the "plc_protocol" field.
-func PlcProtocolIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldPlcProtocol, vs...))
-}
-
-// PlcProtocolNotIn applies the NotIn predicate on the "plc_protocol" field.
-func PlcProtocolNotIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldPlcProtocol, vs...))
-}
-
-// PlcProtocolGT applies the GT predicate on the "plc_protocol" field.
-func PlcProtocolGT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldPlcProtocol, v))
-}
-
-// PlcProtocolGTE applies the GTE predicate on the "plc_protocol" field.
-func PlcProtocolGTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldPlcProtocol, v))
-}
-
-// PlcProtocolLT applies the LT predicate on the "plc_protocol" field.
-func PlcProtocolLT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldPlcProtocol, v))
-}
-
-// PlcProtocolLTE applies the LTE predicate on the "plc_protocol" field.
-func PlcProtocolLTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldPlcProtocol, v))
-}
-
-// PlcProtocolContains applies the Contains predicate on the "plc_protocol" field.
-func PlcProtocolContains(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContains(FieldPlcProtocol, v))
-}
-
-// PlcProtocolHasPrefix applies the HasPrefix predicate on the "plc_protocol" field.
-func PlcProtocolHasPrefix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasPrefix(FieldPlcProtocol, v))
-}
-
-// PlcProtocolHasSuffix applies the HasSuffix predicate on the "plc_protocol" field.
-func PlcProtocolHasSuffix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasSuffix(FieldPlcProtocol, v))
-}
-
-// PlcProtocolIsNil applies the IsNil predicate on the "plc_protocol" field.
-func PlcProtocolIsNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIsNull(FieldPlcProtocol))
-}
-
-// PlcProtocolNotNil applies the NotNil predicate on the "plc_protocol" field.
-func PlcProtocolNotNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotNull(FieldPlcProtocol))
-}
-
-// PlcProtocolEqualFold applies the EqualFold predicate on the "plc_protocol" field.
-func PlcProtocolEqualFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEqualFold(FieldPlcProtocol, v))
-}
-
-// PlcProtocolContainsFold applies the ContainsFold predicate on the "plc_protocol" field.
-func PlcProtocolContainsFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContainsFold(FieldPlcProtocol, v))
-}
-
-// NotesEQ applies the EQ predicate on the "notes" field.
-func NotesEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEQ(FieldNotes, v))
-}
-
-// NotesNEQ applies the NEQ predicate on the "notes" field.
-func NotesNEQ(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNEQ(FieldNotes, v))
-}
-
-// NotesIn applies the In predicate on the "notes" field.
-func NotesIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIn(FieldNotes, vs...))
-}
-
-// NotesNotIn applies the NotIn predicate on the "notes" field.
-func NotesNotIn(vs ...string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotIn(FieldNotes, vs...))
-}
-
-// NotesGT applies the GT predicate on the "notes" field.
-func NotesGT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGT(FieldNotes, v))
-}
-
-// NotesGTE applies the GTE predicate on the "notes" field.
-func NotesGTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldGTE(FieldNotes, v))
-}
-
-// NotesLT applies the LT predicate on the "notes" field.
-func NotesLT(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLT(FieldNotes, v))
-}
-
-// NotesLTE applies the LTE predicate on the "notes" field.
-func NotesLTE(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldLTE(FieldNotes, v))
-}
-
-// NotesContains applies the Contains predicate on the "notes" field.
-func NotesContains(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContains(FieldNotes, v))
-}
-
-// NotesHasPrefix applies the HasPrefix predicate on the "notes" field.
-func NotesHasPrefix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasPrefix(FieldNotes, v))
-}
-
-// NotesHasSuffix applies the HasSuffix predicate on the "notes" field.
-func NotesHasSuffix(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldHasSuffix(FieldNotes, v))
-}
-
-// NotesIsNil applies the IsNil predicate on the "notes" field.
-func NotesIsNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldIsNull(FieldNotes))
-}
-
-// NotesNotNil applies the NotNil predicate on the "notes" field.
-func NotesNotNil() predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldNotNull(FieldNotes))
-}
-
-// NotesEqualFold applies the EqualFold predicate on the "notes" field.
-func NotesEqualFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldEqualFold(FieldNotes, v))
-}
-
-// NotesContainsFold applies the ContainsFold predicate on the "notes" field.
-func NotesContainsFold(v string) predicate.SpinningLine {
-	return predicate.SpinningLine(sql.FieldContainsFold(FieldNotes, v))
+// CurrentLotIDNotNil applies the NotNil predicate on the "current_lot_id" field.
+func CurrentLotIDNotNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotNull(FieldCurrentLotID))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

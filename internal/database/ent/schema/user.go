@@ -44,7 +44,7 @@ func (User) Fields() []ent.Field {
 
 		// 角色
 		field.Enum("role").
-			Values("admin", "operator", "quality_inspector", "viewer").
+			Values("admin", "operator", "inspector", "viewer").
 			Default("viewer").
 			Comment("用户角色"),
 

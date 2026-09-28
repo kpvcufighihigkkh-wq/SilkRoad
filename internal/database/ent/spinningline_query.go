@@ -263,12 +263,12 @@ func (_q *SpinningLineQuery) Clone() *SpinningLineQuery {
 // Example:
 //
 //	var v []struct {
-//		LineNumber string `json:"line_number,omitempty"`
+//		LineName string `json:"line_name,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.SpinningLine.Query().
-//		GroupBy(spinningline.FieldLineNumber).
+//		GroupBy(spinningline.FieldLineName).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *SpinningLineQuery) GroupBy(field string, fields ...string) *SpinningLineGroupBy {
@@ -286,11 +286,11 @@ func (_q *SpinningLineQuery) GroupBy(field string, fields ...string) *SpinningLi
 // Example:
 //
 //	var v []struct {
-//		LineNumber string `json:"line_number,omitempty"`
+//		LineName string `json:"line_name,omitempty"`
 //	}
 //
 //	client.SpinningLine.Query().
-//		Select(spinningline.FieldLineNumber).
+//		Select(spinningline.FieldLineName).
 //		Scan(ctx, &v)
 func (_q *SpinningLineQuery) Select(fields ...string) *SpinningLineSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

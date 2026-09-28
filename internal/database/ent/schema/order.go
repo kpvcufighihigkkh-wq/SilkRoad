@@ -33,18 +33,8 @@ func (Order) Fields() []ent.Field {
 
 		// 关联项目
 		field.UUID("project_id", uuid.UUID{}).
-			Comment("关联项目ID"),
-
-		// 客户信息
-		field.String("customer_name").
-			NotEmpty().
-			MaxLen(200).
-			Comment("客户名称"),
-
-		field.String("customer_code").
 			Optional().
-			MaxLen(50).
-			Comment("客户编码"),
+			Comment("关联项目ID"),
 
 		// 产品信息
 		field.Enum("product_type").
@@ -52,24 +42,30 @@ func (Order) Fields() []ent.Field {
 			Comment("产品类型"),
 
 		field.String("product_spec").
+			Optional().
 			MaxLen(100).
 			Comment("产品规格"),
 
 		// 订单数量
-		field.Int("order_quantity").
+		field.Int("target_quantity").
 			Positive().
-			Comment("订单数量（锭）"),
+			Comment("目标数量（锭）"),
 
-		field.Int("produced_quantity").
+		field.Int("actual_quantity").
 			Default(0).
 			NonNegative().
-			Comment("已生产数量（锭）"),
+			Comment("实际完成数量（锭）"),
 
 		// 订单状态
 		field.Enum("status").
 			Values("pending", "in_progress", "completed", "cancelled").
 			Default("pending").
 			Comment("订单状态"),
+
+		// 优先级
+		field.Int("priority").
+			Default(0).
+			Comment("优先级"),
 
 		// 交期
 		field.Time("delivery_date").
@@ -101,7 +97,6 @@ func (Order) Edges() []ent.Edge {
 		edge.From("project", Project.Type).
 			Ref("orders").
 			Field("project_id").
-			Required().
 			Unique(),
 
 		// 一个订单有多个批次
@@ -115,17 +110,14 @@ func (Order) Indexes() []ent.Index {
 		// 项目ID索引
 		index.Fields("project_id"),
 
-		// 客户编码索引
-		index.Fields("customer_code"),
-
 		// 产品类型索引
 		index.Fields("product_type"),
 
 		// 状态索引
 		index.Fields("status"),
 
-		// 创建时间倒序索引
-		index.Fields("created_at"),
+		// 优先级索引
+		index.Fields("priority"),
 
 		// 交货日期索引
 		index.Fields("delivery_date"),

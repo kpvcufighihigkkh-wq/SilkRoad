@@ -35,22 +35,10 @@ func (_c *OrderCreate) SetProjectID(v uuid.UUID) *OrderCreate {
 	return _c
 }
 
-// SetCustomerName sets the "customer_name" field.
-func (_c *OrderCreate) SetCustomerName(v string) *OrderCreate {
-	_c.mutation.SetCustomerName(v)
-	return _c
-}
-
-// SetCustomerCode sets the "customer_code" field.
-func (_c *OrderCreate) SetCustomerCode(v string) *OrderCreate {
-	_c.mutation.SetCustomerCode(v)
-	return _c
-}
-
-// SetNillableCustomerCode sets the "customer_code" field if the given value is not nil.
-func (_c *OrderCreate) SetNillableCustomerCode(v *string) *OrderCreate {
+// SetNillableProjectID sets the "project_id" field if the given value is not nil.
+func (_c *OrderCreate) SetNillableProjectID(v *uuid.UUID) *OrderCreate {
 	if v != nil {
-		_c.SetCustomerCode(*v)
+		_c.SetProjectID(*v)
 	}
 	return _c
 }
@@ -67,22 +55,30 @@ func (_c *OrderCreate) SetProductSpec(v string) *OrderCreate {
 	return _c
 }
 
-// SetOrderQuantity sets the "order_quantity" field.
-func (_c *OrderCreate) SetOrderQuantity(v int) *OrderCreate {
-	_c.mutation.SetOrderQuantity(v)
-	return _c
-}
-
-// SetProducedQuantity sets the "produced_quantity" field.
-func (_c *OrderCreate) SetProducedQuantity(v int) *OrderCreate {
-	_c.mutation.SetProducedQuantity(v)
-	return _c
-}
-
-// SetNillableProducedQuantity sets the "produced_quantity" field if the given value is not nil.
-func (_c *OrderCreate) SetNillableProducedQuantity(v *int) *OrderCreate {
+// SetNillableProductSpec sets the "product_spec" field if the given value is not nil.
+func (_c *OrderCreate) SetNillableProductSpec(v *string) *OrderCreate {
 	if v != nil {
-		_c.SetProducedQuantity(*v)
+		_c.SetProductSpec(*v)
+	}
+	return _c
+}
+
+// SetTargetQuantity sets the "target_quantity" field.
+func (_c *OrderCreate) SetTargetQuantity(v int) *OrderCreate {
+	_c.mutation.SetTargetQuantity(v)
+	return _c
+}
+
+// SetActualQuantity sets the "actual_quantity" field.
+func (_c *OrderCreate) SetActualQuantity(v int) *OrderCreate {
+	_c.mutation.SetActualQuantity(v)
+	return _c
+}
+
+// SetNillableActualQuantity sets the "actual_quantity" field if the given value is not nil.
+func (_c *OrderCreate) SetNillableActualQuantity(v *int) *OrderCreate {
+	if v != nil {
+		_c.SetActualQuantity(*v)
 	}
 	return _c
 }
@@ -97,6 +93,20 @@ func (_c *OrderCreate) SetStatus(v order.Status) *OrderCreate {
 func (_c *OrderCreate) SetNillableStatus(v *order.Status) *OrderCreate {
 	if v != nil {
 		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetPriority sets the "priority" field.
+func (_c *OrderCreate) SetPriority(v int) *OrderCreate {
+	_c.mutation.SetPriority(v)
+	return _c
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_c *OrderCreate) SetNillablePriority(v *int) *OrderCreate {
+	if v != nil {
+		_c.SetPriority(*v)
 	}
 	return _c
 }
@@ -226,13 +236,17 @@ func (_c *OrderCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *OrderCreate) defaults() {
-	if _, ok := _c.mutation.ProducedQuantity(); !ok {
-		v := order.DefaultProducedQuantity
-		_c.mutation.SetProducedQuantity(v)
+	if _, ok := _c.mutation.ActualQuantity(); !ok {
+		v := order.DefaultActualQuantity
+		_c.mutation.SetActualQuantity(v)
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := order.DefaultStatus
 		_c.mutation.SetStatus(v)
+	}
+	if _, ok := _c.mutation.Priority(); !ok {
+		v := order.DefaultPriority
+		_c.mutation.SetPriority(v)
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := order.DefaultCreatedAt()
@@ -258,22 +272,6 @@ func (_c *OrderCreate) check() error {
 			return &ValidationError{Name: "order_number", err: fmt.Errorf(`ent: validator failed for field "Order.order_number": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.ProjectID(); !ok {
-		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Order.project_id"`)}
-	}
-	if _, ok := _c.mutation.CustomerName(); !ok {
-		return &ValidationError{Name: "customer_name", err: errors.New(`ent: missing required field "Order.customer_name"`)}
-	}
-	if v, ok := _c.mutation.CustomerName(); ok {
-		if err := order.CustomerNameValidator(v); err != nil {
-			return &ValidationError{Name: "customer_name", err: fmt.Errorf(`ent: validator failed for field "Order.customer_name": %w`, err)}
-		}
-	}
-	if v, ok := _c.mutation.CustomerCode(); ok {
-		if err := order.CustomerCodeValidator(v); err != nil {
-			return &ValidationError{Name: "customer_code", err: fmt.Errorf(`ent: validator failed for field "Order.customer_code": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.ProductType(); !ok {
 		return &ValidationError{Name: "product_type", err: errors.New(`ent: missing required field "Order.product_type"`)}
 	}
@@ -282,28 +280,25 @@ func (_c *OrderCreate) check() error {
 			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Order.product_type": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.ProductSpec(); !ok {
-		return &ValidationError{Name: "product_spec", err: errors.New(`ent: missing required field "Order.product_spec"`)}
-	}
 	if v, ok := _c.mutation.ProductSpec(); ok {
 		if err := order.ProductSpecValidator(v); err != nil {
 			return &ValidationError{Name: "product_spec", err: fmt.Errorf(`ent: validator failed for field "Order.product_spec": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.OrderQuantity(); !ok {
-		return &ValidationError{Name: "order_quantity", err: errors.New(`ent: missing required field "Order.order_quantity"`)}
+	if _, ok := _c.mutation.TargetQuantity(); !ok {
+		return &ValidationError{Name: "target_quantity", err: errors.New(`ent: missing required field "Order.target_quantity"`)}
 	}
-	if v, ok := _c.mutation.OrderQuantity(); ok {
-		if err := order.OrderQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "order_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.order_quantity": %w`, err)}
+	if v, ok := _c.mutation.TargetQuantity(); ok {
+		if err := order.TargetQuantityValidator(v); err != nil {
+			return &ValidationError{Name: "target_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.target_quantity": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.ProducedQuantity(); !ok {
-		return &ValidationError{Name: "produced_quantity", err: errors.New(`ent: missing required field "Order.produced_quantity"`)}
+	if _, ok := _c.mutation.ActualQuantity(); !ok {
+		return &ValidationError{Name: "actual_quantity", err: errors.New(`ent: missing required field "Order.actual_quantity"`)}
 	}
-	if v, ok := _c.mutation.ProducedQuantity(); ok {
-		if err := order.ProducedQuantityValidator(v); err != nil {
-			return &ValidationError{Name: "produced_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.produced_quantity": %w`, err)}
+	if v, ok := _c.mutation.ActualQuantity(); ok {
+		if err := order.ActualQuantityValidator(v); err != nil {
+			return &ValidationError{Name: "actual_quantity", err: fmt.Errorf(`ent: validator failed for field "Order.actual_quantity": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
@@ -314,14 +309,14 @@ func (_c *OrderCreate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Order.status": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.Priority(); !ok {
+		return &ValidationError{Name: "priority", err: errors.New(`ent: missing required field "Order.priority"`)}
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Order.created_at"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Order.updated_at"`)}
-	}
-	if len(_c.mutation.ProjectIDs()) == 0 {
-		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Order.project"`)}
 	}
 	return nil
 }
@@ -362,14 +357,6 @@ func (_c *OrderCreate) createSpec() (*Order, *sqlgraph.CreateSpec) {
 		_spec.SetField(order.FieldOrderNumber, field.TypeString, value)
 		_node.OrderNumber = value
 	}
-	if value, ok := _c.mutation.CustomerName(); ok {
-		_spec.SetField(order.FieldCustomerName, field.TypeString, value)
-		_node.CustomerName = value
-	}
-	if value, ok := _c.mutation.CustomerCode(); ok {
-		_spec.SetField(order.FieldCustomerCode, field.TypeString, value)
-		_node.CustomerCode = value
-	}
 	if value, ok := _c.mutation.ProductType(); ok {
 		_spec.SetField(order.FieldProductType, field.TypeEnum, value)
 		_node.ProductType = value
@@ -378,17 +365,21 @@ func (_c *OrderCreate) createSpec() (*Order, *sqlgraph.CreateSpec) {
 		_spec.SetField(order.FieldProductSpec, field.TypeString, value)
 		_node.ProductSpec = value
 	}
-	if value, ok := _c.mutation.OrderQuantity(); ok {
-		_spec.SetField(order.FieldOrderQuantity, field.TypeInt, value)
-		_node.OrderQuantity = value
+	if value, ok := _c.mutation.TargetQuantity(); ok {
+		_spec.SetField(order.FieldTargetQuantity, field.TypeInt, value)
+		_node.TargetQuantity = value
 	}
-	if value, ok := _c.mutation.ProducedQuantity(); ok {
-		_spec.SetField(order.FieldProducedQuantity, field.TypeInt, value)
-		_node.ProducedQuantity = value
+	if value, ok := _c.mutation.ActualQuantity(); ok {
+		_spec.SetField(order.FieldActualQuantity, field.TypeInt, value)
+		_node.ActualQuantity = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(order.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Priority(); ok {
+		_spec.SetField(order.FieldPriority, field.TypeInt, value)
+		_node.Priority = value
 	}
 	if value, ok := _c.mutation.DeliveryDate(); ok {
 		_spec.SetField(order.FieldDeliveryDate, field.TypeTime, value)

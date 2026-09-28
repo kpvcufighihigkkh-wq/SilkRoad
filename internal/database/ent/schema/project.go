@@ -24,60 +24,38 @@ func (Project) Fields() []ent.Field {
 			Default(uuid.New).
 			StorageKey("id"),
 
-		// 项目编号（唯一）
-		field.String("project_number").
-			Unique().
-			NotEmpty().
-			MaxLen(50).
-			Comment("项目编号"),
-
 		// 项目名称
 		field.String("project_name").
+			Unique().
 			NotEmpty().
-			MaxLen(200).
+			MaxLen(100).
 			Comment("项目名称"),
 
-		// 产品类型
-		field.Enum("product_type").
-			Values("FDY", "POY", "DTY").
-			Comment("产品类型"),
+		// 描述
+		field.Text("description").
+			Optional().
+			Comment("项目描述"),
 
-		// 产品规格
-		field.String("product_spec").
+		// 客户名称
+		field.String("customer_name").
+			Optional().
 			MaxLen(100).
-			Comment("产品规格"),
+			Comment("客户名称"),
 
 		// 项目状态
 		field.Enum("status").
-			Values("planning", "in_progress", "completed", "cancelled").
-			Default("planning").
+			Values("active", "completed", "archived").
+			Default("active").
 			Comment("项目状态"),
-
-		// 计划数量
-		field.Int("planned_quantity").
-			Optional().
-			NonNegative().
-			Comment("计划生产数量（锭）"),
-
-		// 实际数量
-		field.Int("actual_quantity").
-			Default(0).
-			NonNegative().
-			Comment("实际生产数量（锭）"),
 
 		// 时间范围
 		field.Time("start_date").
 			Optional().
-			Comment("计划开始日期"),
+			Comment("开始日期"),
 
 		field.Time("end_date").
 			Optional().
-			Comment("计划结束日期"),
-
-		// 备注
-		field.Text("notes").
-			Optional().
-			Comment("备注信息"),
+			Comment("结束日期"),
 
 		// 元数据
 		field.Time("created_at").
@@ -103,16 +81,13 @@ func (Project) Edges() []ent.Edge {
 // Indexes of the Project.
 func (Project) Indexes() []ent.Index {
 	return []ent.Index{
-		// 产品类型索引
-		index.Fields("product_type"),
-
 		// 状态索引
 		index.Fields("status"),
 
+		// 客户名称索引
+		index.Fields("customer_name"),
+
 		// 创建时间倒序索引
 		index.Fields("created_at"),
-
-		// 开始日期索引
-		index.Fields("start_date"),
 	}
 }
