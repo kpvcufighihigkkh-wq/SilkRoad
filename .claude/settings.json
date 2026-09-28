@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(ls -la \"F:/worktemp/第二版本程序/Hive/DataBase/nodes7/\" 2>/dev/null)",
+      "Read(//f/worktemp/第二版本程序/Hive/DataBase/nodes7/**)",
+      "Bash(# Check DBeaver directory *)",
+      "Read(//f/worktemp/第二版本程序/Hive/DataBase/DBeaver/**)",
+      "Bash(# Read more table structures: movements, doffings, spinnings *)",
+      "Read(//f/worktemp/第二版本程序/Hive/DataBase/**)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {
