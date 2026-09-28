@@ -29,11 +29,227 @@ IGH 系统包含两类前端应用：
 5. ✅ **性能优化** - 快速响应，流畅体验
 
 **边端界面特殊要求（工业场景）：**
-1. ✅ **大按钮** - 适合触摸屏操作（最小 48px × 48px）
+1. ✅ **大按钮** - 适合触摸屏操作（详见 § 1.3 按钮尺寸规范）
 2. ✅ **高对比度** - 适应车间光照条件
 3. ✅ **简化流程** - 减少点击次数，单任务聚焦
 4. ✅ **实时反馈** - 操作即时响应，避免等待焦虑
 5. ✅ **离线提示** - 网络状态明确显示
+
+### 1.3 按钮尺寸规范
+
+基于工业触摸屏最佳实践和人机工程学（WCAG 2.1 + Material Design）：
+
+**标准尺寸体系：**
+
+| 场景 | 尺寸 | 适用范围 | 依据 |
+|------|------|----------|------|
+| **最小触摸目标** | 44px × 44px | 任何可点击元素 | W3C WCAG 2.1 / Apple HIG |
+| **推荐触摸目标** | 48px × 48px | 通用标准 | Google Material Design |
+| **舒适触摸目标** | 56px × 56px | 高频操作 | 人机工程学研究 |
+
+**边端工业触摸屏（考虑戴手套操作）：**
+
+| 按钮类型 | 尺寸 | 应用场景 | 示例 |
+|----------|------|----------|------|
+| **主要操作** | 80px × 60px | 高频核心操作 | "确认落纱"、"提交质检"、"封装托盘" |
+| **扫码按钮** | 80px × 80px | 扫码输入 | "扫描丝锭二维码"、"扫描托盘码" |
+| **次要操作** | 64px × 48px | 中频辅助操作 | "取消"、"上一步"、"返回" |
+| **数字键盘** | 72px × 56px | 数字输入 | 0-9 数字按钮 |
+| **小型按钮** | 48px × 48px | 低频操作 | 编辑、删除图标按钮 |
+| **紧急操作** | 120px × 80px | 安全关键操作 | "急停"、"报警确认" |
+| **列表选择项** | 最小 80px 高度 | 触摸选择 | 批次列表、机台选择卡片 |
+
+**管理后台（鼠标/触摸板操作）：**
+
+| 按钮类型 | 尺寸 | 应用场景 | 示例 |
+|----------|------|----------|------|
+| **大型按钮** | 40px 高度 | 主要操作 | "新建订单"、"创建批次"、"导出报表" |
+| **标准按钮** | 32px 高度 | 常规操作 | "查看"、"编辑"、"保存" (Ant Design 默认) |
+| **小型按钮** | 24px 高度 | 表格内操作 | 操作列的"详情"、"删除"链接 |
+| **图标按钮** | 32px × 32px | 工具栏图标 | 刷新、设置、搜索图标 |
+
+**间距规范：**
+
+```yaml
+按钮间距:
+  水平间距: 12px (边端), 8px (管理后台)
+  垂直间距: 16px (边端), 12px (管理后台)
+  按钮组内间距: 8px
+
+按钮内边距:
+  边端主按钮: padding: 12px 20px
+  边端次按钮: padding: 8px 16px
+  管理后台: padding: 4px 15px (Ant Design 默认)
+
+圆角:
+  边端: border-radius: 8px (大圆角，易识别)
+  管理后台: border-radius: 2px (Ant Design 默认)
+```
+
+**颜色规范（工业高对比度）：**
+
+```yaml
+主要操作 (Primary):
+  背景: #1890ff (蓝色)
+  文字: #ffffff
+  适用: 确认、提交、开始
+
+危险操作 (Danger):
+  背景: #ff4d4f (红色)
+  文字: #ffffff
+  适用: 删除、取消、急停
+
+成功状态 (Success):
+  背景: #52c41a (绿色)
+  文字: #ffffff
+  适用: 完成、通过
+
+次要操作 (Default):
+  背景: #ffffff
+  边框: #d9d9d9
+  文字: #000000d9
+  适用: 取消、返回
+
+禁用状态 (Disabled):
+  背景: #f5f5f5
+  文字: #00000040 (40%透明度)
+  光标: not-allowed
+```
+
+**CSS 变量定义：**
+
+```css
+/* styles/variables.css */
+:root {
+  /* 边端按钮尺寸 */
+  --btn-edge-primary-height: 60px;
+  --btn-edge-primary-min-width: 80px;
+  --btn-edge-secondary-height: 48px;
+  --btn-edge-secondary-min-width: 64px;
+  --btn-edge-icon-size: 48px;
+  --btn-edge-emergency-height: 80px;
+  --btn-edge-emergency-min-width: 120px;
+  --btn-edge-scan-size: 80px;  /* 正方形扫码按钮 */
+  
+  /* 管理后台按钮尺寸 */
+  --btn-admin-large-height: 40px;
+  --btn-admin-default-height: 32px;
+  --btn-admin-small-height: 24px;
+  --btn-admin-icon-size: 32px;
+  
+  /* 间距 */
+  --btn-spacing-edge-h: 12px;
+  --btn-spacing-edge-v: 16px;
+  --btn-spacing-admin-h: 8px;
+  --btn-spacing-admin-v: 12px;
+  
+  /* 圆角 */
+  --btn-radius-edge: 8px;
+  --btn-radius-admin: 2px;
+  
+  /* 颜色 */
+  --color-primary: #1890ff;
+  --color-danger: #ff4d4f;
+  --color-success: #52c41a;
+  --color-disabled-bg: #f5f5f5;
+  --color-disabled-text: #00000040;
+}
+```
+
+**React 组件示例：**
+
+```tsx
+// components/EdgeButton.tsx
+interface EdgeButtonProps {
+  type?: 'primary' | 'secondary' | 'emergency' | 'scan';
+  onClick?: () => void;
+  disabled?: boolean;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+export function EdgeButton({ 
+  type = 'primary',
+  icon,
+  ...props 
+}: EdgeButtonProps) {
+  return (
+    <button 
+      className={`edge-btn edge-btn-${type}`}
+      {...props}
+    >
+      {icon && <span className="edge-btn-icon">{icon}</span>}
+      <span className="edge-btn-text">{props.children}</span>
+    </button>
+  );
+}
+```
+
+```css
+/* styles/edge-button.css */
+.edge-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: var(--btn-radius-edge);
+  user-select: none;
+  touch-action: manipulation;  /* 防止双击缩放 */
+}
+
+.edge-btn-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+  height: var(--btn-edge-primary-height);
+  min-width: var(--btn-edge-primary-min-width);
+  padding: 0 20px;
+}
+
+.edge-btn-primary:hover:not(:disabled) {
+  background: #40a9ff;
+}
+
+.edge-btn-primary:active:not(:disabled) {
+  background: #096dd9;
+  transform: scale(0.98);
+}
+
+.edge-btn-scan {
+  background: var(--color-primary);
+  color: #ffffff;
+  width: var(--btn-edge-scan-size);
+  height: var(--btn-edge-scan-size);
+  padding: 0;
+  flex-direction: column;
+  font-size: 14px;
+}
+
+.edge-btn-emergency {
+  background: var(--color-danger);
+  color: #ffffff;
+  height: var(--btn-edge-emergency-height);
+  min-width: var(--btn-edge-emergency-min-width);
+  padding: 0 24px;
+  font-size: 20px;
+  font-weight: 600;
+  box-shadow: 0 4px 8px rgba(255, 77, 79, 0.3);
+}
+
+.edge-btn:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+}
+
+.edge-btn-icon {
+  font-size: 24px;
+}
+```
 
 ### 1.3 技术栈选型
 

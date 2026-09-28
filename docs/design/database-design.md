@@ -864,10 +864,15 @@ CREATE TABLE product_configs (
   position_count INT NOT NULL CHECK (position_count IN (24, 96)),
   
   -- 等级体系配置（JSON）
+  -- FDY/POY: ["AA", "B", "C", "D"]
+  -- DTY: ["AA", "AA1", "AA2", "A1", "A"]
   grade_system JSONB NOT NULL DEFAULT '{
     "dimensions": ["vision", "weight", "sorting", "knitting", "final"],
     "grades": ["AA", "B", "C", "D"],
-    "rules": {}
+    "rules": {
+      "calculation": "min",
+      "description": "最终等级取5个维度中的最低等级"
+    }
   }'::jsonb,
   
   -- 追踪路径配置
@@ -2347,11 +2352,239 @@ INSERT INTO cleanup_policies (table_name, retention_days) VALUES
 | **密码哈希** | MD5 | bcrypt/argon2 |
 | **数据保留** | 无限增长（教训） | 可配置自动清理 |
 
-### 12.3 下一步工作
+### 12.3 质检等级配置示例
+
+**初始化产品线等级体系：**
+
+```sql
+-- FDY产品线配置
+INSERT INTO product_configs (
+  project_id, 
+  product_type, 
+  position_count,
+  grade_system,
+  tracking_mode
+) VALUES (
+  '550e8400-e29b-41d4-a716-446655440000',  -- 默认项目
+  'FDY',
+  24,
+  '{
+    "dimensions": ["vision", "weight", "sorting", "knitting", "final"],
+    "grades": ["AA", "B", "C", "D"],
+    "rules": {
+      "calculation": "min",
+      "description": "最终等级取5个维度中的最低等级",
+      "grade_priority": {"AA": 1, "B": 2, "C": 3, "D": 4}
+    }
+  }'::jsonb,
+  'doffing_indirect'
+);
+
+-- POY产品线配置（与FDY相同等级体系）
+INSERT INTO product_configs (
+  project_id, 
+  product_type, 
+  position_count,
+  grade_system,
+  tracking_mode
+) VALUES (
+  '550e8400-e29b-41d4-a716-446655440000',
+  'POY',
+  24,
+  '{
+    "dimensions": ["vision", "weight", "sorting", "knitting", "final"],
+    "grades": ["AA", "B", "C", "D"],
+    "rules": {
+      "calculation": "min",
+      "description": "最终等级取5个维度中的最低等级",
+      "grade_priority": {"AA": 1, "B": 2, "C": 3, "D": 4}
+    }
+  }'::jsonb,
+  'doffing_indirect'
+);
+
+-- DTY产品线配置（独立等级体系）
+INSERT INTO product_configs (
+  project_id, 
+  product_type, 
+  position_count,
+  grade_system,
+  tracking_mode,
+  packing_config
+) VALUES (
+  '550e8400-e29b-41d4-a716-446655440000',
+  'DTY',
+  96,
+  '{
+    "dimensions": ["vision", "weight", "sorting", "knitting", "final"],
+    "grades": ["AA", "AA1", "AA2", "A1", "A"],
+    "rules": {
+      "calculation": "min",
+      "description": "最终等级取5个维度中的最低等级",
+      "grade_priority": {"AA": 1, "AA1": 2, "AA2": 3, "A1": 4, "A": 5}
+    }
+  }'::jsonb,
+  'module_direct',
+  '{
+    "type": "carton",
+    "pallet_capacity": 100,
+    "carton_capacity": 12
+  }'::jsonb
+);
+```
+
+**等级验证函数（PostgreSQL）：**
+
+```sql
+-- 验证质检等级是否合法
+CREATE OR REPLACE FUNCTION validate_bobbin_grade()
+RETURNS TRIGGER AS $$
+DECLARE
+  allowed_grades TEXT[];
+  product_type_val TEXT;
+BEGIN
+  -- 查询该丝锭所属批次的产品类型
+  SELECT l.product_type INTO product_type_val
+  FROM bobbins b
+  JOIN lots l ON l.id = b.lot_id
+  WHERE b.id = NEW.bobbin_id;
+  
+  -- 从产品配置中提取允许的等级
+  SELECT ARRAY(
+    SELECT jsonb_array_elements_text(pc.grade_system->'grades')
+    FROM product_configs pc
+    WHERE pc.product_type = product_type_val
+    LIMIT 1
+  ) INTO allowed_grades;
+  
+  -- 验证等级是否合法
+  IF NOT (NEW.grade_value = ANY(allowed_grades)) THEN
+    RAISE EXCEPTION '非法等级 "%" 不适用于产品类型 "%"，允许的等级: %', 
+      NEW.grade_value, product_type_val, allowed_grades;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 创建触发器
+CREATE TRIGGER validate_grade_before_insert
+  BEFORE INSERT OR UPDATE ON bobbin_grades
+  FOR EACH ROW
+  EXECUTE FUNCTION validate_bobbin_grade();
+```
+
+**等级验证示例（Go服务层）：**
+
+```go
+// internal/domain/grade_validator.go
+package domain
+
+import (
+	"fmt"
+)
+
+// GradeConfig 等级配置
+type GradeConfig struct {
+	Dimensions    []string          `json:"dimensions"`
+	Grades        []string          `json:"grades"`
+	Rules         map[string]any    `json:"rules"`
+	GradePriority map[string]int    `json:"grade_priority"`
+}
+
+// GradeValidator 等级验证器
+type GradeValidator struct {
+	configs map[ProductType]GradeConfig
+}
+
+// NewGradeValidator 创建验证器
+func NewGradeValidator(configs map[ProductType]GradeConfig) *GradeValidator {
+	return &GradeValidator{configs: configs}
+}
+
+// ValidateGrade 验证等级是否合法
+func (v *GradeValidator) ValidateGrade(productType ProductType, grade string) error {
+	config, ok := v.configs[productType]
+	if !ok {
+		return fmt.Errorf("未找到产品类型 %s 的等级配置", productType)
+	}
+	
+	for _, allowedGrade := range config.Grades {
+		if grade == allowedGrade {
+			return nil
+		}
+	}
+	
+	return fmt.Errorf("非法等级 %s 不适用于产品类型 %s，允许的等级: %v", 
+		grade, productType, config.Grades)
+}
+
+// CalculateFinalGrade 计算最终等级（取最低）
+func (v *GradeValidator) CalculateFinalGrade(productType ProductType, grades []string) (string, error) {
+	config, ok := v.configs[productType]
+	if !ok {
+		return "", fmt.Errorf("未找到产品类型 %s 的等级配置", productType)
+	}
+	
+	if len(grades) == 0 {
+		return "", fmt.Errorf("等级列表为空")
+	}
+	
+	// 找出优先级最高（数值最大）的等级
+	finalGrade := grades[0]
+	maxPriority := config.GradePriority[finalGrade]
+	
+	for _, grade := range grades[1:] {
+		priority := config.GradePriority[grade]
+		if priority > maxPriority {
+			maxPriority = priority
+			finalGrade = grade
+		}
+	}
+	
+	return finalGrade, nil
+}
+```
+
+**使用示例：**
+
+```go
+// internal/service/inspection_service.go
+func (s *InspectionService) SubmitInspection(ctx context.Context, req *pb.SubmitInspectionRequest) error {
+	// 1. 查询丝锭和产品类型
+	bobbin, err := s.bobbinRepo.FindByID(ctx, req.BobbinId)
+	if err != nil {
+		return err
+	}
+	
+	lot, err := s.lotRepo.FindByID(ctx, bobbin.LotID)
+	if err != nil {
+		return err
+	}
+	
+	// 2. 验证等级是否合法
+	if err := s.gradeValidator.ValidateGrade(lot.ProductType, req.Grade); err != nil {
+		return status.Errorf(codes.InvalidArgument, "等级验证失败: %v", err)
+	}
+	
+	// 3. 保存质检记录
+	grade := &domain.BobbinGrade{
+		BobbinID:   req.BobbinId,
+		Dimension:  req.Dimension,
+		GradeValue: req.Grade,
+		// ...
+	}
+	
+	return s.gradeRepo.Create(ctx, grade)
+}
+```
+
+### 12.4 下一步工作
 
 1. **ent Schema定义** - 将本文档的表结构转换为ent Schema代码
 2. **边端迁移文件** - 编写golang-migrate的SQL迁移文件
-3. **初始化脚本** - 准备seed data和测试数据
+3. **初始化脚本** - 准备seed data和测试数据（包含上述等级配置）
+4. **等级验证服务** - 实现GradeValidator并注入到质检服务中
 4. **性能测试** - 验证索引策略和查询性能
 5. **API设计** - 基于数据模型设计RESTful/gRPC接口
 
