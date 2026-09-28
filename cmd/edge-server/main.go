@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +14,8 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/server"
 
 	"entgo.io/ent/dialect"
-	_ "github.com/mattn/go-sqlite3"
+	entsql "entgo.io/ent/dialect/sql"
+	_ "modernc.org/sqlite"
 )
 
 func main() {
@@ -46,11 +48,19 @@ func main() {
 	}
 
 	// 连接SQLite数据库
-	dsn := fmt.Sprintf("file:%s?_fk=1", dbPath)
-	client, err := ent.Open(dialect.SQLite, dsn)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		log.Fatalf("❌ Failed opening connection to sqlite: %v", err)
 	}
+
+	// 启用外键约束
+	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		log.Fatalf("❌ Failed to enable foreign keys: %v", err)
+	}
+
+	// 创建Ent客户端
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := ent.NewClient(ent.Driver(drv))
 	defer client.Close()
 
 	log.Println("✅ Database connected:", dbPath)
