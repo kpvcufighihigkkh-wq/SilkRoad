@@ -22,7 +22,7 @@
 |------|------|------|
 | 引用已删除实体 | `internal/service/order.go`、`api/center/v1/order.go` | `Order` 实体已从 Schema 移除，代码无法编译 |
 | 字段不匹配 | `internal/service/lot.go:26,52` | 仍使用 `order_id`，新 Schema 已改为 `edge_id` + `plc_lot_number` |
-| 缺少新实体服务 | — | `Barrel`/`Module`/`Edge`/`Grade`/`Pallet`/`SpinningLine`/`Carton`/`ProductConfig`/`BobbingGrade` 无对应 Service |
+| 缺少新实体服务 | — | `Barrel`/`Module`/`Edge`/`Grade`/`Pallet`/`SpinningLine`/`Carton`/`ProductConfig`/`BobbinGrade` 无对应 Service |
 | 同步未覆盖新表 | `internal/sync/center/handler.go:71-80` | `handleCreate` 仅支持 `lots`、`bobbins` |
 
 ### 1.2 目标
@@ -89,7 +89,7 @@ Lot (批次)
 
 **当前实现：** 所有 Schema 均无同步相关字段。
 
-**需要新增到** `Lot`、`Barrel`、`Bobbin`、`Doffing` **四个实体**（均为 Edge 端产生数据）：
+**需要新增到** `Lot`、`Barrel`、`Bobbin`、`Doffing`、`Module`、`Pallet`、`Carton` **七个实体**：
 
 ```go
 field.Enum("sync_status").
@@ -108,9 +108,21 @@ field.Int("sync_retry_count").
 ```
 
 **设计说明：**
-- 有同步字段的实体 = 数据在 Edge 端产生、需要上传到 Center 的实体。
-- `Edge`/`Grade`/`SpinningLine`/`ProductConfig` 由 Center 下发到 Edge，方向相反，不需要同步字段。
-- `Carton`/`Pallet`/`Module` 是否需要同步字段，取决于它们由哪端创建 —— **见 §9 Q1**。
+
+有同步字段的实体 = **在 Edge 端产生、需要上传到 Center 的实体**。依据 V2 源码分析，产生位置如下：
+
+| 实体 | 产生位置 | 依据 |
+|------|---------|------|
+| `Lot` / `Doffing` / `Barrel` / `Bobbin` | 纺丝线设备层 | 落纱流程 |
+| `Module`（吊车） | 物流设备层 | `05-device-automation.md:600` — 设备自动化轮询 `modules` 并推送 ERP，该表在边缘侧先行存在 |
+| `Pallet`（栈板） | 包装设备层（码垛机） | `03-o17003-logistics-quality.md:169` — 码垛流程 `INSERT INTO pallets` |
+| `Carton`（纸箱） | 包装设备层 | V2 `dty_boxes` / `box_bobbins` 装箱流程 |
+
+`Edge` / `Grade` / `SpinningLine` / `ProductConfig` 由 Center 下发到 Edge，方向相反，**不需要**同步字段。
+
+**已知缺口：** `Module` / `Pallet` / `Carton` 三个实体**没有 `edge_id` 字段**（对比 `Lot.edge_id`、`SpinningLine.edge_id`）。这意味着无法直接判定某条记录由哪个 Edge 实例产生。由于物理上包装区与纺丝线可能属于不同 Edge 实例，此字段在 Phase 1 中需要一并补上，否则 Center 无法按设备归属做统计。**这是 Phase 1 的新增范围。**
+
+**Center 侧冗余：** 由于 Center 与 Edge 共用同一套 Ent Schema，Center 库中的对应表也会有 `sync_status` 列，默认为 `pending`。这不会造成问题 —— 上传任务只在 Edge 端运行，Center 侧的该列是惰性的。
 
 ---
 
@@ -126,7 +138,7 @@ internal/service/
 ├── doffing.go         # 落纱记录（重构）
 ├── barrel.go          # 落纱桶管理
 ├── bobbin.go          # 丝锭管理（重构）
-├── bobbing_grade.go   # 丝锭等级历史
+├── bobbin_grade.go    # 丝饼质检记录（一饼一条）
 ├── pallet.go          # 托盘管理
 ├── module.go          # 吊车管理
 ├── carton.go          # 纸箱管理
@@ -278,7 +290,9 @@ GET    /v1/bobbins                       丝饼列表（全局）
 GET    /v1/bobbins/:id                   丝饼详情
 PUT    /v1/bobbins/:id/grade             更新等级
 
-GET    /v1/bobbing-grades                丝饼等级历史
+GET    /v1/bobbin-grades                 丝饼质检记录列表
+POST   /v1/bobbin-grades                 提交质检结果
+GET    /v1/bobbin-grades/:id             质检详情
 ```
 
 **仓储管理**
@@ -347,12 +361,16 @@ POST   /v1/sync/refresh                  拉取基础数据
 |------|--------|------|------|
 | Edge 设备 | 完整 CRUD | 只读自身 | Edge 上报心跳，Center 管理注册 |
 | SpinningLine | 完整 CRUD | 只读 | Center 下发 |
-| Lot | 完整 CRUD | 创建/查询本地 | Edge 创建，上传至 Center |
+| Lot | 只读汇总 | 创建/查询本地 | Edge 创建，上传至 Center |
 | Doffing | 只读汇总 | **核心写操作** | Edge 产生，Center 汇总展示 |
 | Barrel | 只读查询 | 创建/封桶 | Edge 产生 |
 | Bobbin | 只读 + 改等级 | 创建/查询 | Edge 产生，Center 质检改等级 |
-| Pallet / Module / Carton | 完整 CRUD | 只读 | **待确认创建端**（§9） |
+| Module | 只读查询 | 创建/更新位置 | **Edge 产生**（物流设备），Center 汇总 |
+| Pallet | 只读查询 | 创建/封板/打印标签 | **Edge 产生**（码垛机），Center 汇总 |
+| Carton | 只读查询 | 创建/装箱 | **Edge 产生**（包装设备），Center 汇总 |
 | Grade / ProductConfig | 完整 CRUD | 只读 | Center 下发基础数据 |
+
+**注意：** `Module` / `Pallet` / `Carton` 的**写操作在 Edge 端**，Center 仅提供查询与统计。这与 §3.2 中它们需要同步字段是一致的。同时，这三个资源的 Center 端 API 应设计为**只读接口**，写接口在 Edge 端 —— 若后续确认存在管理端手工录入场景（如新增一个吊车编号），再单独开放 Center 写接口。
 
 ---
 
@@ -429,10 +447,15 @@ func (h *UploadHandler) handleCreate(ctx, entry) error {
     case "barrels":  return h.createBarrel(ctx, entry)   // 新增
     case "bobbins":  return h.createBobbin(ctx, entry)
     case "doffings": return h.createDoffing(ctx, entry)  // 新增
+    case "modules":  return h.createModule(ctx, entry)   // 新增
+    case "pallets":  return h.createPallet(ctx, entry)   // 新增
+    case "cartons":  return h.createCarton(ctx, entry)   // 新增
     default:         return fmt.Errorf("unknown table: %s", entry.Table)
     }
 }
 ```
+
+**`handleUpdate` 同样需要扩展** —— `Module` 状态随物流流转变化（`loading`→`transporting`→`sorting`→`warehouse`→`idle`），`Pallet`/`Carton` 状态也随包装进度变化，这些变更必须能增量上传，否则 Center 只能看到创建时的状态快照。
 
 ---
 
@@ -496,35 +519,51 @@ func mapServiceError(err error) (int, int) {
 
 ---
 
-## 九、待确认事项
+## 九、已解决事项
 
-以下问题在设计中**尚未确定**，需要在实施计划前明确：
+以下问题在文档评审过程中已通过源码分析确认：
 
 **Q1. `Pallet` / `Module` / `Carton` 由哪端创建？**
 
-这三个实体在 API 表中暂标为「Center 完整 CRUD，Edge 只读」，但依据 V2 业务分析，`modules`（吊车）是物流载具、`pallets`（栈板）由码垛机生成 —— 若它们实际在 Edge 产生，则需要同步字段与上传逻辑，且 API 归属需要反转。
+**已确认：三者均由 Edge 端（物理设备层）产生。** 证据见 §3.2 表格。因此：
+
+- 需添加 `sync_status` 等同步字段（同步实体从 4 个增至 7 个）
+- 需添加 `edge_id` 字段（当前这三个实体缺失，见 §3.2「已知缺口」）
+- API 归属反转：写操作在 Edge，Center 只读
+- `handleCreate` 与 `handleUpdate` 均需扩展
 
 **Q2. `sync_status` 字段的迁移策略？**
 
-新增字段需要二次迁移。当前两套数据库均为空表（除 `SpinningLines` 4 条、`Users` 4 条），可直接迁移。但需确认是否保留现有 8 条数据。
+两套数据库当前状态：`SpinningLines` 4 条、`Users` 4 条，其余均为空表。新增字段全部带默认值（`sync_status` 默认 `pending`、`sync_retry_count` 默认 `0`），属于**纯增量迁移**，不影响现有数据。无需数据保留决策。
 
-**Q3. `BobbingGrade`（丝饼等级历史）的业务语义？**
+**Q3. `BobbinGrade` 的业务语义？**
 
-Schema 中存在该实体，但尚未明确：是等级变更的审计日志，还是每个丝饼可对应多个等级评定（人工 + 机器）？
+**已确认为「丝饼质检记录」，非等级变更历史。** 依据：
+
+- `bobbingrade.go:114-117` — `bobbin_id` 带 **Unique 索引**，即一个丝饼仅一条记录
+- 字段包含 `inspection_details`（外观/重量/断头）、`scores`、`final_score`、`is_qualified`、`defect_reason` —— 典型质检表单结构
+- `grade` 字段为质检结论（A/B/C/D）
+
+因此 Service 命名应为 `BobbinGradeService`（单数，一饼一记录），方法语义为「提交质检结果」「查询质检详情」，而非「追加等级历史」。
+
+**⚠️ 遗留问题：** `Bobbin` 自身也有 `grade` 字段（`bobbin.go:70-73`），与 `BobbinGrade.grade` 存在冗余。需明确 `Bobbin.grade` 是否为 `BobbinGrade` 的冗余快照（便于列表查询免 JOIN）。**建议保留冗余**，由质检提交时同步写入，并在设计文档中标注该字段为派生字段。
 
 ---
 
 ## 十、实施顺序
 
 ```
-Phase 0  删除 Order 相关代码，恢复编译          ← 最小风险，先做
-Phase 1  Schema 调整（Barrel 关系 + 同步字段）
-         + 重新生成 Ent 代码 + 二次迁移
-Phase 2  重建核心 Service：Edge / SpinningLine / Lot / Grade
-Phase 3  重建生产 Service：Doffing / Barrel / Bobbin / BobbingGrade
-Phase 4  重建仓储 Service：Pallet / Module / Carton / ProductConfig
-Phase 5  注册路由，接通 API 层
-Phase 6  扩展同步机制（handler + uploader + scheduler）
+Phase 0  删除 Order 相关代码，恢复编译                    ← 最小风险，先做
+Phase 1  Schema 调整：
+         - Barrel 关系（删除 doffing_id）
+         - 七个实体添加同步字段（Lot/Barrel/Bobbin/Doffing/Module/Pallet/Carton）
+         - Module/Pallet/Carton 添加 edge_id
+         - 重新生成 Ent 代码 + 二次迁移
+Phase 2  重建核心 Service：Edge / SpinningLine / Lot / Grade / ProductConfig
+Phase 3  重建生产 Service：Doffing / Barrel / Bobbin / BobbinGrade
+Phase 4  重建包装物流 Service：Pallet / Module / Carton
+Phase 5  注册路由，接通 API 层（Center 只读 + Edge 读写）
+Phase 6  扩展同步机制（handler create/update + uploader + scheduler）
 Phase 7  测试补齐（单元 + 集成 + 同步）
 ```
 
@@ -540,3 +579,5 @@ Phase 7  测试补齐（单元 + 集成 + 同步）
 | 同步幂等性实现有误 | Center 数据重复 | 上传前按 UUID 查重；集成测试覆盖 |
 | Edge 离线时间过长 | 积压数据量过大 | 批量上传每批 100 条；重试上限 5 次后标记 failed 供人工处理 |
 | 事务边界遗漏 | 数据不一致 | 跨实体写操作统一走事务；测试覆盖回滚路径 |
+| `Module/Pallet/Carton` 缺 `edge_id` 导致归属不明 | Center 无法按设备统计 | Phase 1 一并补字段；Edge 端写入时自动填充自身 EdgeID |
+| `Bobbin.grade` 与 `BobbinGrade.grade` 冗余不同步 | 查询结果与实际质检不符 | 质检提交时在同一事务内更新两处 |
