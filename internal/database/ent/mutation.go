@@ -3136,6 +3136,7 @@ type CartonMutation struct {
 	typ                 string
 	id                  *uuid.UUID
 	carton_number       *string
+	edge_id             *uuid.UUID
 	lot_id              *uuid.UUID
 	bobbin_count        *int
 	addbobbin_count     *int
@@ -3298,6 +3299,55 @@ func (m *CartonMutation) OldCartonNumber(ctx context.Context) (v string, err err
 // ResetCartonNumber resets all changes to the "carton_number" field.
 func (m *CartonMutation) ResetCartonNumber() {
 	m.carton_number = nil
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (m *CartonMutation) SetEdgeID(u uuid.UUID) {
+	m.edge_id = &u
+}
+
+// EdgeID returns the value of the "edge_id" field in the mutation.
+func (m *CartonMutation) EdgeID() (r uuid.UUID, exists bool) {
+	v := m.edge_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEdgeID returns the old "edge_id" field's value of the Carton entity.
+// If the Carton object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CartonMutation) OldEdgeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEdgeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEdgeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEdgeID: %w", err)
+	}
+	return oldValue.EdgeID, nil
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (m *CartonMutation) ClearEdgeID() {
+	m.edge_id = nil
+	m.clearedFields[carton.FieldEdgeID] = struct{}{}
+}
+
+// EdgeIDCleared returns if the "edge_id" field was cleared in this mutation.
+func (m *CartonMutation) EdgeIDCleared() bool {
+	_, ok := m.clearedFields[carton.FieldEdgeID]
+	return ok
+}
+
+// ResetEdgeID resets all changes to the "edge_id" field.
+func (m *CartonMutation) ResetEdgeID() {
+	m.edge_id = nil
+	delete(m.clearedFields, carton.FieldEdgeID)
 }
 
 // SetLotID sets the "lot_id" field.
@@ -3946,9 +3996,12 @@ func (m *CartonMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CartonMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 14)
 	if m.carton_number != nil {
 		fields = append(fields, carton.FieldCartonNumber)
+	}
+	if m.edge_id != nil {
+		fields = append(fields, carton.FieldEdgeID)
 	}
 	if m.lot_id != nil {
 		fields = append(fields, carton.FieldLotID)
@@ -3996,6 +4049,8 @@ func (m *CartonMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case carton.FieldCartonNumber:
 		return m.CartonNumber()
+	case carton.FieldEdgeID:
+		return m.EdgeID()
 	case carton.FieldLotID:
 		return m.LotID()
 	case carton.FieldBobbinCount:
@@ -4031,6 +4086,8 @@ func (m *CartonMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	switch name {
 	case carton.FieldCartonNumber:
 		return m.OldCartonNumber(ctx)
+	case carton.FieldEdgeID:
+		return m.OldEdgeID(ctx)
 	case carton.FieldLotID:
 		return m.OldLotID(ctx)
 	case carton.FieldBobbinCount:
@@ -4070,6 +4127,13 @@ func (m *CartonMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCartonNumber(v)
+		return nil
+	case carton.FieldEdgeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEdgeID(v)
 		return nil
 	case carton.FieldLotID:
 		v, ok := value.(uuid.UUID)
@@ -4224,6 +4288,9 @@ func (m *CartonMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *CartonMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(carton.FieldEdgeID) {
+		fields = append(fields, carton.FieldEdgeID)
+	}
 	if m.FieldCleared(carton.FieldLotID) {
 		fields = append(fields, carton.FieldLotID)
 	}
@@ -4253,6 +4320,9 @@ func (m *CartonMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *CartonMutation) ClearField(name string) error {
 	switch name {
+	case carton.FieldEdgeID:
+		m.ClearEdgeID()
+		return nil
 	case carton.FieldLotID:
 		m.ClearLotID()
 		return nil
@@ -4278,6 +4348,9 @@ func (m *CartonMutation) ResetField(name string) error {
 	switch name {
 	case carton.FieldCartonNumber:
 		m.ResetCartonNumber()
+		return nil
+	case carton.FieldEdgeID:
+		m.ResetEdgeID()
 		return nil
 	case carton.FieldLotID:
 		m.ResetLotID()
@@ -9527,6 +9600,7 @@ type ModuleMutation struct {
 	typ                 string
 	id                  *uuid.UUID
 	module_number       *string
+	edge_id             *uuid.UUID
 	barrel1_id          *uuid.UUID
 	barrel2_id          *uuid.UUID
 	status              *module.Status
@@ -9682,6 +9756,55 @@ func (m *ModuleMutation) OldModuleNumber(ctx context.Context) (v string, err err
 // ResetModuleNumber resets all changes to the "module_number" field.
 func (m *ModuleMutation) ResetModuleNumber() {
 	m.module_number = nil
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (m *ModuleMutation) SetEdgeID(u uuid.UUID) {
+	m.edge_id = &u
+}
+
+// EdgeID returns the value of the "edge_id" field in the mutation.
+func (m *ModuleMutation) EdgeID() (r uuid.UUID, exists bool) {
+	v := m.edge_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEdgeID returns the old "edge_id" field's value of the Module entity.
+// If the Module object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleMutation) OldEdgeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEdgeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEdgeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEdgeID: %w", err)
+	}
+	return oldValue.EdgeID, nil
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (m *ModuleMutation) ClearEdgeID() {
+	m.edge_id = nil
+	m.clearedFields[module.FieldEdgeID] = struct{}{}
+}
+
+// EdgeIDCleared returns if the "edge_id" field was cleared in this mutation.
+func (m *ModuleMutation) EdgeIDCleared() bool {
+	_, ok := m.clearedFields[module.FieldEdgeID]
+	return ok
+}
+
+// ResetEdgeID resets all changes to the "edge_id" field.
+func (m *ModuleMutation) ResetEdgeID() {
+	m.edge_id = nil
+	delete(m.clearedFields, module.FieldEdgeID)
 }
 
 // SetBarrel1ID sets the "barrel1_id" field.
@@ -10163,9 +10286,12 @@ func (m *ModuleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ModuleMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.module_number != nil {
 		fields = append(fields, module.FieldModuleNumber)
+	}
+	if m.edge_id != nil {
+		fields = append(fields, module.FieldEdgeID)
 	}
 	if m.barrel1_id != nil {
 		fields = append(fields, module.FieldBarrel1ID)
@@ -10207,6 +10333,8 @@ func (m *ModuleMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case module.FieldModuleNumber:
 		return m.ModuleNumber()
+	case module.FieldEdgeID:
+		return m.EdgeID()
 	case module.FieldBarrel1ID:
 		return m.Barrel1ID()
 	case module.FieldBarrel2ID:
@@ -10238,6 +10366,8 @@ func (m *ModuleMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	switch name {
 	case module.FieldModuleNumber:
 		return m.OldModuleNumber(ctx)
+	case module.FieldEdgeID:
+		return m.OldEdgeID(ctx)
 	case module.FieldBarrel1ID:
 		return m.OldBarrel1ID(ctx)
 	case module.FieldBarrel2ID:
@@ -10273,6 +10403,13 @@ func (m *ModuleMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModuleNumber(v)
+		return nil
+	case module.FieldEdgeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEdgeID(v)
 		return nil
 	case module.FieldBarrel1ID:
 		v, ok := value.(uuid.UUID)
@@ -10389,6 +10526,9 @@ func (m *ModuleMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ModuleMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(module.FieldEdgeID) {
+		fields = append(fields, module.FieldEdgeID)
+	}
 	if m.FieldCleared(module.FieldBarrel1ID) {
 		fields = append(fields, module.FieldBarrel1ID)
 	}
@@ -10418,6 +10558,9 @@ func (m *ModuleMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ModuleMutation) ClearField(name string) error {
 	switch name {
+	case module.FieldEdgeID:
+		m.ClearEdgeID()
+		return nil
 	case module.FieldBarrel1ID:
 		m.ClearBarrel1ID()
 		return nil
@@ -10443,6 +10586,9 @@ func (m *ModuleMutation) ResetField(name string) error {
 	switch name {
 	case module.FieldModuleNumber:
 		m.ResetModuleNumber()
+		return nil
+	case module.FieldEdgeID:
+		m.ResetEdgeID()
 		return nil
 	case module.FieldBarrel1ID:
 		m.ResetBarrel1ID()
@@ -10533,6 +10679,7 @@ type PalletMutation struct {
 	typ                 string
 	id                  *uuid.UUID
 	pallet_code         *string
+	edge_id             *uuid.UUID
 	level               *int
 	addlevel            *int
 	bobbins_count       *int
@@ -10703,6 +10850,55 @@ func (m *PalletMutation) OldPalletCode(ctx context.Context) (v string, err error
 // ResetPalletCode resets all changes to the "pallet_code" field.
 func (m *PalletMutation) ResetPalletCode() {
 	m.pallet_code = nil
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (m *PalletMutation) SetEdgeID(u uuid.UUID) {
+	m.edge_id = &u
+}
+
+// EdgeID returns the value of the "edge_id" field in the mutation.
+func (m *PalletMutation) EdgeID() (r uuid.UUID, exists bool) {
+	v := m.edge_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEdgeID returns the old "edge_id" field's value of the Pallet entity.
+// If the Pallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PalletMutation) OldEdgeID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEdgeID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEdgeID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEdgeID: %w", err)
+	}
+	return oldValue.EdgeID, nil
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (m *PalletMutation) ClearEdgeID() {
+	m.edge_id = nil
+	m.clearedFields[pallet.FieldEdgeID] = struct{}{}
+}
+
+// EdgeIDCleared returns if the "edge_id" field was cleared in this mutation.
+func (m *PalletMutation) EdgeIDCleared() bool {
+	_, ok := m.clearedFields[pallet.FieldEdgeID]
+	return ok
+}
+
+// ResetEdgeID resets all changes to the "edge_id" field.
+func (m *PalletMutation) ResetEdgeID() {
+	m.edge_id = nil
+	delete(m.clearedFields, pallet.FieldEdgeID)
 }
 
 // SetLotID sets the "lot_id" field.
@@ -11610,9 +11806,12 @@ func (m *PalletMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PalletMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.pallet_code != nil {
 		fields = append(fields, pallet.FieldPalletCode)
+	}
+	if m.edge_id != nil {
+		fields = append(fields, pallet.FieldEdgeID)
 	}
 	if m.lot != nil {
 		fields = append(fields, pallet.FieldLotID)
@@ -11672,6 +11871,8 @@ func (m *PalletMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case pallet.FieldPalletCode:
 		return m.PalletCode()
+	case pallet.FieldEdgeID:
+		return m.EdgeID()
 	case pallet.FieldLotID:
 		return m.LotID()
 	case pallet.FieldLevel:
@@ -11715,6 +11916,8 @@ func (m *PalletMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	switch name {
 	case pallet.FieldPalletCode:
 		return m.OldPalletCode(ctx)
+	case pallet.FieldEdgeID:
+		return m.OldEdgeID(ctx)
 	case pallet.FieldLotID:
 		return m.OldLotID(ctx)
 	case pallet.FieldLevel:
@@ -11762,6 +11965,13 @@ func (m *PalletMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPalletCode(v)
+		return nil
+	case pallet.FieldEdgeID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEdgeID(v)
 		return nil
 	case pallet.FieldLotID:
 		v, ok := value.(uuid.UUID)
@@ -11980,6 +12190,9 @@ func (m *PalletMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *PalletMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(pallet.FieldEdgeID) {
+		fields = append(fields, pallet.FieldEdgeID)
+	}
 	if m.FieldCleared(pallet.FieldNetWeight) {
 		fields = append(fields, pallet.FieldNetWeight)
 	}
@@ -12015,6 +12228,9 @@ func (m *PalletMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *PalletMutation) ClearField(name string) error {
 	switch name {
+	case pallet.FieldEdgeID:
+		m.ClearEdgeID()
+		return nil
 	case pallet.FieldNetWeight:
 		m.ClearNetWeight()
 		return nil
@@ -12046,6 +12262,9 @@ func (m *PalletMutation) ResetField(name string) error {
 	switch name {
 	case pallet.FieldPalletCode:
 		m.ResetPalletCode()
+		return nil
+	case pallet.FieldEdgeID:
+		m.ResetEdgeID()
 		return nil
 	case pallet.FieldLotID:
 		m.ResetLotID()

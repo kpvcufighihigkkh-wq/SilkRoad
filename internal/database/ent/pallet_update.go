@@ -45,6 +45,26 @@ func (_u *PalletUpdate) SetNillablePalletCode(v *string) *PalletUpdate {
 	return _u
 }
 
+// SetEdgeID sets the "edge_id" field.
+func (_u *PalletUpdate) SetEdgeID(v uuid.UUID) *PalletUpdate {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *PalletUpdate) SetNillableEdgeID(v *uuid.UUID) *PalletUpdate {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *PalletUpdate) ClearEdgeID() *PalletUpdate {
+	_u.mutation.ClearEdgeID()
+	return _u
+}
+
 // SetLotID sets the "lot_id" field.
 func (_u *PalletUpdate) SetLotID(v uuid.UUID) *PalletUpdate {
 	_u.mutation.SetLotID(v)
@@ -487,6 +507,12 @@ func (_u *PalletUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.PalletCode(); ok {
 		_spec.SetField(pallet.FieldPalletCode, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.EdgeID(); ok {
+		_spec.SetField(pallet.FieldEdgeID, field.TypeUUID, value)
+	}
+	if _u.mutation.EdgeIDCleared() {
+		_spec.ClearField(pallet.FieldEdgeID, field.TypeUUID)
+	}
 	if value, ok := _u.mutation.Level(); ok {
 		_spec.SetField(pallet.FieldLevel, field.TypeInt, value)
 	}
@@ -673,6 +699,26 @@ func (_u *PalletUpdateOne) SetNillablePalletCode(v *string) *PalletUpdateOne {
 	if v != nil {
 		_u.SetPalletCode(*v)
 	}
+	return _u
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (_u *PalletUpdateOne) SetEdgeID(v uuid.UUID) *PalletUpdateOne {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *PalletUpdateOne) SetNillableEdgeID(v *uuid.UUID) *PalletUpdateOne {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *PalletUpdateOne) ClearEdgeID() *PalletUpdateOne {
+	_u.mutation.ClearEdgeID()
 	return _u
 }
 
@@ -1147,6 +1193,12 @@ func (_u *PalletUpdateOne) sqlSave(ctx context.Context) (_node *Pallet, err erro
 	}
 	if value, ok := _u.mutation.PalletCode(); ok {
 		_spec.SetField(pallet.FieldPalletCode, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.EdgeID(); ok {
+		_spec.SetField(pallet.FieldEdgeID, field.TypeUUID, value)
+	}
+	if _u.mutation.EdgeIDCleared() {
+		_spec.ClearField(pallet.FieldEdgeID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.Level(); ok {
 		_spec.SetField(pallet.FieldLevel, field.TypeInt, value)

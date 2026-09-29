@@ -43,6 +43,26 @@ func (_u *ModuleUpdate) SetNillableModuleNumber(v *string) *ModuleUpdate {
 	return _u
 }
 
+// SetEdgeID sets the "edge_id" field.
+func (_u *ModuleUpdate) SetEdgeID(v uuid.UUID) *ModuleUpdate {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *ModuleUpdate) SetNillableEdgeID(v *uuid.UUID) *ModuleUpdate {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *ModuleUpdate) ClearEdgeID() *ModuleUpdate {
+	_u.mutation.ClearEdgeID()
+	return _u
+}
+
 // SetBarrel1ID sets the "barrel1_id" field.
 func (_u *ModuleUpdate) SetBarrel1ID(v uuid.UUID) *ModuleUpdate {
 	_u.mutation.SetBarrel1ID(v)
@@ -289,6 +309,12 @@ func (_u *ModuleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.ModuleNumber(); ok {
 		_spec.SetField(module.FieldModuleNumber, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.EdgeID(); ok {
+		_spec.SetField(module.FieldEdgeID, field.TypeUUID, value)
+	}
+	if _u.mutation.EdgeIDCleared() {
+		_spec.ClearField(module.FieldEdgeID, field.TypeUUID)
+	}
 	if value, ok := _u.mutation.Barrel1ID(); ok {
 		_spec.SetField(module.FieldBarrel1ID, field.TypeUUID, value)
 	}
@@ -365,6 +391,26 @@ func (_u *ModuleUpdateOne) SetNillableModuleNumber(v *string) *ModuleUpdateOne {
 	if v != nil {
 		_u.SetModuleNumber(*v)
 	}
+	return _u
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (_u *ModuleUpdateOne) SetEdgeID(v uuid.UUID) *ModuleUpdateOne {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *ModuleUpdateOne) SetNillableEdgeID(v *uuid.UUID) *ModuleUpdateOne {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *ModuleUpdateOne) ClearEdgeID() *ModuleUpdateOne {
+	_u.mutation.ClearEdgeID()
 	return _u
 }
 
@@ -643,6 +689,12 @@ func (_u *ModuleUpdateOne) sqlSave(ctx context.Context) (_node *Module, err erro
 	}
 	if value, ok := _u.mutation.ModuleNumber(); ok {
 		_spec.SetField(module.FieldModuleNumber, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.EdgeID(); ok {
+		_spec.SetField(module.FieldEdgeID, field.TypeUUID, value)
+	}
+	if _u.mutation.EdgeIDCleared() {
+		_spec.ClearField(module.FieldEdgeID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.Barrel1ID(); ok {
 		_spec.SetField(module.FieldBarrel1ID, field.TypeUUID, value)

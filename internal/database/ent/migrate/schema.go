@@ -186,6 +186,7 @@ var (
 	CartonsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "carton_number", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "lot_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "bobbin_count", Type: field.TypeInt, Default: 0},
 		{Name: "total_weight", Type: field.TypeFloat64, Nullable: true},
@@ -208,27 +209,32 @@ var (
 			{
 				Name:    "carton_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[2]},
+				Columns: []*schema.Column{CartonsColumns[3]},
 			},
 			{
 				Name:    "carton_status",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[5]},
+				Columns: []*schema.Column{CartonsColumns[6]},
 			},
 			{
 				Name:    "carton_packed_at",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[8]},
+				Columns: []*schema.Column{CartonsColumns[9]},
 			},
 			{
 				Name:    "carton_sync_status",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[9]},
+				Columns: []*schema.Column{CartonsColumns[10]},
 			},
 			{
 				Name:    "carton_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[12]},
+				Columns: []*schema.Column{CartonsColumns[13]},
+			},
+			{
+				Name:    "carton_edge_id",
+				Unique:  false,
+				Columns: []*schema.Column{CartonsColumns[2]},
 			},
 		},
 	}
@@ -451,6 +457,7 @@ var (
 	ModulesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "module_number", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "barrel1_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "barrel2_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"loading", "transporting", "sorting", "warehouse", "idle"}, Default: "idle"},
@@ -471,27 +478,32 @@ var (
 			{
 				Name:    "module_status",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[4]},
+				Columns: []*schema.Column{ModulesColumns[5]},
 			},
 			{
 				Name:    "module_rfid",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[5]},
+				Columns: []*schema.Column{ModulesColumns[6]},
 			},
 			{
 				Name:    "module_sync_status",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[7]},
+				Columns: []*schema.Column{ModulesColumns[8]},
 			},
 			{
 				Name:    "module_barrel1_id",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[2]},
+				Columns: []*schema.Column{ModulesColumns[3]},
 			},
 			{
 				Name:    "module_barrel2_id",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[3]},
+				Columns: []*schema.Column{ModulesColumns[4]},
+			},
+			{
+				Name:    "module_edge_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModulesColumns[2]},
 			},
 		},
 	}
@@ -499,6 +511,7 @@ var (
 	PalletsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "pallet_code", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "level", Type: field.TypeInt, Default: 1},
 		{Name: "bobbins_count", Type: field.TypeInt, Default: 0},
 		{Name: "net_weight", Type: field.TypeFloat64, Nullable: true},
@@ -524,7 +537,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "pallets_lots_pallets",
-				Columns:    []*schema.Column{PalletsColumns[17]},
+				Columns:    []*schema.Column{PalletsColumns[18]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -533,42 +546,47 @@ var (
 			{
 				Name:    "pallet_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[17]},
+				Columns: []*schema.Column{PalletsColumns[18]},
 			},
 			{
 				Name:    "pallet_level",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[2]},
+				Columns: []*schema.Column{PalletsColumns[3]},
 			},
 			{
 				Name:    "pallet_status",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[7]},
+				Columns: []*schema.Column{PalletsColumns[8]},
 			},
 			{
 				Name:    "pallet_palletizer_id",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[8]},
+				Columns: []*schema.Column{PalletsColumns[9]},
 			},
 			{
 				Name:    "pallet_completed_at",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[11]},
+				Columns: []*schema.Column{PalletsColumns[12]},
 			},
 			{
 				Name:    "pallet_sync_status",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[12]},
+				Columns: []*schema.Column{PalletsColumns[13]},
 			},
 			{
 				Name:    "pallet_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[15]},
+				Columns: []*schema.Column{PalletsColumns[16]},
 			},
 			{
 				Name:    "pallet_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[17], PalletsColumns[7]},
+				Columns: []*schema.Column{PalletsColumns[18], PalletsColumns[8]},
+			},
+			{
+				Name:    "pallet_edge_id",
+				Unique:  false,
+				Columns: []*schema.Column{PalletsColumns[2]},
 			},
 		},
 	}

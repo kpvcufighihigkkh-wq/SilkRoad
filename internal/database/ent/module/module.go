@@ -17,6 +17,8 @@ const (
 	FieldID = "id"
 	// FieldModuleNumber holds the string denoting the module_number field in the database.
 	FieldModuleNumber = "module_number"
+	// FieldEdgeID holds the string denoting the edge_id field in the database.
+	FieldEdgeID = "edge_id"
 	// FieldBarrel1ID holds the string denoting the barrel1_id field in the database.
 	FieldBarrel1ID = "barrel1_id"
 	// FieldBarrel2ID holds the string denoting the barrel2_id field in the database.
@@ -45,6 +47,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldModuleNumber,
+	FieldEdgeID,
 	FieldBarrel1ID,
 	FieldBarrel2ID,
 	FieldStatus,
@@ -155,6 +158,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByModuleNumber orders the results by the module_number field.
 func ByModuleNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModuleNumber, opts...).ToFunc()
+}
+
+// ByEdgeID orders the results by the edge_id field.
+func ByEdgeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEdgeID, opts...).ToFunc()
 }
 
 // ByBarrel1ID orders the results by the barrel1_id field.

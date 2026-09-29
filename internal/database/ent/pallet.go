@@ -21,6 +21,8 @@ type Pallet struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// 托盘编号（条码）
 	PalletCode string `json:"pallet_code,omitempty"`
+	// 来源边端设备ID
+	EdgeID uuid.UUID `json:"edge_id,omitempty"`
 	// 关联批次ID
 	LotID uuid.UUID `json:"lot_id,omitempty"`
 	// 栈板层级（1-9）
@@ -105,7 +107,7 @@ func (*Pallet) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case pallet.FieldPrintedAt, pallet.FieldCompletedAt, pallet.FieldSyncedAt, pallet.FieldCreatedAt, pallet.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case pallet.FieldID, pallet.FieldLotID, pallet.FieldPalletizerID:
+		case pallet.FieldID, pallet.FieldEdgeID, pallet.FieldLotID, pallet.FieldPalletizerID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -133,6 +135,12 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field pallet_code", values[i])
 			} else if value.Valid {
 				_m.PalletCode = value.String
+			}
+		case pallet.FieldEdgeID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field edge_id", values[i])
+			} else if value != nil {
+				_m.EdgeID = *value
 			}
 		case pallet.FieldLotID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -278,6 +286,9 @@ func (_m *Pallet) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("pallet_code=")
 	builder.WriteString(_m.PalletCode)
+	builder.WriteString(", ")
+	builder.WriteString("edge_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EdgeID))
 	builder.WriteString(", ")
 	builder.WriteString("lot_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LotID))

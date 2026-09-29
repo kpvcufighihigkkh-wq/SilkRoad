@@ -20,6 +20,8 @@ type Carton struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// 纸箱编号（条码）
 	CartonNumber string `json:"carton_number,omitempty"`
+	// 来源边端设备ID
+	EdgeID uuid.UUID `json:"edge_id,omitempty"`
 	// 关联批次ID
 	LotID uuid.UUID `json:"lot_id,omitempty"`
 	// 纸箱内丝锭数量
@@ -83,7 +85,7 @@ func (*Carton) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case carton.FieldPrintedAt, carton.FieldPackedAt, carton.FieldSyncedAt, carton.FieldCreatedAt, carton.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case carton.FieldID, carton.FieldLotID:
+		case carton.FieldID, carton.FieldEdgeID, carton.FieldLotID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -111,6 +113,12 @@ func (_m *Carton) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field carton_number", values[i])
 			} else if value.Valid {
 				_m.CartonNumber = value.String
+			}
+		case carton.FieldEdgeID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field edge_id", values[i])
+			} else if value != nil {
+				_m.EdgeID = *value
 			}
 		case carton.FieldLotID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -227,6 +235,9 @@ func (_m *Carton) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("carton_number=")
 	builder.WriteString(_m.CartonNumber)
+	builder.WriteString(", ")
+	builder.WriteString("edge_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EdgeID))
 	builder.WriteString(", ")
 	builder.WriteString("lot_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LotID))

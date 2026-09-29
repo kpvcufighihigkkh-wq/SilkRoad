@@ -31,6 +31,11 @@ func (Carton) Fields() []ent.Field {
 			MaxLen(50).
 			Comment("纸箱编号（条码）"),
 
+		// 来源边端设备（Edge端设备产生）
+		field.UUID("edge_id", uuid.UUID{}).
+			Optional().
+			Comment("来源边端设备ID"),
+
 		// 关联批次
 		field.UUID("lot_id", uuid.UUID{}).
 			Optional().
@@ -120,5 +125,8 @@ func (Carton) Indexes() []ent.Index {
 
 		// 创建时间倒序索引
 		index.Fields("created_at"),
+
+		// 来源边端设备索引
+		index.Fields("edge_id"),
 	}
 }

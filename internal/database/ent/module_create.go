@@ -27,6 +27,20 @@ func (_c *ModuleCreate) SetModuleNumber(v string) *ModuleCreate {
 	return _c
 }
 
+// SetEdgeID sets the "edge_id" field.
+func (_c *ModuleCreate) SetEdgeID(v uuid.UUID) *ModuleCreate {
+	_c.mutation.SetEdgeID(v)
+	return _c
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_c *ModuleCreate) SetNillableEdgeID(v *uuid.UUID) *ModuleCreate {
+	if v != nil {
+		_c.SetEdgeID(*v)
+	}
+	return _c
+}
+
 // SetBarrel1ID sets the "barrel1_id" field.
 func (_c *ModuleCreate) SetBarrel1ID(v uuid.UUID) *ModuleCreate {
 	_c.mutation.SetBarrel1ID(v)
@@ -330,6 +344,10 @@ func (_c *ModuleCreate) createSpec() (*Module, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ModuleNumber(); ok {
 		_spec.SetField(module.FieldModuleNumber, field.TypeString, value)
 		_node.ModuleNumber = value
+	}
+	if value, ok := _c.mutation.EdgeID(); ok {
+		_spec.SetField(module.FieldEdgeID, field.TypeUUID, value)
+		_node.EdgeID = value
 	}
 	if value, ok := _c.mutation.Barrel1ID(); ok {
 		_spec.SetField(module.FieldBarrel1ID, field.TypeUUID, value)

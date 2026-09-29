@@ -18,6 +18,8 @@ const (
 	FieldID = "id"
 	// FieldPalletCode holds the string denoting the pallet_code field in the database.
 	FieldPalletCode = "pallet_code"
+	// FieldEdgeID holds the string denoting the edge_id field in the database.
+	FieldEdgeID = "edge_id"
 	// FieldLotID holds the string denoting the lot_id field in the database.
 	FieldLotID = "lot_id"
 	// FieldLevel holds the string denoting the level field in the database.
@@ -76,6 +78,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldPalletCode,
+	FieldEdgeID,
 	FieldLotID,
 	FieldLevel,
 	FieldBobbinsCount,
@@ -202,6 +205,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByPalletCode orders the results by the pallet_code field.
 func ByPalletCode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPalletCode, opts...).ToFunc()
+}
+
+// ByEdgeID orders the results by the edge_id field.
+func ByEdgeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEdgeID, opts...).ToFunc()
 }
 
 // ByLotID orders the results by the lot_id field.

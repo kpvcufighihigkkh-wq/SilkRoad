@@ -61,6 +61,11 @@ func CartonNumber(v string) predicate.Carton {
 	return predicate.Carton(sql.FieldEQ(FieldCartonNumber, v))
 }
 
+// EdgeID applies equality check predicate on the "edge_id" field. It's identical to EdgeIDEQ.
+func EdgeID(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldEdgeID, v))
+}
+
 // LotID applies equality check predicate on the "lot_id" field. It's identical to LotIDEQ.
 func LotID(v uuid.UUID) predicate.Carton {
 	return predicate.Carton(sql.FieldEQ(FieldLotID, v))
@@ -174,6 +179,56 @@ func CartonNumberEqualFold(v string) predicate.Carton {
 // CartonNumberContainsFold applies the ContainsFold predicate on the "carton_number" field.
 func CartonNumberContainsFold(v string) predicate.Carton {
 	return predicate.Carton(sql.FieldContainsFold(FieldCartonNumber, v))
+}
+
+// EdgeIDEQ applies the EQ predicate on the "edge_id" field.
+func EdgeIDEQ(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldEdgeID, v))
+}
+
+// EdgeIDNEQ applies the NEQ predicate on the "edge_id" field.
+func EdgeIDNEQ(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldNEQ(FieldEdgeID, v))
+}
+
+// EdgeIDIn applies the In predicate on the "edge_id" field.
+func EdgeIDIn(vs ...uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDNotIn applies the NotIn predicate on the "edge_id" field.
+func EdgeIDNotIn(vs ...uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldNotIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDGT applies the GT predicate on the "edge_id" field.
+func EdgeIDGT(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldGT(FieldEdgeID, v))
+}
+
+// EdgeIDGTE applies the GTE predicate on the "edge_id" field.
+func EdgeIDGTE(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldGTE(FieldEdgeID, v))
+}
+
+// EdgeIDLT applies the LT predicate on the "edge_id" field.
+func EdgeIDLT(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldLT(FieldEdgeID, v))
+}
+
+// EdgeIDLTE applies the LTE predicate on the "edge_id" field.
+func EdgeIDLTE(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldLTE(FieldEdgeID, v))
+}
+
+// EdgeIDIsNil applies the IsNil predicate on the "edge_id" field.
+func EdgeIDIsNil() predicate.Carton {
+	return predicate.Carton(sql.FieldIsNull(FieldEdgeID))
+}
+
+// EdgeIDNotNil applies the NotNil predicate on the "edge_id" field.
+func EdgeIDNotNil() predicate.Carton {
+	return predicate.Carton(sql.FieldNotNull(FieldEdgeID))
 }
 
 // LotIDEQ applies the EQ predicate on the "lot_id" field.

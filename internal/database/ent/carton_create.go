@@ -28,6 +28,20 @@ func (_c *CartonCreate) SetCartonNumber(v string) *CartonCreate {
 	return _c
 }
 
+// SetEdgeID sets the "edge_id" field.
+func (_c *CartonCreate) SetEdgeID(v uuid.UUID) *CartonCreate {
+	_c.mutation.SetEdgeID(v)
+	return _c
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_c *CartonCreate) SetNillableEdgeID(v *uuid.UUID) *CartonCreate {
+	if v != nil {
+		_c.SetEdgeID(*v)
+	}
+	return _c
+}
+
 // SetLotID sets the "lot_id" field.
 func (_c *CartonCreate) SetLotID(v uuid.UUID) *CartonCreate {
 	_c.mutation.SetLotID(v)
@@ -388,6 +402,10 @@ func (_c *CartonCreate) createSpec() (*Carton, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CartonNumber(); ok {
 		_spec.SetField(carton.FieldCartonNumber, field.TypeString, value)
 		_node.CartonNumber = value
+	}
+	if value, ok := _c.mutation.EdgeID(); ok {
+		_spec.SetField(carton.FieldEdgeID, field.TypeUUID, value)
+		_node.EdgeID = value
 	}
 	if value, ok := _c.mutation.LotID(); ok {
 		_spec.SetField(carton.FieldLotID, field.TypeUUID, value)

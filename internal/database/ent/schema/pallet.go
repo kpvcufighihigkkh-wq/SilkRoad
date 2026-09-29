@@ -31,6 +31,11 @@ func (Pallet) Fields() []ent.Field {
 			MaxLen(50).
 			Comment("托盘编号（条码）"),
 
+		// 来源边端设备（Edge端设备产生）
+		field.UUID("edge_id", uuid.UUID{}).
+			Optional().
+			Comment("来源边端设备ID"),
+
 		// 关联批次
 		field.UUID("lot_id", uuid.UUID{}).
 			Comment("关联批次ID"),
@@ -157,5 +162,8 @@ func (Pallet) Indexes() []ent.Index {
 
 		// 复合索引：批次+状态
 		index.Fields("lot_id", "status"),
+
+		// 来源边端设备索引
+		index.Fields("edge_id"),
 	}
 }

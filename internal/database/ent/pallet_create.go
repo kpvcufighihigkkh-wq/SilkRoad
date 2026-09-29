@@ -29,6 +29,20 @@ func (_c *PalletCreate) SetPalletCode(v string) *PalletCreate {
 	return _c
 }
 
+// SetEdgeID sets the "edge_id" field.
+func (_c *PalletCreate) SetEdgeID(v uuid.UUID) *PalletCreate {
+	_c.mutation.SetEdgeID(v)
+	return _c
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableEdgeID(v *uuid.UUID) *PalletCreate {
+	if v != nil {
+		_c.SetEdgeID(*v)
+	}
+	return _c
+}
+
 // SetLotID sets the "lot_id" field.
 func (_c *PalletCreate) SetLotID(v uuid.UUID) *PalletCreate {
 	_c.mutation.SetLotID(v)
@@ -470,6 +484,10 @@ func (_c *PalletCreate) createSpec() (*Pallet, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PalletCode(); ok {
 		_spec.SetField(pallet.FieldPalletCode, field.TypeString, value)
 		_node.PalletCode = value
+	}
+	if value, ok := _c.mutation.EdgeID(); ok {
+		_spec.SetField(pallet.FieldEdgeID, field.TypeUUID, value)
+		_node.EdgeID = value
 	}
 	if value, ok := _c.mutation.Level(); ok {
 		_spec.SetField(pallet.FieldLevel, field.TypeInt, value)

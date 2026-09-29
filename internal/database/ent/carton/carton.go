@@ -18,6 +18,8 @@ const (
 	FieldID = "id"
 	// FieldCartonNumber holds the string denoting the carton_number field in the database.
 	FieldCartonNumber = "carton_number"
+	// FieldEdgeID holds the string denoting the edge_id field in the database.
+	FieldEdgeID = "edge_id"
 	// FieldLotID holds the string denoting the lot_id field in the database.
 	FieldLotID = "lot_id"
 	// FieldBobbinCount holds the string denoting the bobbin_count field in the database.
@@ -59,6 +61,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldCartonNumber,
+	FieldEdgeID,
 	FieldLotID,
 	FieldBobbinCount,
 	FieldTotalWeight,
@@ -173,6 +176,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByCartonNumber orders the results by the carton_number field.
 func ByCartonNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCartonNumber, opts...).ToFunc()
+}
+
+// ByEdgeID orders the results by the edge_id field.
+func ByEdgeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEdgeID, opts...).ToFunc()
 }
 
 // ByLotID orders the results by the lot_id field.

@@ -179,31 +179,31 @@ func init() {
 		}
 	}()
 	// cartonDescBobbinCount is the schema descriptor for bobbin_count field.
-	cartonDescBobbinCount := cartonFields[3].Descriptor()
+	cartonDescBobbinCount := cartonFields[4].Descriptor()
 	// carton.DefaultBobbinCount holds the default value on creation for the bobbin_count field.
 	carton.DefaultBobbinCount = cartonDescBobbinCount.Default.(int)
 	// carton.BobbinCountValidator is a validator for the "bobbin_count" field. It is called by the builders before save.
 	carton.BobbinCountValidator = cartonDescBobbinCount.Validators[0].(func(int) error)
 	// cartonDescTotalWeight is the schema descriptor for total_weight field.
-	cartonDescTotalWeight := cartonFields[4].Descriptor()
+	cartonDescTotalWeight := cartonFields[5].Descriptor()
 	// carton.TotalWeightValidator is a validator for the "total_weight" field. It is called by the builders before save.
 	carton.TotalWeightValidator = cartonDescTotalWeight.Validators[0].(func(float64) error)
 	// cartonDescLabelPrinted is the schema descriptor for label_printed field.
-	cartonDescLabelPrinted := cartonFields[6].Descriptor()
+	cartonDescLabelPrinted := cartonFields[7].Descriptor()
 	// carton.DefaultLabelPrinted holds the default value on creation for the label_printed field.
 	carton.DefaultLabelPrinted = cartonDescLabelPrinted.Default.(bool)
 	// cartonDescSyncRetryCount is the schema descriptor for sync_retry_count field.
-	cartonDescSyncRetryCount := cartonFields[11].Descriptor()
+	cartonDescSyncRetryCount := cartonFields[12].Descriptor()
 	// carton.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
 	carton.DefaultSyncRetryCount = cartonDescSyncRetryCount.Default.(int)
 	// carton.SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
 	carton.SyncRetryCountValidator = cartonDescSyncRetryCount.Validators[0].(func(int) error)
 	// cartonDescCreatedAt is the schema descriptor for created_at field.
-	cartonDescCreatedAt := cartonFields[12].Descriptor()
+	cartonDescCreatedAt := cartonFields[13].Descriptor()
 	// carton.DefaultCreatedAt holds the default value on creation for the created_at field.
 	carton.DefaultCreatedAt = cartonDescCreatedAt.Default.(func() time.Time)
 	// cartonDescUpdatedAt is the schema descriptor for updated_at field.
-	cartonDescUpdatedAt := cartonFields[13].Descriptor()
+	cartonDescUpdatedAt := cartonFields[14].Descriptor()
 	// carton.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	carton.DefaultUpdatedAt = cartonDescUpdatedAt.Default.(func() time.Time)
 	// carton.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -461,25 +461,25 @@ func init() {
 		}
 	}()
 	// moduleDescRfid is the schema descriptor for rfid field.
-	moduleDescRfid := moduleFields[5].Descriptor()
+	moduleDescRfid := moduleFields[6].Descriptor()
 	// module.RfidValidator is a validator for the "rfid" field. It is called by the builders before save.
 	module.RfidValidator = moduleDescRfid.Validators[0].(func(string) error)
 	// moduleDescCurrentLocation is the schema descriptor for current_location field.
-	moduleDescCurrentLocation := moduleFields[6].Descriptor()
+	moduleDescCurrentLocation := moduleFields[7].Descriptor()
 	// module.CurrentLocationValidator is a validator for the "current_location" field. It is called by the builders before save.
 	module.CurrentLocationValidator = moduleDescCurrentLocation.Validators[0].(func(string) error)
 	// moduleDescSyncRetryCount is the schema descriptor for sync_retry_count field.
-	moduleDescSyncRetryCount := moduleFields[9].Descriptor()
+	moduleDescSyncRetryCount := moduleFields[10].Descriptor()
 	// module.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
 	module.DefaultSyncRetryCount = moduleDescSyncRetryCount.Default.(int)
 	// module.SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
 	module.SyncRetryCountValidator = moduleDescSyncRetryCount.Validators[0].(func(int) error)
 	// moduleDescCreatedAt is the schema descriptor for created_at field.
-	moduleDescCreatedAt := moduleFields[10].Descriptor()
+	moduleDescCreatedAt := moduleFields[11].Descriptor()
 	// module.DefaultCreatedAt holds the default value on creation for the created_at field.
 	module.DefaultCreatedAt = moduleDescCreatedAt.Default.(func() time.Time)
 	// moduleDescUpdatedAt is the schema descriptor for updated_at field.
-	moduleDescUpdatedAt := moduleFields[11].Descriptor()
+	moduleDescUpdatedAt := moduleFields[12].Descriptor()
 	// module.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	module.DefaultUpdatedAt = moduleDescUpdatedAt.Default.(func() time.Time)
 	// module.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -509,7 +509,7 @@ func init() {
 		}
 	}()
 	// palletDescLevel is the schema descriptor for level field.
-	palletDescLevel := palletFields[3].Descriptor()
+	palletDescLevel := palletFields[4].Descriptor()
 	// pallet.DefaultLevel holds the default value on creation for the level field.
 	pallet.DefaultLevel = palletDescLevel.Default.(int)
 	// pallet.LevelValidator is a validator for the "level" field. It is called by the builders before save.
@@ -529,39 +529,39 @@ func init() {
 		}
 	}()
 	// palletDescBobbinsCount is the schema descriptor for bobbins_count field.
-	palletDescBobbinsCount := palletFields[4].Descriptor()
+	palletDescBobbinsCount := palletFields[5].Descriptor()
 	// pallet.DefaultBobbinsCount holds the default value on creation for the bobbins_count field.
 	pallet.DefaultBobbinsCount = palletDescBobbinsCount.Default.(int)
 	// pallet.BobbinsCountValidator is a validator for the "bobbins_count" field. It is called by the builders before save.
 	pallet.BobbinsCountValidator = palletDescBobbinsCount.Validators[0].(func(int) error)
 	// palletDescNetWeight is the schema descriptor for net_weight field.
-	palletDescNetWeight := palletFields[5].Descriptor()
+	palletDescNetWeight := palletFields[6].Descriptor()
 	// pallet.NetWeightValidator is a validator for the "net_weight" field. It is called by the builders before save.
 	pallet.NetWeightValidator = palletDescNetWeight.Validators[0].(func(float64) error)
 	// palletDescGrossWeight is the schema descriptor for gross_weight field.
-	palletDescGrossWeight := palletFields[6].Descriptor()
+	palletDescGrossWeight := palletFields[7].Descriptor()
 	// pallet.GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
 	pallet.GrossWeightValidator = palletDescGrossWeight.Validators[0].(func(float64) error)
 	// palletDescTareWeight is the schema descriptor for tare_weight field.
-	palletDescTareWeight := palletFields[7].Descriptor()
+	palletDescTareWeight := palletFields[8].Descriptor()
 	// pallet.TareWeightValidator is a validator for the "tare_weight" field. It is called by the builders before save.
 	pallet.TareWeightValidator = palletDescTareWeight.Validators[0].(func(float64) error)
 	// palletDescPrinted is the schema descriptor for printed field.
-	palletDescPrinted := palletFields[10].Descriptor()
+	palletDescPrinted := palletFields[11].Descriptor()
 	// pallet.DefaultPrinted holds the default value on creation for the printed field.
 	pallet.DefaultPrinted = palletDescPrinted.Default.(bool)
 	// palletDescSyncRetryCount is the schema descriptor for sync_retry_count field.
-	palletDescSyncRetryCount := palletFields[15].Descriptor()
+	palletDescSyncRetryCount := palletFields[16].Descriptor()
 	// pallet.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
 	pallet.DefaultSyncRetryCount = palletDescSyncRetryCount.Default.(int)
 	// pallet.SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
 	pallet.SyncRetryCountValidator = palletDescSyncRetryCount.Validators[0].(func(int) error)
 	// palletDescCreatedAt is the schema descriptor for created_at field.
-	palletDescCreatedAt := palletFields[16].Descriptor()
+	palletDescCreatedAt := palletFields[17].Descriptor()
 	// pallet.DefaultCreatedAt holds the default value on creation for the created_at field.
 	pallet.DefaultCreatedAt = palletDescCreatedAt.Default.(func() time.Time)
 	// palletDescUpdatedAt is the schema descriptor for updated_at field.
-	palletDescUpdatedAt := palletFields[17].Descriptor()
+	palletDescUpdatedAt := palletFields[18].Descriptor()
 	// pallet.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	pallet.DefaultUpdatedAt = palletDescUpdatedAt.Default.(func() time.Time)
 	// pallet.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

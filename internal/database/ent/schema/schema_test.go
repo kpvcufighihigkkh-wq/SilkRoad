@@ -14,6 +14,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	_ "modernc.org/sqlite"
 )
 
@@ -207,5 +208,92 @@ func TestBarrelCanBeCreatedWithoutDoffing(t *testing.T) {
 	}
 	if created.ID == uuid.Nil {
 		t.Error("expected non-nil ID")
+	}
+}
+
+func TestModule_EdgeIDOptional(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+
+	// 不带 edge_id 也能创建（Edge未注册场景）
+	anonymous, err := client.Module.Create().
+		SetModuleNumber("MOD-ANON-001").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating module without edge: %v", err)
+	}
+	if anonymous.EdgeID != uuid.Nil {
+		t.Errorf("EdgeID = %v, want nil", anonymous.EdgeID)
+	}
+
+	// 带 edge_id 创建
+	edge, err := client.Edge.Create().
+		SetEdgeCode("edge-mod-01").
+		SetEdgeName("模块测试边端").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating edge: %v", err)
+	}
+
+	tagged, err := client.Module.Create().
+		SetModuleNumber("MOD-TAGGED-001").
+		SetEdgeID(edge.ID).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating module with edge: %v", err)
+	}
+	if tagged.EdgeID != edge.ID {
+		t.Errorf("EdgeID = %v, want %v", tagged.EdgeID, edge.ID)
+	}
+
+	// 按 edge_id 过滤
+	count, err := client.Module.Query().
+		Where(module.EdgeIDEQ(edge.ID)).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("modules for edge = %d, want 1", count)
+	}
+}
+
+func TestPallet_EdgeIDOptional(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+
+	lotRow, err := client.Lot.Create().
+		SetLotNumber("LOT-PALLET-EDGE-001").
+		SetProductType(lot.ProductTypeFDY).
+		SetPlannedQuantity(100).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating lot: %v", err)
+	}
+
+	created, err := client.Pallet.Create().
+		SetPalletCode("PALLET-EDGE-001").
+		SetLotID(lotRow.ID).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating pallet: %v", err)
+	}
+	if created.EdgeID != uuid.Nil {
+		t.Errorf("EdgeID = %v, want nil", created.EdgeID)
+	}
+}
+
+func TestCarton_EdgeIDOptional(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+
+	created, err := client.Carton.Create().
+		SetCartonNumber("CARTON-EDGE-001").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating carton: %v", err)
+	}
+	if created.EdgeID != uuid.Nil {
+		t.Errorf("EdgeID = %v, want nil", created.EdgeID)
 	}
 }

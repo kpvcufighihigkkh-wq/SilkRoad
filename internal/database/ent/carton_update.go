@@ -44,6 +44,26 @@ func (_u *CartonUpdate) SetNillableCartonNumber(v *string) *CartonUpdate {
 	return _u
 }
 
+// SetEdgeID sets the "edge_id" field.
+func (_u *CartonUpdate) SetEdgeID(v uuid.UUID) *CartonUpdate {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *CartonUpdate) SetNillableEdgeID(v *uuid.UUID) *CartonUpdate {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *CartonUpdate) ClearEdgeID() *CartonUpdate {
+	_u.mutation.ClearEdgeID()
+	return _u
+}
+
 // SetLotID sets the "lot_id" field.
 func (_u *CartonUpdate) SetLotID(v uuid.UUID) *CartonUpdate {
 	_u.mutation.SetLotID(v)
@@ -368,6 +388,12 @@ func (_u *CartonUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.CartonNumber(); ok {
 		_spec.SetField(carton.FieldCartonNumber, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.EdgeID(); ok {
+		_spec.SetField(carton.FieldEdgeID, field.TypeUUID, value)
+	}
+	if _u.mutation.EdgeIDCleared() {
+		_spec.ClearField(carton.FieldEdgeID, field.TypeUUID)
+	}
 	if value, ok := _u.mutation.LotID(); ok {
 		_spec.SetField(carton.FieldLotID, field.TypeUUID, value)
 	}
@@ -501,6 +527,26 @@ func (_u *CartonUpdateOne) SetNillableCartonNumber(v *string) *CartonUpdateOne {
 	if v != nil {
 		_u.SetCartonNumber(*v)
 	}
+	return _u
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (_u *CartonUpdateOne) SetEdgeID(v uuid.UUID) *CartonUpdateOne {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *CartonUpdateOne) SetNillableEdgeID(v *uuid.UUID) *CartonUpdateOne {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *CartonUpdateOne) ClearEdgeID() *CartonUpdateOne {
+	_u.mutation.ClearEdgeID()
 	return _u
 }
 
@@ -857,6 +903,12 @@ func (_u *CartonUpdateOne) sqlSave(ctx context.Context) (_node *Carton, err erro
 	}
 	if value, ok := _u.mutation.CartonNumber(); ok {
 		_spec.SetField(carton.FieldCartonNumber, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.EdgeID(); ok {
+		_spec.SetField(carton.FieldEdgeID, field.TypeUUID, value)
+	}
+	if _u.mutation.EdgeIDCleared() {
+		_spec.ClearField(carton.FieldEdgeID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.LotID(); ok {
 		_spec.SetField(carton.FieldLotID, field.TypeUUID, value)

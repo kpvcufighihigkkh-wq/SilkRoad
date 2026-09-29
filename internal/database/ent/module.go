@@ -20,6 +20,8 @@ type Module struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// 吊车编号
 	ModuleNumber string `json:"module_number,omitempty"`
+	// 来源边端设备ID
+	EdgeID uuid.UUID `json:"edge_id,omitempty"`
 	// 第一个落纱桶ID
 	Barrel1ID uuid.UUID `json:"barrel1_id,omitempty"`
 	// 第二个落纱桶ID
@@ -54,7 +56,7 @@ func (*Module) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case module.FieldSyncedAt, module.FieldCreatedAt, module.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case module.FieldID, module.FieldBarrel1ID, module.FieldBarrel2ID:
+		case module.FieldID, module.FieldEdgeID, module.FieldBarrel1ID, module.FieldBarrel2ID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -82,6 +84,12 @@ func (_m *Module) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field module_number", values[i])
 			} else if value.Valid {
 				_m.ModuleNumber = value.String
+			}
+		case module.FieldEdgeID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field edge_id", values[i])
+			} else if value != nil {
+				_m.EdgeID = *value
 			}
 		case module.FieldBarrel1ID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -181,6 +189,9 @@ func (_m *Module) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("module_number=")
 	builder.WriteString(_m.ModuleNumber)
+	builder.WriteString(", ")
+	builder.WriteString("edge_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EdgeID))
 	builder.WriteString(", ")
 	builder.WriteString("barrel1_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Barrel1ID))

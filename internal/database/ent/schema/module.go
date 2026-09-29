@@ -30,6 +30,11 @@ func (Module) Fields() []ent.Field {
 			MaxLen(50).
 			Comment("吊车编号"),
 
+		// 来源边端设备（Edge端设备产生）
+		field.UUID("edge_id", uuid.UUID{}).
+			Optional().
+			Comment("来源边端设备ID"),
+
 		// 装载的第一个落纱桶
 		field.UUID("barrel1_id", uuid.UUID{}).
 			Optional().
@@ -108,5 +113,8 @@ func (Module) Indexes() []ent.Index {
 
 		// 第二个桶ID索引
 		index.Fields("barrel2_id"),
+
+		// 来源边端设备索引
+		index.Fields("edge_id"),
 	}
 }

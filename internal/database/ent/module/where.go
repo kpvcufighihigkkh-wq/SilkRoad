@@ -60,6 +60,11 @@ func ModuleNumber(v string) predicate.Module {
 	return predicate.Module(sql.FieldEQ(FieldModuleNumber, v))
 }
 
+// EdgeID applies equality check predicate on the "edge_id" field. It's identical to EdgeIDEQ.
+func EdgeID(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldEQ(FieldEdgeID, v))
+}
+
 // Barrel1ID applies equality check predicate on the "barrel1_id" field. It's identical to Barrel1IDEQ.
 func Barrel1ID(v uuid.UUID) predicate.Module {
 	return predicate.Module(sql.FieldEQ(FieldBarrel1ID, v))
@@ -163,6 +168,56 @@ func ModuleNumberEqualFold(v string) predicate.Module {
 // ModuleNumberContainsFold applies the ContainsFold predicate on the "module_number" field.
 func ModuleNumberContainsFold(v string) predicate.Module {
 	return predicate.Module(sql.FieldContainsFold(FieldModuleNumber, v))
+}
+
+// EdgeIDEQ applies the EQ predicate on the "edge_id" field.
+func EdgeIDEQ(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldEQ(FieldEdgeID, v))
+}
+
+// EdgeIDNEQ applies the NEQ predicate on the "edge_id" field.
+func EdgeIDNEQ(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldNEQ(FieldEdgeID, v))
+}
+
+// EdgeIDIn applies the In predicate on the "edge_id" field.
+func EdgeIDIn(vs ...uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDNotIn applies the NotIn predicate on the "edge_id" field.
+func EdgeIDNotIn(vs ...uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldNotIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDGT applies the GT predicate on the "edge_id" field.
+func EdgeIDGT(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldGT(FieldEdgeID, v))
+}
+
+// EdgeIDGTE applies the GTE predicate on the "edge_id" field.
+func EdgeIDGTE(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldGTE(FieldEdgeID, v))
+}
+
+// EdgeIDLT applies the LT predicate on the "edge_id" field.
+func EdgeIDLT(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldLT(FieldEdgeID, v))
+}
+
+// EdgeIDLTE applies the LTE predicate on the "edge_id" field.
+func EdgeIDLTE(v uuid.UUID) predicate.Module {
+	return predicate.Module(sql.FieldLTE(FieldEdgeID, v))
+}
+
+// EdgeIDIsNil applies the IsNil predicate on the "edge_id" field.
+func EdgeIDIsNil() predicate.Module {
+	return predicate.Module(sql.FieldIsNull(FieldEdgeID))
+}
+
+// EdgeIDNotNil applies the NotNil predicate on the "edge_id" field.
+func EdgeIDNotNil() predicate.Module {
+	return predicate.Module(sql.FieldNotNull(FieldEdgeID))
 }
 
 // Barrel1IDEQ applies the EQ predicate on the "barrel1_id" field.
