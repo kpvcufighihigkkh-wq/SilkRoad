@@ -1828,6 +1828,7 @@ EOF
 
 **Files:**
 - Modify: `docs/database-migration.md`（更新 Schema 变更章节）
+- Modify: `docs/superpowers/specs/2026-09-29-v3-data-model-design.md`（修正自相矛盾的 Barrel 关系描述，见 Step 10b）
 - 无代码文件改动
 
 **Interfaces:**
@@ -1959,6 +1960,44 @@ print('OK: barrels has no doffing_id, has sync_status')
 
 并在文件末尾的「提交记录」章节追加本次的 commit hash（用 `git log --oneline -4` 查看）。
 
+- [ ] **Step 10b: 修正 V3 数据模型文档中自相矛盾的 Barrel 关系**
+
+`docs/superpowers/specs/2026-09-29-v3-data-model-design.md` 与自身及已实现的代码矛盾。该文件第 81 行写的是「一个Lot包含多个落纱桶(Barrel)」（与代码一致），但另外三处仍保留已被删除的 Barrel↔Doffing 关系。逐一修正：
+
+**10b-1.** 删除 `Barrel` 结构体里的 `DoffingID` 字段（约第 137 行）：
+
+```go
+  DoffingID    uuid.UUID // 落纱ID
+```
+
+删除后该结构体只保留 `LotID` 作为归属字段。
+
+**10b-2.** 修正关系描述（约第 146 行）：
+
+```markdown
+**关系**: `Lot 1-N Doffing 1-N Barrel`
+```
+
+改为：
+
+```markdown
+**关系**: `Lot 1-N Barrel`（Barrel 归属 Lot；Doffing 是独立的落纱操作记录，不再与 Barrel 关联）
+```
+
+**10b-3.** 修正 ER 图（约第 353 行）：删除这一行
+
+```
+    Doffing ||--o{ Barrel : "生成"
+```
+
+**验证：** 修正后运行
+
+```bash
+grep -n "DoffingID\|Doffing ||--o{ Barrel\|Doffing 1-N Barrel" docs/superpowers/specs/2026-09-29-v3-data-model-design.md
+```
+
+预期：**无输出**（三处矛盾均已消除）。
+
 - [ ] **Step 11: 验证文档中文完好**
 
 ```bash
@@ -1970,9 +2009,9 @@ grep -c "同步\|迁移\|边端" docs/database-migration.md
 - [ ] **Step 12: 提交**
 
 ```bash
-git add docs/database-migration.md
+git add docs/database-migration.md docs/superpowers/specs/2026-09-29-v3-data-model-design.md
 git commit -m "$(cat <<'EOF'
-docs: 补充同步字段与Barrel关系调整的迁移记录
+docs: 补充迁移记录并修正V3文档的Barrel关系矛盾
 
 Refs: #17
 EOF
