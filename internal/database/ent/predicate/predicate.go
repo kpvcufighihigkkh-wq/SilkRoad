@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// Barrel is the predicate function for barrel builders.
+type Barrel func(*sql.Selector)
+
 // Bobbin is the predicate function for bobbin builders.
 type Bobbin func(*sql.Selector)
 
@@ -15,17 +18,20 @@ type Carton func(*sql.Selector)
 // Doffing is the predicate function for doffing builders.
 type Doffing func(*sql.Selector)
 
+// Edge is the predicate function for edge builders.
+type Edge func(*sql.Selector)
+
+// Grade is the predicate function for grade builders.
+type Grade func(*sql.Selector)
+
 // Lot is the predicate function for lot builders.
 type Lot func(*sql.Selector)
 
-// Order is the predicate function for order builders.
-type Order func(*sql.Selector)
+// Module is the predicate function for module builders.
+type Module func(*sql.Selector)
 
 // Pallet is the predicate function for pallet builders.
 type Pallet func(*sql.Selector)
-
-// Project is the predicate function for project builders.
-type Project func(*sql.Selector)
 
 // SpinningLine is the predicate function for spinningline builders.
 type SpinningLine func(*sql.Selector)

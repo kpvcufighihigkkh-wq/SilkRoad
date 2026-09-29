@@ -20,6 +20,10 @@ const (
 	FieldBobbinNumber = "bobbin_number"
 	// FieldLotID holds the string denoting the lot_id field in the database.
 	FieldLotID = "lot_id"
+	// FieldBarrelID holds the string denoting the barrel_id field in the database.
+	FieldBarrelID = "barrel_id"
+	// FieldBarrelPosition holds the string denoting the barrel_position field in the database.
+	FieldBarrelPosition = "barrel_position"
 	// FieldSpinningPosition holds the string denoting the spinning_position field in the database.
 	FieldSpinningPosition = "spinning_position"
 	// FieldGrossWeight holds the string denoting the gross_weight field in the database.
@@ -48,6 +52,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeLot holds the string denoting the lot edge name in mutations.
 	EdgeLot = "lot"
+	// EdgeBarrel holds the string denoting the barrel edge name in mutations.
+	EdgeBarrel = "barrel"
 	// EdgePallet holds the string denoting the pallet edge name in mutations.
 	EdgePallet = "pallet"
 	// EdgeCarton holds the string denoting the carton edge name in mutations.
@@ -61,6 +67,13 @@ const (
 	LotInverseTable = "lots"
 	// LotColumn is the table column denoting the lot relation/edge.
 	LotColumn = "lot_id"
+	// BarrelTable is the table that holds the barrel relation/edge.
+	BarrelTable = "bobbins"
+	// BarrelInverseTable is the table name for the Barrel entity.
+	// It exists in this package in order to avoid circular dependency with the "barrel" package.
+	BarrelInverseTable = "barrels"
+	// BarrelColumn is the table column denoting the barrel relation/edge.
+	BarrelColumn = "barrel_id"
 	// PalletTable is the table that holds the pallet relation/edge.
 	PalletTable = "bobbins"
 	// PalletInverseTable is the table name for the Pallet entity.
@@ -82,6 +95,8 @@ var Columns = []string{
 	FieldID,
 	FieldBobbinNumber,
 	FieldLotID,
+	FieldBarrelID,
+	FieldBarrelPosition,
 	FieldSpinningPosition,
 	FieldGrossWeight,
 	FieldNetWeight,
@@ -110,6 +125,8 @@ func ValidColumn(column string) bool {
 var (
 	// BobbinNumberValidator is a validator for the "bobbin_number" field. It is called by the builders before save.
 	BobbinNumberValidator func(string) error
+	// BarrelPositionValidator is a validator for the "barrel_position" field. It is called by the builders before save.
+	BarrelPositionValidator func(int) error
 	// SpinningPositionValidator is a validator for the "spinning_position" field. It is called by the builders before save.
 	SpinningPositionValidator func(int) error
 	// GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
@@ -176,6 +193,16 @@ func ByBobbinNumber(opts ...sql.OrderTermOption) OrderOption {
 // ByLotID orders the results by the lot_id field.
 func ByLotID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLotID, opts...).ToFunc()
+}
+
+// ByBarrelID orders the results by the barrel_id field.
+func ByBarrelID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBarrelID, opts...).ToFunc()
+}
+
+// ByBarrelPosition orders the results by the barrel_position field.
+func ByBarrelPosition(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBarrelPosition, opts...).ToFunc()
 }
 
 // BySpinningPosition orders the results by the spinning_position field.
@@ -250,6 +277,13 @@ func ByLotField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByBarrelField orders the results by barrel field.
+func ByBarrelField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newBarrelStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByPalletField orders the results by pallet field.
 func ByPalletField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -268,6 +302,13 @@ func newLotStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(LotInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, LotTable, LotColumn),
+	)
+}
+func newBarrelStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(BarrelInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, BarrelTable, BarrelColumn),
 	)
 }
 func newPalletStep() *sqlgraph.Step {

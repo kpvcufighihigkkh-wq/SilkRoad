@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
@@ -213,26 +214,6 @@ func LotIDIn(vs ...uuid.UUID) predicate.Doffing {
 // LotIDNotIn applies the NotIn predicate on the "lot_id" field.
 func LotIDNotIn(vs ...uuid.UUID) predicate.Doffing {
 	return predicate.Doffing(sql.FieldNotIn(FieldLotID, vs...))
-}
-
-// LotIDGT applies the GT predicate on the "lot_id" field.
-func LotIDGT(v uuid.UUID) predicate.Doffing {
-	return predicate.Doffing(sql.FieldGT(FieldLotID, v))
-}
-
-// LotIDGTE applies the GTE predicate on the "lot_id" field.
-func LotIDGTE(v uuid.UUID) predicate.Doffing {
-	return predicate.Doffing(sql.FieldGTE(FieldLotID, v))
-}
-
-// LotIDLT applies the LT predicate on the "lot_id" field.
-func LotIDLT(v uuid.UUID) predicate.Doffing {
-	return predicate.Doffing(sql.FieldLT(FieldLotID, v))
-}
-
-// LotIDLTE applies the LTE predicate on the "lot_id" field.
-func LotIDLTE(v uuid.UUID) predicate.Doffing {
-	return predicate.Doffing(sql.FieldLTE(FieldLotID, v))
 }
 
 // OperatorIDEQ applies the EQ predicate on the "operator_id" field.
@@ -748,6 +729,52 @@ func UpdatedAtLT(v time.Time) predicate.Doffing {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Doffing {
 	return predicate.Doffing(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// HasLot applies the HasEdge predicate on the "lot" edge.
+func HasLot() predicate.Doffing {
+	return predicate.Doffing(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, LotTable, LotColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLotWith applies the HasEdge predicate on the "lot" edge with a given conditions (other predicates).
+func HasLotWith(preds ...predicate.Lot) predicate.Doffing {
+	return predicate.Doffing(func(s *sql.Selector) {
+		step := newLotStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasBarrels applies the HasEdge predicate on the "barrels" edge.
+func HasBarrels() predicate.Doffing {
+	return predicate.Doffing(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, BarrelsTable, BarrelsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasBarrelsWith applies the HasEdge predicate on the "barrels" edge with a given conditions (other predicates).
+func HasBarrelsWith(preds ...predicate.Barrel) predicate.Doffing {
+	return predicate.Doffing(func(s *sql.Selector) {
+		step := newBarrelsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

@@ -8,30 +8,30 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/grade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/project"
 )
 
-// ProjectDelete is the builder for deleting a Project entity.
-type ProjectDelete struct {
+// GradeDelete is the builder for deleting a Grade entity.
+type GradeDelete struct {
 	config
 	hooks    []Hook
-	mutation *ProjectMutation
+	mutation *GradeMutation
 }
 
-// Where appends a list predicates to the ProjectDelete builder.
-func (_d *ProjectDelete) Where(ps ...predicate.Project) *ProjectDelete {
+// Where appends a list predicates to the GradeDelete builder.
+func (_d *GradeDelete) Where(ps ...predicate.Grade) *GradeDelete {
 	_d.mutation.Where(ps...)
 	return _d
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (_d *ProjectDelete) Exec(ctx context.Context) (int, error) {
+func (_d *GradeDelete) Exec(ctx context.Context) (int, error) {
 	return withHooks(ctx, _d.sqlExec, _d.mutation, _d.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_d *ProjectDelete) ExecX(ctx context.Context) int {
+func (_d *GradeDelete) ExecX(ctx context.Context) int {
 	n, err := _d.Exec(ctx)
 	if err != nil {
 		panic(err)
@@ -39,8 +39,8 @@ func (_d *ProjectDelete) ExecX(ctx context.Context) int {
 	return n
 }
 
-func (_d *ProjectDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := sqlgraph.NewDeleteSpec(project.Table, sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID))
+func (_d *GradeDelete) sqlExec(ctx context.Context) (int, error) {
+	_spec := sqlgraph.NewDeleteSpec(grade.Table, sqlgraph.NewFieldSpec(grade.FieldID, field.TypeUUID))
 	if ps := _d.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -56,32 +56,32 @@ func (_d *ProjectDelete) sqlExec(ctx context.Context) (int, error) {
 	return affected, err
 }
 
-// ProjectDeleteOne is the builder for deleting a single Project entity.
-type ProjectDeleteOne struct {
-	_d *ProjectDelete
+// GradeDeleteOne is the builder for deleting a single Grade entity.
+type GradeDeleteOne struct {
+	_d *GradeDelete
 }
 
-// Where appends a list predicates to the ProjectDelete builder.
-func (_d *ProjectDeleteOne) Where(ps ...predicate.Project) *ProjectDeleteOne {
+// Where appends a list predicates to the GradeDelete builder.
+func (_d *GradeDeleteOne) Where(ps ...predicate.Grade) *GradeDeleteOne {
 	_d._d.mutation.Where(ps...)
 	return _d
 }
 
 // Exec executes the deletion query.
-func (_d *ProjectDeleteOne) Exec(ctx context.Context) error {
+func (_d *GradeDeleteOne) Exec(ctx context.Context) error {
 	n, err := _d._d.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
 	case n == 0:
-		return &NotFoundError{project.Label}
+		return &NotFoundError{grade.Label}
 	default:
 		return nil
 	}
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (_d *ProjectDeleteOne) ExecX(ctx context.Context) {
+func (_d *GradeDeleteOne) ExecX(ctx context.Context) {
 	if err := _d.Exec(ctx); err != nil {
 		panic(err)
 	}

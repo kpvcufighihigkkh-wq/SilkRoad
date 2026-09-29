@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
@@ -25,6 +26,7 @@ type PalletQuery struct {
 	order       []pallet.OrderOption
 	inters      []Interceptor
 	predicates  []predicate.Pallet
+	withLot     *LotQuery
 	withBobbins *BobbinQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -60,6 +62,28 @@ func (_q *PalletQuery) Unique(unique bool) *PalletQuery {
 func (_q *PalletQuery) Order(o ...pallet.OrderOption) *PalletQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryLot chains the current query on the "lot" edge.
+func (_q *PalletQuery) QueryLot() *LotQuery {
+	query := (&LotClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(pallet.Table, pallet.FieldID, selector),
+			sqlgraph.To(lot.Table, lot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, pallet.LotTable, pallet.LotColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryBobbins chains the current query on the "bobbins" edge.
@@ -276,11 +300,23 @@ func (_q *PalletQuery) Clone() *PalletQuery {
 		order:       append([]pallet.OrderOption{}, _q.order...),
 		inters:      append([]Interceptor{}, _q.inters...),
 		predicates:  append([]predicate.Pallet{}, _q.predicates...),
+		withLot:     _q.withLot.Clone(),
 		withBobbins: _q.withBobbins.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithLot tells the query-builder to eager-load the nodes that are connected to
+// the "lot" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *PalletQuery) WithLot(opts ...func(*LotQuery)) *PalletQuery {
+	query := (&LotClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withLot = query
+	return _q
 }
 
 // WithBobbins tells the query-builder to eager-load the nodes that are connected to
@@ -300,12 +336,12 @@ func (_q *PalletQuery) WithBobbins(opts ...func(*BobbinQuery)) *PalletQuery {
 // Example:
 //
 //	var v []struct {
-//		PalletNumber string `json:"pallet_number,omitempty"`
+//		PalletCode string `json:"pallet_code,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Pallet.Query().
-//		GroupBy(pallet.FieldPalletNumber).
+//		GroupBy(pallet.FieldPalletCode).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *PalletQuery) GroupBy(field string, fields ...string) *PalletGroupBy {
@@ -323,11 +359,11 @@ func (_q *PalletQuery) GroupBy(field string, fields ...string) *PalletGroupBy {
 // Example:
 //
 //	var v []struct {
-//		PalletNumber string `json:"pallet_number,omitempty"`
+//		PalletCode string `json:"pallet_code,omitempty"`
 //	}
 //
 //	client.Pallet.Query().
-//		Select(pallet.FieldPalletNumber).
+//		Select(pallet.FieldPalletCode).
 //		Scan(ctx, &v)
 func (_q *PalletQuery) Select(fields ...string) *PalletSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -372,7 +408,8 @@ func (_q *PalletQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Palle
 	var (
 		nodes       = []*Pallet{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
+			_q.withLot != nil,
 			_q.withBobbins != nil,
 		}
 	)
@@ -394,6 +431,12 @@ func (_q *PalletQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Palle
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withLot; query != nil {
+		if err := _q.loadLot(ctx, query, nodes, nil,
+			func(n *Pallet, e *Lot) { n.Edges.Lot = e }); err != nil {
+			return nil, err
+		}
+	}
 	if query := _q.withBobbins; query != nil {
 		if err := _q.loadBobbins(ctx, query, nodes,
 			func(n *Pallet) { n.Edges.Bobbins = []*Bobbin{} },
@@ -404,6 +447,35 @@ func (_q *PalletQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Palle
 	return nodes, nil
 }
 
+func (_q *PalletQuery) loadLot(ctx context.Context, query *LotQuery, nodes []*Pallet, init func(*Pallet), assign func(*Pallet, *Lot)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Pallet)
+	for i := range nodes {
+		fk := nodes[i].LotID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(lot.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "lot_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 func (_q *PalletQuery) loadBobbins(ctx context.Context, query *BobbinQuery, nodes []*Pallet, init func(*Pallet), assign func(*Pallet, *Bobbin)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[uuid.UUID]*Pallet)
@@ -459,6 +531,9 @@ func (_q *PalletQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != pallet.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withLot != nil {
+			_spec.Node.AddColumnOnce(pallet.FieldLotID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

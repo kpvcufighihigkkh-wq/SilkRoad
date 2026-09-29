@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
 )
 
 // Lot is the model entity for the Lot schema.
@@ -21,8 +21,12 @@ type Lot struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// 批次编号，格式: {产品类型}-{年}-{计划号}-{批次号}
 	LotNumber string `json:"lot_number,omitempty"`
-	// 关联订单ID
-	OrderID uuid.UUID `json:"order_id,omitempty"`
+	// 来源边端设备ID
+	EdgeID uuid.UUID `json:"edge_id,omitempty"`
+	// PLC原始批号
+	PlcLotNumber string `json:"plc_lot_number,omitempty"`
+	// ERP订单编号（可选）
+	OrderCode string `json:"order_code,omitempty"`
 	// 产品类型
 	ProductType lot.ProductType `json:"product_type,omitempty"`
 	// 产品规格
@@ -51,33 +55,66 @@ type Lot struct {
 
 // LotEdges holds the relations/edges for other nodes in the graph.
 type LotEdges struct {
-	// Order holds the value of the order edge.
-	Order *Order `json:"order,omitempty"`
+	// Edge holds the value of the edge edge.
+	Edge *Edge `json:"edge,omitempty"`
+	// Barrels holds the value of the barrels edge.
+	Barrels []*Barrel `json:"barrels,omitempty"`
 	// Bobbins holds the value of the bobbins edge.
 	Bobbins []*Bobbin `json:"bobbins,omitempty"`
+	// Doffings holds the value of the doffings edge.
+	Doffings []*Doffing `json:"doffings,omitempty"`
+	// Pallets holds the value of the pallets edge.
+	Pallets []*Pallet `json:"pallets,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [5]bool
 }
 
-// OrderOrErr returns the Order value or an error if the edge
+// EdgeOrErr returns the Edge value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
-func (e LotEdges) OrderOrErr() (*Order, error) {
-	if e.Order != nil {
-		return e.Order, nil
+func (e LotEdges) EdgeOrErr() (*Edge, error) {
+	if e.Edge != nil {
+		return e.Edge, nil
 	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: order.Label}
+		return nil, &NotFoundError{label: edge.Label}
 	}
-	return nil, &NotLoadedError{edge: "order"}
+	return nil, &NotLoadedError{edge: "edge"}
+}
+
+// BarrelsOrErr returns the Barrels value or an error if the edge
+// was not loaded in eager-loading.
+func (e LotEdges) BarrelsOrErr() ([]*Barrel, error) {
+	if e.loadedTypes[1] {
+		return e.Barrels, nil
+	}
+	return nil, &NotLoadedError{edge: "barrels"}
 }
 
 // BobbinsOrErr returns the Bobbins value or an error if the edge
 // was not loaded in eager-loading.
 func (e LotEdges) BobbinsOrErr() ([]*Bobbin, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Bobbins, nil
 	}
 	return nil, &NotLoadedError{edge: "bobbins"}
+}
+
+// DoffingsOrErr returns the Doffings value or an error if the edge
+// was not loaded in eager-loading.
+func (e LotEdges) DoffingsOrErr() ([]*Doffing, error) {
+	if e.loadedTypes[3] {
+		return e.Doffings, nil
+	}
+	return nil, &NotLoadedError{edge: "doffings"}
+}
+
+// PalletsOrErr returns the Pallets value or an error if the edge
+// was not loaded in eager-loading.
+func (e LotEdges) PalletsOrErr() ([]*Pallet, error) {
+	if e.loadedTypes[4] {
+		return e.Pallets, nil
+	}
+	return nil, &NotLoadedError{edge: "pallets"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -89,11 +126,11 @@ func (*Lot) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case lot.FieldPlannedQuantity, lot.FieldActualQuantity:
 			values[i] = new(sql.NullInt64)
-		case lot.FieldLotNumber, lot.FieldProductType, lot.FieldProductSpec, lot.FieldStatus:
+		case lot.FieldLotNumber, lot.FieldPlcLotNumber, lot.FieldOrderCode, lot.FieldProductType, lot.FieldProductSpec, lot.FieldStatus:
 			values[i] = new(sql.NullString)
 		case lot.FieldStartTime, lot.FieldEndTime, lot.FieldCreatedAt, lot.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case lot.FieldID, lot.FieldOrderID:
+		case lot.FieldID, lot.FieldEdgeID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -122,11 +159,23 @@ func (_m *Lot) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LotNumber = value.String
 			}
-		case lot.FieldOrderID:
+		case lot.FieldEdgeID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field order_id", values[i])
+				return fmt.Errorf("unexpected type %T for field edge_id", values[i])
 			} else if value != nil {
-				_m.OrderID = *value
+				_m.EdgeID = *value
+			}
+		case lot.FieldPlcLotNumber:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field plc_lot_number", values[i])
+			} else if value.Valid {
+				_m.PlcLotNumber = value.String
+			}
+		case lot.FieldOrderCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field order_code", values[i])
+			} else if value.Valid {
+				_m.OrderCode = value.String
 			}
 		case lot.FieldProductType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -201,14 +250,29 @@ func (_m *Lot) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryOrder queries the "order" edge of the Lot entity.
-func (_m *Lot) QueryOrder() *OrderQuery {
-	return NewLotClient(_m.config).QueryOrder(_m)
+// QueryEdge queries the "edge" edge of the Lot entity.
+func (_m *Lot) QueryEdge() *EdgeQuery {
+	return NewLotClient(_m.config).QueryEdge(_m)
+}
+
+// QueryBarrels queries the "barrels" edge of the Lot entity.
+func (_m *Lot) QueryBarrels() *BarrelQuery {
+	return NewLotClient(_m.config).QueryBarrels(_m)
 }
 
 // QueryBobbins queries the "bobbins" edge of the Lot entity.
 func (_m *Lot) QueryBobbins() *BobbinQuery {
 	return NewLotClient(_m.config).QueryBobbins(_m)
+}
+
+// QueryDoffings queries the "doffings" edge of the Lot entity.
+func (_m *Lot) QueryDoffings() *DoffingQuery {
+	return NewLotClient(_m.config).QueryDoffings(_m)
+}
+
+// QueryPallets queries the "pallets" edge of the Lot entity.
+func (_m *Lot) QueryPallets() *PalletQuery {
+	return NewLotClient(_m.config).QueryPallets(_m)
 }
 
 // Update returns a builder for updating this Lot.
@@ -237,8 +301,14 @@ func (_m *Lot) String() string {
 	builder.WriteString("lot_number=")
 	builder.WriteString(_m.LotNumber)
 	builder.WriteString(", ")
-	builder.WriteString("order_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.OrderID))
+	builder.WriteString("edge_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EdgeID))
+	builder.WriteString(", ")
+	builder.WriteString("plc_lot_number=")
+	builder.WriteString(_m.PlcLotNumber)
+	builder.WriteString(", ")
+	builder.WriteString("order_code=")
+	builder.WriteString(_m.OrderCode)
 	builder.WriteString(", ")
 	builder.WriteString("product_type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProductType))

@@ -16,30 +16,47 @@ const (
 	Label = "pallet"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldPalletNumber holds the string denoting the pallet_number field in the database.
-	FieldPalletNumber = "pallet_number"
+	// FieldPalletCode holds the string denoting the pallet_code field in the database.
+	FieldPalletCode = "pallet_code"
 	// FieldLotID holds the string denoting the lot_id field in the database.
 	FieldLotID = "lot_id"
-	// FieldBobbinCount holds the string denoting the bobbin_count field in the database.
-	FieldBobbinCount = "bobbin_count"
-	// FieldTotalWeight holds the string denoting the total_weight field in the database.
-	FieldTotalWeight = "total_weight"
+	// FieldLevel holds the string denoting the level field in the database.
+	FieldLevel = "level"
+	// FieldBobbinsCount holds the string denoting the bobbins_count field in the database.
+	FieldBobbinsCount = "bobbins_count"
+	// FieldNetWeight holds the string denoting the net_weight field in the database.
+	FieldNetWeight = "net_weight"
+	// FieldGrossWeight holds the string denoting the gross_weight field in the database.
+	FieldGrossWeight = "gross_weight"
+	// FieldTareWeight holds the string denoting the tare_weight field in the database.
+	FieldTareWeight = "tare_weight"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-	// FieldLabelPrinted holds the string denoting the label_printed field in the database.
-	FieldLabelPrinted = "label_printed"
+	// FieldPalletizerID holds the string denoting the palletizer_id field in the database.
+	FieldPalletizerID = "palletizer_id"
+	// FieldPrinted holds the string denoting the printed field in the database.
+	FieldPrinted = "printed"
 	// FieldPrintedAt holds the string denoting the printed_at field in the database.
 	FieldPrintedAt = "printed_at"
-	// FieldPackedAt holds the string denoting the packed_at field in the database.
-	FieldPackedAt = "packed_at"
+	// FieldCompletedAt holds the string denoting the completed_at field in the database.
+	FieldCompletedAt = "completed_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgeLot holds the string denoting the lot edge name in mutations.
+	EdgeLot = "lot"
 	// EdgeBobbins holds the string denoting the bobbins edge name in mutations.
 	EdgeBobbins = "bobbins"
 	// Table holds the table name of the pallet in the database.
 	Table = "pallets"
+	// LotTable is the table that holds the lot relation/edge.
+	LotTable = "pallets"
+	// LotInverseTable is the table name for the Lot entity.
+	// It exists in this package in order to avoid circular dependency with the "lot" package.
+	LotInverseTable = "lots"
+	// LotColumn is the table column denoting the lot relation/edge.
+	LotColumn = "lot_id"
 	// BobbinsTable is the table that holds the bobbins relation/edge.
 	BobbinsTable = "bobbins"
 	// BobbinsInverseTable is the table name for the Bobbin entity.
@@ -52,14 +69,18 @@ const (
 // Columns holds all SQL columns for pallet fields.
 var Columns = []string{
 	FieldID,
-	FieldPalletNumber,
+	FieldPalletCode,
 	FieldLotID,
-	FieldBobbinCount,
-	FieldTotalWeight,
+	FieldLevel,
+	FieldBobbinsCount,
+	FieldNetWeight,
+	FieldGrossWeight,
+	FieldTareWeight,
 	FieldStatus,
-	FieldLabelPrinted,
+	FieldPalletizerID,
+	FieldPrinted,
 	FieldPrintedAt,
-	FieldPackedAt,
+	FieldCompletedAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -75,16 +96,24 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// PalletNumberValidator is a validator for the "pallet_number" field. It is called by the builders before save.
-	PalletNumberValidator func(string) error
-	// DefaultBobbinCount holds the default value on creation for the "bobbin_count" field.
-	DefaultBobbinCount int
-	// BobbinCountValidator is a validator for the "bobbin_count" field. It is called by the builders before save.
-	BobbinCountValidator func(int) error
-	// TotalWeightValidator is a validator for the "total_weight" field. It is called by the builders before save.
-	TotalWeightValidator func(float64) error
-	// DefaultLabelPrinted holds the default value on creation for the "label_printed" field.
-	DefaultLabelPrinted bool
+	// PalletCodeValidator is a validator for the "pallet_code" field. It is called by the builders before save.
+	PalletCodeValidator func(string) error
+	// DefaultLevel holds the default value on creation for the "level" field.
+	DefaultLevel int
+	// LevelValidator is a validator for the "level" field. It is called by the builders before save.
+	LevelValidator func(int) error
+	// DefaultBobbinsCount holds the default value on creation for the "bobbins_count" field.
+	DefaultBobbinsCount int
+	// BobbinsCountValidator is a validator for the "bobbins_count" field. It is called by the builders before save.
+	BobbinsCountValidator func(int) error
+	// NetWeightValidator is a validator for the "net_weight" field. It is called by the builders before save.
+	NetWeightValidator func(float64) error
+	// GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
+	GrossWeightValidator func(float64) error
+	// TareWeightValidator is a validator for the "tare_weight" field. It is called by the builders before save.
+	TareWeightValidator func(float64) error
+	// DefaultPrinted holds the default value on creation for the "printed" field.
+	DefaultPrinted bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -98,14 +127,14 @@ var (
 // Status defines the type for the "status" enum field.
 type Status string
 
-// StatusPacking is the default value of the Status enum.
-const DefaultStatus = StatusPacking
+// StatusBuilding is the default value of the Status enum.
+const DefaultStatus = StatusBuilding
 
 // Status values.
 const (
-	StatusPacking Status = "packing"
-	StatusPacked  Status = "packed"
-	StatusShipped Status = "shipped"
+	StatusBuilding  Status = "building"
+	StatusCompleted Status = "completed"
+	StatusShipped   Status = "shipped"
 )
 
 func (s Status) String() string {
@@ -115,7 +144,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusPacking, StatusPacked, StatusShipped:
+	case StatusBuilding, StatusCompleted, StatusShipped:
 		return nil
 	default:
 		return fmt.Errorf("pallet: invalid enum value for status field: %q", s)
@@ -130,9 +159,9 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByPalletNumber orders the results by the pallet_number field.
-func ByPalletNumber(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPalletNumber, opts...).ToFunc()
+// ByPalletCode orders the results by the pallet_code field.
+func ByPalletCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPalletCode, opts...).ToFunc()
 }
 
 // ByLotID orders the results by the lot_id field.
@@ -140,14 +169,29 @@ func ByLotID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLotID, opts...).ToFunc()
 }
 
-// ByBobbinCount orders the results by the bobbin_count field.
-func ByBobbinCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBobbinCount, opts...).ToFunc()
+// ByLevel orders the results by the level field.
+func ByLevel(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLevel, opts...).ToFunc()
 }
 
-// ByTotalWeight orders the results by the total_weight field.
-func ByTotalWeight(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalWeight, opts...).ToFunc()
+// ByBobbinsCountField orders the results by the bobbins_count field.
+func ByBobbinsCountField(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBobbinsCount, opts...).ToFunc()
+}
+
+// ByNetWeight orders the results by the net_weight field.
+func ByNetWeight(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNetWeight, opts...).ToFunc()
+}
+
+// ByGrossWeight orders the results by the gross_weight field.
+func ByGrossWeight(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldGrossWeight, opts...).ToFunc()
+}
+
+// ByTareWeight orders the results by the tare_weight field.
+func ByTareWeight(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTareWeight, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.
@@ -155,9 +199,14 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
-// ByLabelPrinted orders the results by the label_printed field.
-func ByLabelPrinted(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLabelPrinted, opts...).ToFunc()
+// ByPalletizerID orders the results by the palletizer_id field.
+func ByPalletizerID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPalletizerID, opts...).ToFunc()
+}
+
+// ByPrinted orders the results by the printed field.
+func ByPrinted(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPrinted, opts...).ToFunc()
 }
 
 // ByPrintedAt orders the results by the printed_at field.
@@ -165,9 +214,9 @@ func ByPrintedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPrintedAt, opts...).ToFunc()
 }
 
-// ByPackedAt orders the results by the packed_at field.
-func ByPackedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPackedAt, opts...).ToFunc()
+// ByCompletedAt orders the results by the completed_at field.
+func ByCompletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCompletedAt, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.
@@ -178,6 +227,13 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByLotField orders the results by lot field.
+func ByLotField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLotStep(), sql.OrderByField(field, opts...))
+	}
 }
 
 // ByBobbinsCount orders the results by bobbins count.
@@ -192,6 +248,13 @@ func ByBobbins(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newBobbinsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newLotStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LotInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, LotTable, LotColumn),
+	)
 }
 func newBobbinsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

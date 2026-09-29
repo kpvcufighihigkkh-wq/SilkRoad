@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 )
 
 // Doffing is the model entity for the Doffing schema.
@@ -43,8 +44,42 @@ type Doffing struct {
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the DoffingQuery when eager-loading is set.
+	Edges        DoffingEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// DoffingEdges holds the relations/edges for other nodes in the graph.
+type DoffingEdges struct {
+	// Lot holds the value of the lot edge.
+	Lot *Lot `json:"lot,omitempty"`
+	// Barrels holds the value of the barrels edge.
+	Barrels []*Barrel `json:"barrels,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [2]bool
+}
+
+// LotOrErr returns the Lot value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e DoffingEdges) LotOrErr() (*Lot, error) {
+	if e.Lot != nil {
+		return e.Lot, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: lot.Label}
+	}
+	return nil, &NotLoadedError{edge: "lot"}
+}
+
+// BarrelsOrErr returns the Barrels value or an error if the edge
+// was not loaded in eager-loading.
+func (e DoffingEdges) BarrelsOrErr() ([]*Barrel, error) {
+	if e.loadedTypes[1] {
+		return e.Barrels, nil
+	}
+	return nil, &NotLoadedError{edge: "barrels"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -172,6 +207,16 @@ func (_m *Doffing) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Doffing) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryLot queries the "lot" edge of the Doffing entity.
+func (_m *Doffing) QueryLot() *LotQuery {
+	return NewDoffingClient(_m.config).QueryLot(_m)
+}
+
+// QueryBarrels queries the "barrels" edge of the Doffing entity.
+func (_m *Doffing) QueryBarrels() *BarrelQuery {
+	return NewDoffingClient(_m.config).QueryBarrels(_m)
 }
 
 // Update returns a builder for updating this Doffing.

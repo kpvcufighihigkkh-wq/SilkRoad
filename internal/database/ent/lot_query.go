@@ -13,21 +13,27 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
 
 // LotQuery is the builder for querying Lot entities.
 type LotQuery struct {
 	config
-	ctx         *QueryContext
-	order       []lot.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Lot
-	withOrder   *OrderQuery
-	withBobbins *BobbinQuery
+	ctx          *QueryContext
+	order        []lot.OrderOption
+	inters       []Interceptor
+	predicates   []predicate.Lot
+	withEdge     *EdgeQuery
+	withBarrels  *BarrelQuery
+	withBobbins  *BobbinQuery
+	withDoffings *DoffingQuery
+	withPallets  *PalletQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -64,9 +70,9 @@ func (_q *LotQuery) Order(o ...lot.OrderOption) *LotQuery {
 	return _q
 }
 
-// QueryOrder chains the current query on the "order" edge.
-func (_q *LotQuery) QueryOrder() *OrderQuery {
-	query := (&OrderClient{config: _q.config}).Query()
+// QueryEdge chains the current query on the "edge" edge.
+func (_q *LotQuery) QueryEdge() *EdgeQuery {
+	query := (&EdgeClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -77,8 +83,30 @@ func (_q *LotQuery) QueryOrder() *OrderQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(lot.Table, lot.FieldID, selector),
-			sqlgraph.To(order.Table, order.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, lot.OrderTable, lot.OrderColumn),
+			sqlgraph.To(edge.Table, edge.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, lot.EdgeTable, lot.EdgeColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryBarrels chains the current query on the "barrels" edge.
+func (_q *LotQuery) QueryBarrels() *BarrelQuery {
+	query := (&BarrelClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(lot.Table, lot.FieldID, selector),
+			sqlgraph.To(barrel.Table, barrel.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, lot.BarrelsTable, lot.BarrelsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -101,6 +129,50 @@ func (_q *LotQuery) QueryBobbins() *BobbinQuery {
 			sqlgraph.From(lot.Table, lot.FieldID, selector),
 			sqlgraph.To(bobbin.Table, bobbin.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, lot.BobbinsTable, lot.BobbinsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryDoffings chains the current query on the "doffings" edge.
+func (_q *LotQuery) QueryDoffings() *DoffingQuery {
+	query := (&DoffingClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(lot.Table, lot.FieldID, selector),
+			sqlgraph.To(doffing.Table, doffing.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, lot.DoffingsTable, lot.DoffingsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPallets chains the current query on the "pallets" edge.
+func (_q *LotQuery) QueryPallets() *PalletQuery {
+	query := (&PalletClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(lot.Table, lot.FieldID, selector),
+			sqlgraph.To(pallet.Table, pallet.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, lot.PalletsTable, lot.PalletsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -295,27 +367,41 @@ func (_q *LotQuery) Clone() *LotQuery {
 		return nil
 	}
 	return &LotQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]lot.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.Lot{}, _q.predicates...),
-		withOrder:   _q.withOrder.Clone(),
-		withBobbins: _q.withBobbins.Clone(),
+		config:       _q.config,
+		ctx:          _q.ctx.Clone(),
+		order:        append([]lot.OrderOption{}, _q.order...),
+		inters:       append([]Interceptor{}, _q.inters...),
+		predicates:   append([]predicate.Lot{}, _q.predicates...),
+		withEdge:     _q.withEdge.Clone(),
+		withBarrels:  _q.withBarrels.Clone(),
+		withBobbins:  _q.withBobbins.Clone(),
+		withDoffings: _q.withDoffings.Clone(),
+		withPallets:  _q.withPallets.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithOrder tells the query-builder to eager-load the nodes that are connected to
-// the "order" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *LotQuery) WithOrder(opts ...func(*OrderQuery)) *LotQuery {
-	query := (&OrderClient{config: _q.config}).Query()
+// WithEdge tells the query-builder to eager-load the nodes that are connected to
+// the "edge" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LotQuery) WithEdge(opts ...func(*EdgeQuery)) *LotQuery {
+	query := (&EdgeClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withOrder = query
+	_q.withEdge = query
+	return _q
+}
+
+// WithBarrels tells the query-builder to eager-load the nodes that are connected to
+// the "barrels" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LotQuery) WithBarrels(opts ...func(*BarrelQuery)) *LotQuery {
+	query := (&BarrelClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBarrels = query
 	return _q
 }
 
@@ -327,6 +413,28 @@ func (_q *LotQuery) WithBobbins(opts ...func(*BobbinQuery)) *LotQuery {
 		opt(query)
 	}
 	_q.withBobbins = query
+	return _q
+}
+
+// WithDoffings tells the query-builder to eager-load the nodes that are connected to
+// the "doffings" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LotQuery) WithDoffings(opts ...func(*DoffingQuery)) *LotQuery {
+	query := (&DoffingClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withDoffings = query
+	return _q
+}
+
+// WithPallets tells the query-builder to eager-load the nodes that are connected to
+// the "pallets" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *LotQuery) WithPallets(opts ...func(*PalletQuery)) *LotQuery {
+	query := (&PalletClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPallets = query
 	return _q
 }
 
@@ -408,9 +516,12 @@ func (_q *LotQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Lot, err
 	var (
 		nodes       = []*Lot{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
-			_q.withOrder != nil,
+		loadedTypes = [5]bool{
+			_q.withEdge != nil,
+			_q.withBarrels != nil,
 			_q.withBobbins != nil,
+			_q.withDoffings != nil,
+			_q.withPallets != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -431,9 +542,16 @@ func (_q *LotQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Lot, err
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withOrder; query != nil {
-		if err := _q.loadOrder(ctx, query, nodes, nil,
-			func(n *Lot, e *Order) { n.Edges.Order = e }); err != nil {
+	if query := _q.withEdge; query != nil {
+		if err := _q.loadEdge(ctx, query, nodes, nil,
+			func(n *Lot, e *Edge) { n.Edges.Edge = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withBarrels; query != nil {
+		if err := _q.loadBarrels(ctx, query, nodes,
+			func(n *Lot) { n.Edges.Barrels = []*Barrel{} },
+			func(n *Lot, e *Barrel) { n.Edges.Barrels = append(n.Edges.Barrels, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -444,14 +562,28 @@ func (_q *LotQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Lot, err
 			return nil, err
 		}
 	}
+	if query := _q.withDoffings; query != nil {
+		if err := _q.loadDoffings(ctx, query, nodes,
+			func(n *Lot) { n.Edges.Doffings = []*Doffing{} },
+			func(n *Lot, e *Doffing) { n.Edges.Doffings = append(n.Edges.Doffings, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withPallets; query != nil {
+		if err := _q.loadPallets(ctx, query, nodes,
+			func(n *Lot) { n.Edges.Pallets = []*Pallet{} },
+			func(n *Lot, e *Pallet) { n.Edges.Pallets = append(n.Edges.Pallets, e) }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
 }
 
-func (_q *LotQuery) loadOrder(ctx context.Context, query *OrderQuery, nodes []*Lot, init func(*Lot), assign func(*Lot, *Order)) error {
+func (_q *LotQuery) loadEdge(ctx context.Context, query *EdgeQuery, nodes []*Lot, init func(*Lot), assign func(*Lot, *Edge)) error {
 	ids := make([]uuid.UUID, 0, len(nodes))
 	nodeids := make(map[uuid.UUID][]*Lot)
 	for i := range nodes {
-		fk := nodes[i].OrderID
+		fk := nodes[i].EdgeID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -460,7 +592,7 @@ func (_q *LotQuery) loadOrder(ctx context.Context, query *OrderQuery, nodes []*L
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(order.IDIn(ids...))
+	query.Where(edge.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
@@ -468,11 +600,41 @@ func (_q *LotQuery) loadOrder(ctx context.Context, query *OrderQuery, nodes []*L
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "order_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "edge_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *LotQuery) loadBarrels(ctx context.Context, query *BarrelQuery, nodes []*Lot, init func(*Lot), assign func(*Lot, *Barrel)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Lot)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(barrel.FieldLotID)
+	}
+	query.Where(predicate.Barrel(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(lot.BarrelsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.LotID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "lot_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -491,6 +653,66 @@ func (_q *LotQuery) loadBobbins(ctx context.Context, query *BobbinQuery, nodes [
 	}
 	query.Where(predicate.Bobbin(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(lot.BobbinsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.LotID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "lot_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *LotQuery) loadDoffings(ctx context.Context, query *DoffingQuery, nodes []*Lot, init func(*Lot), assign func(*Lot, *Doffing)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Lot)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(doffing.FieldLotID)
+	}
+	query.Where(predicate.Doffing(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(lot.DoffingsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.LotID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "lot_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *LotQuery) loadPallets(ctx context.Context, query *PalletQuery, nodes []*Lot, init func(*Lot), assign func(*Lot, *Pallet)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Lot)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(pallet.FieldLotID)
+	}
+	query.Where(predicate.Pallet(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(lot.PalletsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -532,8 +754,8 @@ func (_q *LotQuery) querySpec() *sqlgraph.QuerySpec {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
-		if _q.withOrder != nil {
-			_spec.Node.AddColumnOnce(lot.FieldOrderID)
+		if _q.withEdge != nil {
+			_spec.Node.AddColumnOnce(lot.FieldEdgeID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
@@ -25,6 +26,10 @@ type Bobbin struct {
 	BobbinNumber string `json:"bobbin_number,omitempty"`
 	// 关联批次ID
 	LotID uuid.UUID `json:"lot_id,omitempty"`
+	// 关联落纱桶ID
+	BarrelID uuid.UUID `json:"barrel_id,omitempty"`
+	// 桶内位置（1-9）
+	BarrelPosition int `json:"barrel_position,omitempty"`
 	// 纺丝位号（1-N）
 	SpinningPosition int `json:"spinning_position,omitempty"`
 	// 毛重（kg）
@@ -61,13 +66,15 @@ type Bobbin struct {
 type BobbinEdges struct {
 	// Lot holds the value of the lot edge.
 	Lot *Lot `json:"lot,omitempty"`
+	// Barrel holds the value of the barrel edge.
+	Barrel *Barrel `json:"barrel,omitempty"`
 	// Pallet holds the value of the pallet edge.
 	Pallet *Pallet `json:"pallet,omitempty"`
 	// Carton holds the value of the carton edge.
 	Carton *Carton `json:"carton,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 }
 
 // LotOrErr returns the Lot value or an error if the edge
@@ -81,12 +88,23 @@ func (e BobbinEdges) LotOrErr() (*Lot, error) {
 	return nil, &NotLoadedError{edge: "lot"}
 }
 
+// BarrelOrErr returns the Barrel value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e BobbinEdges) BarrelOrErr() (*Barrel, error) {
+	if e.Barrel != nil {
+		return e.Barrel, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: barrel.Label}
+	}
+	return nil, &NotLoadedError{edge: "barrel"}
+}
+
 // PalletOrErr returns the Pallet value or an error if the edge
 // was not loaded in eager-loading, or loaded but was not found.
 func (e BobbinEdges) PalletOrErr() (*Pallet, error) {
 	if e.Pallet != nil {
 		return e.Pallet, nil
-	} else if e.loadedTypes[1] {
+	} else if e.loadedTypes[2] {
 		return nil, &NotFoundError{label: pallet.Label}
 	}
 	return nil, &NotLoadedError{edge: "pallet"}
@@ -97,7 +115,7 @@ func (e BobbinEdges) PalletOrErr() (*Pallet, error) {
 func (e BobbinEdges) CartonOrErr() (*Carton, error) {
 	if e.Carton != nil {
 		return e.Carton, nil
-	} else if e.loadedTypes[2] {
+	} else if e.loadedTypes[3] {
 		return nil, &NotFoundError{label: carton.Label}
 	}
 	return nil, &NotLoadedError{edge: "carton"}
@@ -112,13 +130,13 @@ func (*Bobbin) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case bobbin.FieldGrossWeight, bobbin.FieldNetWeight, bobbin.FieldTareWeight:
 			values[i] = new(sql.NullFloat64)
-		case bobbin.FieldSpinningPosition:
+		case bobbin.FieldBarrelPosition, bobbin.FieldSpinningPosition:
 			values[i] = new(sql.NullInt64)
 		case bobbin.FieldBobbinNumber, bobbin.FieldGrade, bobbin.FieldStatus:
 			values[i] = new(sql.NullString)
 		case bobbin.FieldPrintedAt, bobbin.FieldCompletedAt, bobbin.FieldCreatedAt, bobbin.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case bobbin.FieldID, bobbin.FieldLotID, bobbin.FieldPalletID, bobbin.FieldCartonID:
+		case bobbin.FieldID, bobbin.FieldLotID, bobbin.FieldBarrelID, bobbin.FieldPalletID, bobbin.FieldCartonID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -152,6 +170,18 @@ func (_m *Bobbin) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field lot_id", values[i])
 			} else if value != nil {
 				_m.LotID = *value
+			}
+		case bobbin.FieldBarrelID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field barrel_id", values[i])
+			} else if value != nil {
+				_m.BarrelID = *value
+			}
+		case bobbin.FieldBarrelPosition:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field barrel_position", values[i])
+			} else if value.Valid {
+				_m.BarrelPosition = int(value.Int64)
 			}
 		case bobbin.FieldSpinningPosition:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -249,6 +279,11 @@ func (_m *Bobbin) QueryLot() *LotQuery {
 	return NewBobbinClient(_m.config).QueryLot(_m)
 }
 
+// QueryBarrel queries the "barrel" edge of the Bobbin entity.
+func (_m *Bobbin) QueryBarrel() *BarrelQuery {
+	return NewBobbinClient(_m.config).QueryBarrel(_m)
+}
+
 // QueryPallet queries the "pallet" edge of the Bobbin entity.
 func (_m *Bobbin) QueryPallet() *PalletQuery {
 	return NewBobbinClient(_m.config).QueryPallet(_m)
@@ -287,6 +322,12 @@ func (_m *Bobbin) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("lot_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LotID))
+	builder.WriteString(", ")
+	builder.WriteString("barrel_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BarrelID))
+	builder.WriteString(", ")
+	builder.WriteString("barrel_position=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BarrelPosition))
 	builder.WriteString(", ")
 	builder.WriteString("spinning_position=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SpinningPosition))

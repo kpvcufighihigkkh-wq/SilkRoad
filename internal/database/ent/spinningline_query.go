@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
@@ -23,6 +24,7 @@ type SpinningLineQuery struct {
 	order      []spinningline.OrderOption
 	inters     []Interceptor
 	predicates []predicate.SpinningLine
+	withEdge   *EdgeQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -57,6 +59,28 @@ func (_q *SpinningLineQuery) Unique(unique bool) *SpinningLineQuery {
 func (_q *SpinningLineQuery) Order(o ...spinningline.OrderOption) *SpinningLineQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QueryEdge chains the current query on the "edge" edge.
+func (_q *SpinningLineQuery) QueryEdge() *EdgeQuery {
+	query := (&EdgeClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(spinningline.Table, spinningline.FieldID, selector),
+			sqlgraph.To(edge.Table, edge.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, spinningline.EdgeTable, spinningline.EdgeColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // First returns the first SpinningLine entity from the query.
@@ -251,10 +275,22 @@ func (_q *SpinningLineQuery) Clone() *SpinningLineQuery {
 		order:      append([]spinningline.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.SpinningLine{}, _q.predicates...),
+		withEdge:   _q.withEdge.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithEdge tells the query-builder to eager-load the nodes that are connected to
+// the "edge" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *SpinningLineQuery) WithEdge(opts ...func(*EdgeQuery)) *SpinningLineQuery {
+	query := (&EdgeClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withEdge = query
+	return _q
 }
 
 // GroupBy is used to group vertices by one or more fields/columns.
@@ -333,8 +369,11 @@ func (_q *SpinningLineQuery) prepareQuery(ctx context.Context) error {
 
 func (_q *SpinningLineQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*SpinningLine, error) {
 	var (
-		nodes = []*SpinningLine{}
-		_spec = _q.querySpec()
+		nodes       = []*SpinningLine{}
+		_spec       = _q.querySpec()
+		loadedTypes = [1]bool{
+			_q.withEdge != nil,
+		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*SpinningLine).scanValues(nil, columns)
@@ -342,6 +381,7 @@ func (_q *SpinningLineQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	_spec.Assign = func(columns []string, values []any) error {
 		node := &SpinningLine{config: _q.config}
 		nodes = append(nodes, node)
+		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
 	for i := range hooks {
@@ -353,7 +393,43 @@ func (_q *SpinningLineQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
+	if query := _q.withEdge; query != nil {
+		if err := _q.loadEdge(ctx, query, nodes, nil,
+			func(n *SpinningLine, e *Edge) { n.Edges.Edge = e }); err != nil {
+			return nil, err
+		}
+	}
 	return nodes, nil
+}
+
+func (_q *SpinningLineQuery) loadEdge(ctx context.Context, query *EdgeQuery, nodes []*SpinningLine, init func(*SpinningLine), assign func(*SpinningLine, *Edge)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*SpinningLine)
+	for i := range nodes {
+		fk := nodes[i].EdgeID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(edge.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "edge_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
 }
 
 func (_q *SpinningLineQuery) sqlCount(ctx context.Context) (int, error) {
@@ -380,6 +456,9 @@ func (_q *SpinningLineQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != spinningline.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withEdge != nil {
+			_spec.Node.AddColumnOnce(spinningline.FieldEdgeID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

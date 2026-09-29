@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -19,6 +20,8 @@ const (
 	FieldLineName = "line_name"
 	// FieldLineNumber holds the string denoting the line_number field in the database.
 	FieldLineNumber = "line_number"
+	// FieldEdgeID holds the string denoting the edge_id field in the database.
+	FieldEdgeID = "edge_id"
 	// FieldLocation holds the string denoting the location field in the database.
 	FieldLocation = "location"
 	// FieldCapacity holds the string denoting the capacity field in the database.
@@ -31,8 +34,17 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgeEdge holds the string denoting the edge edge name in mutations.
+	EdgeEdge = "edge"
 	// Table holds the table name of the spinningline in the database.
 	Table = "spinning_lines"
+	// EdgeTable is the table that holds the edge relation/edge.
+	EdgeTable = "spinning_lines"
+	// EdgeInverseTable is the table name for the Edge entity.
+	// It exists in this package in order to avoid circular dependency with the "edge" package.
+	EdgeInverseTable = "edges"
+	// EdgeColumn is the table column denoting the edge relation/edge.
+	EdgeColumn = "edge_id"
 )
 
 // Columns holds all SQL columns for spinningline fields.
@@ -40,6 +52,7 @@ var Columns = []string{
 	FieldID,
 	FieldLineName,
 	FieldLineNumber,
+	FieldEdgeID,
 	FieldLocation,
 	FieldCapacity,
 	FieldStatus,
@@ -123,6 +136,11 @@ func ByLineNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLineNumber, opts...).ToFunc()
 }
 
+// ByEdgeID orders the results by the edge_id field.
+func ByEdgeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEdgeID, opts...).ToFunc()
+}
+
 // ByLocation orders the results by the location field.
 func ByLocation(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLocation, opts...).ToFunc()
@@ -151,4 +169,18 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByEdgeField orders the results by edge field.
+func ByEdgeField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEdgeStep(), sql.OrderByField(field, opts...))
+	}
+}
+func newEdgeStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EdgeInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, EdgeTable, EdgeColumn),
+	)
 }

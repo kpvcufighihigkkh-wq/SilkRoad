@@ -18,8 +18,12 @@ const (
 	FieldID = "id"
 	// FieldLotNumber holds the string denoting the lot_number field in the database.
 	FieldLotNumber = "lot_number"
-	// FieldOrderID holds the string denoting the order_id field in the database.
-	FieldOrderID = "order_id"
+	// FieldEdgeID holds the string denoting the edge_id field in the database.
+	FieldEdgeID = "edge_id"
+	// FieldPlcLotNumber holds the string denoting the plc_lot_number field in the database.
+	FieldPlcLotNumber = "plc_lot_number"
+	// FieldOrderCode holds the string denoting the order_code field in the database.
+	FieldOrderCode = "order_code"
 	// FieldProductType holds the string denoting the product_type field in the database.
 	FieldProductType = "product_type"
 	// FieldProductSpec holds the string denoting the product_spec field in the database.
@@ -40,19 +44,32 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// EdgeOrder holds the string denoting the order edge name in mutations.
-	EdgeOrder = "order"
+	// EdgeEdge holds the string denoting the edge edge name in mutations.
+	EdgeEdge = "edge"
+	// EdgeBarrels holds the string denoting the barrels edge name in mutations.
+	EdgeBarrels = "barrels"
 	// EdgeBobbins holds the string denoting the bobbins edge name in mutations.
 	EdgeBobbins = "bobbins"
+	// EdgeDoffings holds the string denoting the doffings edge name in mutations.
+	EdgeDoffings = "doffings"
+	// EdgePallets holds the string denoting the pallets edge name in mutations.
+	EdgePallets = "pallets"
 	// Table holds the table name of the lot in the database.
 	Table = "lots"
-	// OrderTable is the table that holds the order relation/edge.
-	OrderTable = "lots"
-	// OrderInverseTable is the table name for the Order entity.
-	// It exists in this package in order to avoid circular dependency with the "order" package.
-	OrderInverseTable = "orders"
-	// OrderColumn is the table column denoting the order relation/edge.
-	OrderColumn = "order_id"
+	// EdgeTable is the table that holds the edge relation/edge.
+	EdgeTable = "lots"
+	// EdgeInverseTable is the table name for the Edge entity.
+	// It exists in this package in order to avoid circular dependency with the "edge" package.
+	EdgeInverseTable = "edges"
+	// EdgeColumn is the table column denoting the edge relation/edge.
+	EdgeColumn = "edge_id"
+	// BarrelsTable is the table that holds the barrels relation/edge.
+	BarrelsTable = "barrels"
+	// BarrelsInverseTable is the table name for the Barrel entity.
+	// It exists in this package in order to avoid circular dependency with the "barrel" package.
+	BarrelsInverseTable = "barrels"
+	// BarrelsColumn is the table column denoting the barrels relation/edge.
+	BarrelsColumn = "lot_id"
 	// BobbinsTable is the table that holds the bobbins relation/edge.
 	BobbinsTable = "bobbins"
 	// BobbinsInverseTable is the table name for the Bobbin entity.
@@ -60,13 +77,29 @@ const (
 	BobbinsInverseTable = "bobbins"
 	// BobbinsColumn is the table column denoting the bobbins relation/edge.
 	BobbinsColumn = "lot_id"
+	// DoffingsTable is the table that holds the doffings relation/edge.
+	DoffingsTable = "doffings"
+	// DoffingsInverseTable is the table name for the Doffing entity.
+	// It exists in this package in order to avoid circular dependency with the "doffing" package.
+	DoffingsInverseTable = "doffings"
+	// DoffingsColumn is the table column denoting the doffings relation/edge.
+	DoffingsColumn = "lot_id"
+	// PalletsTable is the table that holds the pallets relation/edge.
+	PalletsTable = "pallets"
+	// PalletsInverseTable is the table name for the Pallet entity.
+	// It exists in this package in order to avoid circular dependency with the "pallet" package.
+	PalletsInverseTable = "pallets"
+	// PalletsColumn is the table column denoting the pallets relation/edge.
+	PalletsColumn = "lot_id"
 )
 
 // Columns holds all SQL columns for lot fields.
 var Columns = []string{
 	FieldID,
 	FieldLotNumber,
-	FieldOrderID,
+	FieldEdgeID,
+	FieldPlcLotNumber,
+	FieldOrderCode,
 	FieldProductType,
 	FieldProductSpec,
 	FieldPlannedQuantity,
@@ -92,6 +125,10 @@ func ValidColumn(column string) bool {
 var (
 	// LotNumberValidator is a validator for the "lot_number" field. It is called by the builders before save.
 	LotNumberValidator func(string) error
+	// PlcLotNumberValidator is a validator for the "plc_lot_number" field. It is called by the builders before save.
+	PlcLotNumberValidator func(string) error
+	// OrderCodeValidator is a validator for the "order_code" field. It is called by the builders before save.
+	OrderCodeValidator func(string) error
 	// ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
 	ProductSpecValidator func(string) error
 	// PlannedQuantityValidator is a validator for the "planned_quantity" field. It is called by the builders before save.
@@ -177,9 +214,19 @@ func ByLotNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLotNumber, opts...).ToFunc()
 }
 
-// ByOrderID orders the results by the order_id field.
-func ByOrderID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldOrderID, opts...).ToFunc()
+// ByEdgeID orders the results by the edge_id field.
+func ByEdgeID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEdgeID, opts...).ToFunc()
+}
+
+// ByPlcLotNumber orders the results by the plc_lot_number field.
+func ByPlcLotNumber(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPlcLotNumber, opts...).ToFunc()
+}
+
+// ByOrderCode orders the results by the order_code field.
+func ByOrderCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOrderCode, opts...).ToFunc()
 }
 
 // ByProductType orders the results by the product_type field.
@@ -232,10 +279,24 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
-// ByOrderField orders the results by order field.
-func ByOrderField(field string, opts ...sql.OrderTermOption) OrderOption {
+// ByEdgeField orders the results by edge field.
+func ByEdgeField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newOrderStep(), sql.OrderByField(field, opts...))
+		sqlgraph.OrderByNeighborTerms(s, newEdgeStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByBarrelsCount orders the results by barrels count.
+func ByBarrelsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newBarrelsStep(), opts...)
+	}
+}
+
+// ByBarrels orders the results by barrels terms.
+func ByBarrels(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newBarrelsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -252,11 +313,46 @@ func ByBobbins(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newBobbinsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newOrderStep() *sqlgraph.Step {
+
+// ByDoffingsCount orders the results by doffings count.
+func ByDoffingsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDoffingsStep(), opts...)
+	}
+}
+
+// ByDoffings orders the results by doffings terms.
+func ByDoffings(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDoffingsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByPalletsCount orders the results by pallets count.
+func ByPalletsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPalletsStep(), opts...)
+	}
+}
+
+// ByPallets orders the results by pallets terms.
+func ByPallets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPalletsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newEdgeStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(OrderInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, OrderTable, OrderColumn),
+		sqlgraph.To(EdgeInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, EdgeTable, EdgeColumn),
+	)
+}
+func newBarrelsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(BarrelsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, BarrelsTable, BarrelsColumn),
 	)
 }
 func newBobbinsStep() *sqlgraph.Step {
@@ -264,5 +360,19 @@ func newBobbinsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(BobbinsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, BobbinsTable, BobbinsColumn),
+	)
+}
+func newDoffingsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DoffingsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DoffingsTable, DoffingsColumn),
+	)
+}
+func newPalletsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PalletsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PalletsTable, PalletsColumn),
 	)
 }

@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
@@ -27,6 +28,7 @@ type BobbinQuery struct {
 	inters     []Interceptor
 	predicates []predicate.Bobbin
 	withLot    *LotQuery
+	withBarrel *BarrelQuery
 	withPallet *PalletQuery
 	withCarton *CartonQuery
 	// intermediate query (i.e. traversal path).
@@ -80,6 +82,28 @@ func (_q *BobbinQuery) QueryLot() *LotQuery {
 			sqlgraph.From(bobbin.Table, bobbin.FieldID, selector),
 			sqlgraph.To(lot.Table, lot.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, bobbin.LotTable, bobbin.LotColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryBarrel chains the current query on the "barrel" edge.
+func (_q *BobbinQuery) QueryBarrel() *BarrelQuery {
+	query := (&BarrelClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(bobbin.Table, bobbin.FieldID, selector),
+			sqlgraph.To(barrel.Table, barrel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, bobbin.BarrelTable, bobbin.BarrelColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -324,6 +348,7 @@ func (_q *BobbinQuery) Clone() *BobbinQuery {
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Bobbin{}, _q.predicates...),
 		withLot:    _q.withLot.Clone(),
+		withBarrel: _q.withBarrel.Clone(),
 		withPallet: _q.withPallet.Clone(),
 		withCarton: _q.withCarton.Clone(),
 		// clone intermediate query.
@@ -340,6 +365,17 @@ func (_q *BobbinQuery) WithLot(opts ...func(*LotQuery)) *BobbinQuery {
 		opt(query)
 	}
 	_q.withLot = query
+	return _q
+}
+
+// WithBarrel tells the query-builder to eager-load the nodes that are connected to
+// the "barrel" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *BobbinQuery) WithBarrel(opts ...func(*BarrelQuery)) *BobbinQuery {
+	query := (&BarrelClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBarrel = query
 	return _q
 }
 
@@ -443,8 +479,9 @@ func (_q *BobbinQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Bobbi
 	var (
 		nodes       = []*Bobbin{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withLot != nil,
+			_q.withBarrel != nil,
 			_q.withPallet != nil,
 			_q.withCarton != nil,
 		}
@@ -470,6 +507,12 @@ func (_q *BobbinQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Bobbi
 	if query := _q.withLot; query != nil {
 		if err := _q.loadLot(ctx, query, nodes, nil,
 			func(n *Bobbin, e *Lot) { n.Edges.Lot = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withBarrel; query != nil {
+		if err := _q.loadBarrel(ctx, query, nodes, nil,
+			func(n *Bobbin, e *Barrel) { n.Edges.Barrel = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -510,6 +553,35 @@ func (_q *BobbinQuery) loadLot(ctx context.Context, query *LotQuery, nodes []*Bo
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "lot_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *BobbinQuery) loadBarrel(ctx context.Context, query *BarrelQuery, nodes []*Bobbin, init func(*Bobbin), assign func(*Bobbin, *Barrel)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Bobbin)
+	for i := range nodes {
+		fk := nodes[i].BarrelID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(barrel.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "barrel_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -603,6 +675,9 @@ func (_q *BobbinQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if _q.withLot != nil {
 			_spec.Node.AddColumnOnce(bobbin.FieldLotID)
+		}
+		if _q.withBarrel != nil {
+			_spec.Node.AddColumnOnce(bobbin.FieldBarrelID)
 		}
 		if _q.withPallet != nil {
 			_spec.Node.AddColumnOnce(bobbin.FieldPalletID)

@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
 
@@ -22,6 +23,8 @@ type SpinningLine struct {
 	LineName string `json:"line_name,omitempty"`
 	// 线体编号
 	LineNumber string `json:"line_number,omitempty"`
+	// 关联边端设备ID
+	EdgeID uuid.UUID `json:"edge_id,omitempty"`
 	// 线体位置
 	Location string `json:"location,omitempty"`
 	// 线体产能（位号数量）
@@ -33,8 +36,31 @@ type SpinningLine struct {
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the SpinningLineQuery when eager-loading is set.
+	Edges        SpinningLineEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// SpinningLineEdges holds the relations/edges for other nodes in the graph.
+type SpinningLineEdges struct {
+	// Edge holds the value of the edge edge.
+	Edge *Edge `json:"edge,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// EdgeOrErr returns the Edge value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e SpinningLineEdges) EdgeOrErr() (*Edge, error) {
+	if e.Edge != nil {
+		return e.Edge, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: edge.Label}
+	}
+	return nil, &NotLoadedError{edge: "edge"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -48,7 +74,7 @@ func (*SpinningLine) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case spinningline.FieldCreatedAt, spinningline.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case spinningline.FieldID, spinningline.FieldCurrentLotID:
+		case spinningline.FieldID, spinningline.FieldEdgeID, spinningline.FieldCurrentLotID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -82,6 +108,12 @@ func (_m *SpinningLine) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field line_number", values[i])
 			} else if value.Valid {
 				_m.LineNumber = value.String
+			}
+		case spinningline.FieldEdgeID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field edge_id", values[i])
+			} else if value != nil {
+				_m.EdgeID = *value
 			}
 		case spinningline.FieldLocation:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -132,6 +164,11 @@ func (_m *SpinningLine) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryEdge queries the "edge" edge of the SpinningLine entity.
+func (_m *SpinningLine) QueryEdge() *EdgeQuery {
+	return NewSpinningLineClient(_m.config).QueryEdge(_m)
+}
+
 // Update returns a builder for updating this SpinningLine.
 // Note that you need to call SpinningLine.Unwrap() before calling this method if this SpinningLine
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -160,6 +197,9 @@ func (_m *SpinningLine) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("line_number=")
 	builder.WriteString(_m.LineNumber)
+	builder.WriteString(", ")
+	builder.WriteString("edge_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EdgeID))
 	builder.WriteString(", ")
 	builder.WriteString("location=")
 	builder.WriteString(_m.Location)

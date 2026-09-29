@@ -12,20 +12,24 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
+	// Barrel is the client for interacting with the Barrel builders.
+	Barrel *BarrelClient
 	// Bobbin is the client for interacting with the Bobbin builders.
 	Bobbin *BobbinClient
 	// Carton is the client for interacting with the Carton builders.
 	Carton *CartonClient
 	// Doffing is the client for interacting with the Doffing builders.
 	Doffing *DoffingClient
+	// Edge is the client for interacting with the Edge builders.
+	Edge *EdgeClient
+	// Grade is the client for interacting with the Grade builders.
+	Grade *GradeClient
 	// Lot is the client for interacting with the Lot builders.
 	Lot *LotClient
-	// Order is the client for interacting with the Order builders.
-	Order *OrderClient
+	// Module is the client for interacting with the Module builders.
+	Module *ModuleClient
 	// Pallet is the client for interacting with the Pallet builders.
 	Pallet *PalletClient
-	// Project is the client for interacting with the Project builders.
-	Project *ProjectClient
 	// SpinningLine is the client for interacting with the SpinningLine builders.
 	SpinningLine *SpinningLineClient
 	// User is the client for interacting with the User builders.
@@ -161,13 +165,15 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
+	tx.Barrel = NewBarrelClient(tx.config)
 	tx.Bobbin = NewBobbinClient(tx.config)
 	tx.Carton = NewCartonClient(tx.config)
 	tx.Doffing = NewDoffingClient(tx.config)
+	tx.Edge = NewEdgeClient(tx.config)
+	tx.Grade = NewGradeClient(tx.config)
 	tx.Lot = NewLotClient(tx.config)
-	tx.Order = NewOrderClient(tx.config)
+	tx.Module = NewModuleClient(tx.config)
 	tx.Pallet = NewPalletClient(tx.config)
-	tx.Project = NewProjectClient(tx.config)
 	tx.SpinningLine = NewSpinningLineClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
@@ -179,7 +185,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: Bobbin.QueryXXX(), the query will be executed
+// applies a query, for example: Barrel.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

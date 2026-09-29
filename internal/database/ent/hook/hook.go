@@ -9,6 +9,18 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 )
 
+// The BarrelFunc type is an adapter to allow the use of ordinary
+// function as Barrel mutator.
+type BarrelFunc func(context.Context, *ent.BarrelMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f BarrelFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.BarrelMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BarrelMutation", m)
+}
+
 // The BobbinFunc type is an adapter to allow the use of ordinary
 // function as Bobbin mutator.
 type BobbinFunc func(context.Context, *ent.BobbinMutation) (ent.Value, error)
@@ -45,6 +57,30 @@ func (f DoffingFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.DoffingMutation", m)
 }
 
+// The EdgeFunc type is an adapter to allow the use of ordinary
+// function as Edge mutator.
+type EdgeFunc func(context.Context, *ent.EdgeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EdgeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EdgeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EdgeMutation", m)
+}
+
+// The GradeFunc type is an adapter to allow the use of ordinary
+// function as Grade mutator.
+type GradeFunc func(context.Context, *ent.GradeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f GradeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.GradeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.GradeMutation", m)
+}
+
 // The LotFunc type is an adapter to allow the use of ordinary
 // function as Lot mutator.
 type LotFunc func(context.Context, *ent.LotMutation) (ent.Value, error)
@@ -57,16 +93,16 @@ func (f LotFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LotMutation", m)
 }
 
-// The OrderFunc type is an adapter to allow the use of ordinary
-// function as Order mutator.
-type OrderFunc func(context.Context, *ent.OrderMutation) (ent.Value, error)
+// The ModuleFunc type is an adapter to allow the use of ordinary
+// function as Module mutator.
+type ModuleFunc func(context.Context, *ent.ModuleMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f OrderFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.OrderMutation); ok {
+func (f ModuleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ModuleMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OrderMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ModuleMutation", m)
 }
 
 // The PalletFunc type is an adapter to allow the use of ordinary
@@ -79,18 +115,6 @@ func (f PalletFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PalletMutation", m)
-}
-
-// The ProjectFunc type is an adapter to allow the use of ordinary
-// function as Project mutator.
-type ProjectFunc func(context.Context, *ent.ProjectMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f ProjectFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.ProjectMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProjectMutation", m)
 }
 
 // The SpinningLineFunc type is an adapter to allow the use of ordinary

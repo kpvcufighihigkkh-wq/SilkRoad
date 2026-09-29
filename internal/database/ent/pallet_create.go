@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 )
 
@@ -22,9 +23,9 @@ type PalletCreate struct {
 	hooks    []Hook
 }
 
-// SetPalletNumber sets the "pallet_number" field.
-func (_c *PalletCreate) SetPalletNumber(v string) *PalletCreate {
-	_c.mutation.SetPalletNumber(v)
+// SetPalletCode sets the "pallet_code" field.
+func (_c *PalletCreate) SetPalletCode(v string) *PalletCreate {
+	_c.mutation.SetPalletCode(v)
 	return _c
 }
 
@@ -34,38 +35,72 @@ func (_c *PalletCreate) SetLotID(v uuid.UUID) *PalletCreate {
 	return _c
 }
 
-// SetNillableLotID sets the "lot_id" field if the given value is not nil.
-func (_c *PalletCreate) SetNillableLotID(v *uuid.UUID) *PalletCreate {
+// SetLevel sets the "level" field.
+func (_c *PalletCreate) SetLevel(v int) *PalletCreate {
+	_c.mutation.SetLevel(v)
+	return _c
+}
+
+// SetNillableLevel sets the "level" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableLevel(v *int) *PalletCreate {
 	if v != nil {
-		_c.SetLotID(*v)
+		_c.SetLevel(*v)
 	}
 	return _c
 }
 
-// SetBobbinCount sets the "bobbin_count" field.
-func (_c *PalletCreate) SetBobbinCount(v int) *PalletCreate {
-	_c.mutation.SetBobbinCount(v)
+// SetBobbinsCount sets the "bobbins_count" field.
+func (_c *PalletCreate) SetBobbinsCount(v int) *PalletCreate {
+	_c.mutation.SetBobbinsCount(v)
 	return _c
 }
 
-// SetNillableBobbinCount sets the "bobbin_count" field if the given value is not nil.
-func (_c *PalletCreate) SetNillableBobbinCount(v *int) *PalletCreate {
+// SetNillableBobbinsCount sets the "bobbins_count" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableBobbinsCount(v *int) *PalletCreate {
 	if v != nil {
-		_c.SetBobbinCount(*v)
+		_c.SetBobbinsCount(*v)
 	}
 	return _c
 }
 
-// SetTotalWeight sets the "total_weight" field.
-func (_c *PalletCreate) SetTotalWeight(v float64) *PalletCreate {
-	_c.mutation.SetTotalWeight(v)
+// SetNetWeight sets the "net_weight" field.
+func (_c *PalletCreate) SetNetWeight(v float64) *PalletCreate {
+	_c.mutation.SetNetWeight(v)
 	return _c
 }
 
-// SetNillableTotalWeight sets the "total_weight" field if the given value is not nil.
-func (_c *PalletCreate) SetNillableTotalWeight(v *float64) *PalletCreate {
+// SetNillableNetWeight sets the "net_weight" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableNetWeight(v *float64) *PalletCreate {
 	if v != nil {
-		_c.SetTotalWeight(*v)
+		_c.SetNetWeight(*v)
+	}
+	return _c
+}
+
+// SetGrossWeight sets the "gross_weight" field.
+func (_c *PalletCreate) SetGrossWeight(v float64) *PalletCreate {
+	_c.mutation.SetGrossWeight(v)
+	return _c
+}
+
+// SetNillableGrossWeight sets the "gross_weight" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableGrossWeight(v *float64) *PalletCreate {
+	if v != nil {
+		_c.SetGrossWeight(*v)
+	}
+	return _c
+}
+
+// SetTareWeight sets the "tare_weight" field.
+func (_c *PalletCreate) SetTareWeight(v float64) *PalletCreate {
+	_c.mutation.SetTareWeight(v)
+	return _c
+}
+
+// SetNillableTareWeight sets the "tare_weight" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableTareWeight(v *float64) *PalletCreate {
+	if v != nil {
+		_c.SetTareWeight(*v)
 	}
 	return _c
 }
@@ -84,16 +119,30 @@ func (_c *PalletCreate) SetNillableStatus(v *pallet.Status) *PalletCreate {
 	return _c
 }
 
-// SetLabelPrinted sets the "label_printed" field.
-func (_c *PalletCreate) SetLabelPrinted(v bool) *PalletCreate {
-	_c.mutation.SetLabelPrinted(v)
+// SetPalletizerID sets the "palletizer_id" field.
+func (_c *PalletCreate) SetPalletizerID(v uuid.UUID) *PalletCreate {
+	_c.mutation.SetPalletizerID(v)
 	return _c
 }
 
-// SetNillableLabelPrinted sets the "label_printed" field if the given value is not nil.
-func (_c *PalletCreate) SetNillableLabelPrinted(v *bool) *PalletCreate {
+// SetNillablePalletizerID sets the "palletizer_id" field if the given value is not nil.
+func (_c *PalletCreate) SetNillablePalletizerID(v *uuid.UUID) *PalletCreate {
 	if v != nil {
-		_c.SetLabelPrinted(*v)
+		_c.SetPalletizerID(*v)
+	}
+	return _c
+}
+
+// SetPrinted sets the "printed" field.
+func (_c *PalletCreate) SetPrinted(v bool) *PalletCreate {
+	_c.mutation.SetPrinted(v)
+	return _c
+}
+
+// SetNillablePrinted sets the "printed" field if the given value is not nil.
+func (_c *PalletCreate) SetNillablePrinted(v *bool) *PalletCreate {
+	if v != nil {
+		_c.SetPrinted(*v)
 	}
 	return _c
 }
@@ -112,16 +161,16 @@ func (_c *PalletCreate) SetNillablePrintedAt(v *time.Time) *PalletCreate {
 	return _c
 }
 
-// SetPackedAt sets the "packed_at" field.
-func (_c *PalletCreate) SetPackedAt(v time.Time) *PalletCreate {
-	_c.mutation.SetPackedAt(v)
+// SetCompletedAt sets the "completed_at" field.
+func (_c *PalletCreate) SetCompletedAt(v time.Time) *PalletCreate {
+	_c.mutation.SetCompletedAt(v)
 	return _c
 }
 
-// SetNillablePackedAt sets the "packed_at" field if the given value is not nil.
-func (_c *PalletCreate) SetNillablePackedAt(v *time.Time) *PalletCreate {
+// SetNillableCompletedAt sets the "completed_at" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableCompletedAt(v *time.Time) *PalletCreate {
 	if v != nil {
-		_c.SetPackedAt(*v)
+		_c.SetCompletedAt(*v)
 	}
 	return _c
 }
@@ -166,6 +215,11 @@ func (_c *PalletCreate) SetNillableID(v *uuid.UUID) *PalletCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// SetLot sets the "lot" edge to the Lot entity.
+func (_c *PalletCreate) SetLot(v *Lot) *PalletCreate {
+	return _c.SetLotID(v.ID)
 }
 
 // AddBobbinIDs adds the "bobbins" edge to the Bobbin entity by IDs.
@@ -218,17 +272,21 @@ func (_c *PalletCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *PalletCreate) defaults() {
-	if _, ok := _c.mutation.BobbinCount(); !ok {
-		v := pallet.DefaultBobbinCount
-		_c.mutation.SetBobbinCount(v)
+	if _, ok := _c.mutation.Level(); !ok {
+		v := pallet.DefaultLevel
+		_c.mutation.SetLevel(v)
+	}
+	if _, ok := _c.mutation.BobbinsCount(); !ok {
+		v := pallet.DefaultBobbinsCount
+		_c.mutation.SetBobbinsCount(v)
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := pallet.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
-	if _, ok := _c.mutation.LabelPrinted(); !ok {
-		v := pallet.DefaultLabelPrinted
-		_c.mutation.SetLabelPrinted(v)
+	if _, ok := _c.mutation.Printed(); !ok {
+		v := pallet.DefaultPrinted
+		_c.mutation.SetPrinted(v)
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := pallet.DefaultCreatedAt()
@@ -246,25 +304,46 @@ func (_c *PalletCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *PalletCreate) check() error {
-	if _, ok := _c.mutation.PalletNumber(); !ok {
-		return &ValidationError{Name: "pallet_number", err: errors.New(`ent: missing required field "Pallet.pallet_number"`)}
+	if _, ok := _c.mutation.PalletCode(); !ok {
+		return &ValidationError{Name: "pallet_code", err: errors.New(`ent: missing required field "Pallet.pallet_code"`)}
 	}
-	if v, ok := _c.mutation.PalletNumber(); ok {
-		if err := pallet.PalletNumberValidator(v); err != nil {
-			return &ValidationError{Name: "pallet_number", err: fmt.Errorf(`ent: validator failed for field "Pallet.pallet_number": %w`, err)}
+	if v, ok := _c.mutation.PalletCode(); ok {
+		if err := pallet.PalletCodeValidator(v); err != nil {
+			return &ValidationError{Name: "pallet_code", err: fmt.Errorf(`ent: validator failed for field "Pallet.pallet_code": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.BobbinCount(); !ok {
-		return &ValidationError{Name: "bobbin_count", err: errors.New(`ent: missing required field "Pallet.bobbin_count"`)}
+	if _, ok := _c.mutation.LotID(); !ok {
+		return &ValidationError{Name: "lot_id", err: errors.New(`ent: missing required field "Pallet.lot_id"`)}
 	}
-	if v, ok := _c.mutation.BobbinCount(); ok {
-		if err := pallet.BobbinCountValidator(v); err != nil {
-			return &ValidationError{Name: "bobbin_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.bobbin_count": %w`, err)}
+	if _, ok := _c.mutation.Level(); !ok {
+		return &ValidationError{Name: "level", err: errors.New(`ent: missing required field "Pallet.level"`)}
+	}
+	if v, ok := _c.mutation.Level(); ok {
+		if err := pallet.LevelValidator(v); err != nil {
+			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Pallet.level": %w`, err)}
 		}
 	}
-	if v, ok := _c.mutation.TotalWeight(); ok {
-		if err := pallet.TotalWeightValidator(v); err != nil {
-			return &ValidationError{Name: "total_weight", err: fmt.Errorf(`ent: validator failed for field "Pallet.total_weight": %w`, err)}
+	if _, ok := _c.mutation.BobbinsCount(); !ok {
+		return &ValidationError{Name: "bobbins_count", err: errors.New(`ent: missing required field "Pallet.bobbins_count"`)}
+	}
+	if v, ok := _c.mutation.BobbinsCount(); ok {
+		if err := pallet.BobbinsCountValidator(v); err != nil {
+			return &ValidationError{Name: "bobbins_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.bobbins_count": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.NetWeight(); ok {
+		if err := pallet.NetWeightValidator(v); err != nil {
+			return &ValidationError{Name: "net_weight", err: fmt.Errorf(`ent: validator failed for field "Pallet.net_weight": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.GrossWeight(); ok {
+		if err := pallet.GrossWeightValidator(v); err != nil {
+			return &ValidationError{Name: "gross_weight", err: fmt.Errorf(`ent: validator failed for field "Pallet.gross_weight": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.TareWeight(); ok {
+		if err := pallet.TareWeightValidator(v); err != nil {
+			return &ValidationError{Name: "tare_weight", err: fmt.Errorf(`ent: validator failed for field "Pallet.tare_weight": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
@@ -275,14 +354,17 @@ func (_c *PalletCreate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Pallet.status": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.LabelPrinted(); !ok {
-		return &ValidationError{Name: "label_printed", err: errors.New(`ent: missing required field "Pallet.label_printed"`)}
+	if _, ok := _c.mutation.Printed(); !ok {
+		return &ValidationError{Name: "printed", err: errors.New(`ent: missing required field "Pallet.printed"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Pallet.created_at"`)}
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Pallet.updated_at"`)}
+	}
+	if len(_c.mutation.LotIDs()) == 0 {
+		return &ValidationError{Name: "lot", err: errors.New(`ent: missing required edge "Pallet.lot"`)}
 	}
 	return nil
 }
@@ -319,37 +401,49 @@ func (_c *PalletCreate) createSpec() (*Pallet, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.PalletNumber(); ok {
-		_spec.SetField(pallet.FieldPalletNumber, field.TypeString, value)
-		_node.PalletNumber = value
+	if value, ok := _c.mutation.PalletCode(); ok {
+		_spec.SetField(pallet.FieldPalletCode, field.TypeString, value)
+		_node.PalletCode = value
 	}
-	if value, ok := _c.mutation.LotID(); ok {
-		_spec.SetField(pallet.FieldLotID, field.TypeUUID, value)
-		_node.LotID = value
+	if value, ok := _c.mutation.Level(); ok {
+		_spec.SetField(pallet.FieldLevel, field.TypeInt, value)
+		_node.Level = value
 	}
-	if value, ok := _c.mutation.BobbinCount(); ok {
-		_spec.SetField(pallet.FieldBobbinCount, field.TypeInt, value)
-		_node.BobbinCount = value
+	if value, ok := _c.mutation.BobbinsCount(); ok {
+		_spec.SetField(pallet.FieldBobbinsCount, field.TypeInt, value)
+		_node.BobbinsCount = value
 	}
-	if value, ok := _c.mutation.TotalWeight(); ok {
-		_spec.SetField(pallet.FieldTotalWeight, field.TypeFloat64, value)
-		_node.TotalWeight = value
+	if value, ok := _c.mutation.NetWeight(); ok {
+		_spec.SetField(pallet.FieldNetWeight, field.TypeFloat64, value)
+		_node.NetWeight = value
+	}
+	if value, ok := _c.mutation.GrossWeight(); ok {
+		_spec.SetField(pallet.FieldGrossWeight, field.TypeFloat64, value)
+		_node.GrossWeight = value
+	}
+	if value, ok := _c.mutation.TareWeight(); ok {
+		_spec.SetField(pallet.FieldTareWeight, field.TypeFloat64, value)
+		_node.TareWeight = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(pallet.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
-	if value, ok := _c.mutation.LabelPrinted(); ok {
-		_spec.SetField(pallet.FieldLabelPrinted, field.TypeBool, value)
-		_node.LabelPrinted = value
+	if value, ok := _c.mutation.PalletizerID(); ok {
+		_spec.SetField(pallet.FieldPalletizerID, field.TypeUUID, value)
+		_node.PalletizerID = value
+	}
+	if value, ok := _c.mutation.Printed(); ok {
+		_spec.SetField(pallet.FieldPrinted, field.TypeBool, value)
+		_node.Printed = value
 	}
 	if value, ok := _c.mutation.PrintedAt(); ok {
 		_spec.SetField(pallet.FieldPrintedAt, field.TypeTime, value)
 		_node.PrintedAt = value
 	}
-	if value, ok := _c.mutation.PackedAt(); ok {
-		_spec.SetField(pallet.FieldPackedAt, field.TypeTime, value)
-		_node.PackedAt = value
+	if value, ok := _c.mutation.CompletedAt(); ok {
+		_spec.SetField(pallet.FieldCompletedAt, field.TypeTime, value)
+		_node.CompletedAt = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(pallet.FieldCreatedAt, field.TypeTime, value)
@@ -358,6 +452,23 @@ func (_c *PalletCreate) createSpec() (*Pallet, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(pallet.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.LotIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   pallet.LotTable,
+			Columns: []string{pallet.LotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(lot.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.LotID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.BobbinsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

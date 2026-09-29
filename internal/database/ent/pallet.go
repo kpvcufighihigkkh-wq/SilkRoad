@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 )
 
@@ -19,21 +20,29 @@ type Pallet struct {
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
 	// 托盘编号（条码）
-	PalletNumber string `json:"pallet_number,omitempty"`
+	PalletCode string `json:"pallet_code,omitempty"`
 	// 关联批次ID
 	LotID uuid.UUID `json:"lot_id,omitempty"`
+	// 栈板层级（1-9）
+	Level int `json:"level,omitempty"`
 	// 托盘内丝锭数量
-	BobbinCount int `json:"bobbin_count,omitempty"`
-	// 托盘总重量（kg）
-	TotalWeight float64 `json:"total_weight,omitempty"`
+	BobbinsCount int `json:"bobbins_count,omitempty"`
+	// 净重（kg）
+	NetWeight float64 `json:"net_weight,omitempty"`
+	// 毛重（kg）
+	GrossWeight float64 `json:"gross_weight,omitempty"`
+	// 皮重（kg）
+	TareWeight float64 `json:"tare_weight,omitempty"`
 	// 托盘状态
 	Status pallet.Status `json:"status,omitempty"`
+	// 码垛机ID
+	PalletizerID uuid.UUID `json:"palletizer_id,omitempty"`
 	// 标签是否已打印
-	LabelPrinted bool `json:"label_printed,omitempty"`
+	Printed bool `json:"printed,omitempty"`
 	// 打印时间
 	PrintedAt time.Time `json:"printed_at,omitempty"`
 	// 打包完成时间
-	PackedAt time.Time `json:"packed_at,omitempty"`
+	CompletedAt time.Time `json:"completed_at,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -46,17 +55,30 @@ type Pallet struct {
 
 // PalletEdges holds the relations/edges for other nodes in the graph.
 type PalletEdges struct {
+	// Lot holds the value of the lot edge.
+	Lot *Lot `json:"lot,omitempty"`
 	// Bobbins holds the value of the bobbins edge.
 	Bobbins []*Bobbin `json:"bobbins,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
+}
+
+// LotOrErr returns the Lot value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e PalletEdges) LotOrErr() (*Lot, error) {
+	if e.Lot != nil {
+		return e.Lot, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: lot.Label}
+	}
+	return nil, &NotLoadedError{edge: "lot"}
 }
 
 // BobbinsOrErr returns the Bobbins value or an error if the edge
 // was not loaded in eager-loading.
 func (e PalletEdges) BobbinsOrErr() ([]*Bobbin, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Bobbins, nil
 	}
 	return nil, &NotLoadedError{edge: "bobbins"}
@@ -67,17 +89,17 @@ func (*Pallet) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case pallet.FieldLabelPrinted:
+		case pallet.FieldPrinted:
 			values[i] = new(sql.NullBool)
-		case pallet.FieldTotalWeight:
+		case pallet.FieldNetWeight, pallet.FieldGrossWeight, pallet.FieldTareWeight:
 			values[i] = new(sql.NullFloat64)
-		case pallet.FieldBobbinCount:
+		case pallet.FieldLevel, pallet.FieldBobbinsCount:
 			values[i] = new(sql.NullInt64)
-		case pallet.FieldPalletNumber, pallet.FieldStatus:
+		case pallet.FieldPalletCode, pallet.FieldStatus:
 			values[i] = new(sql.NullString)
-		case pallet.FieldPrintedAt, pallet.FieldPackedAt, pallet.FieldCreatedAt, pallet.FieldUpdatedAt:
+		case pallet.FieldPrintedAt, pallet.FieldCompletedAt, pallet.FieldCreatedAt, pallet.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case pallet.FieldID, pallet.FieldLotID:
+		case pallet.FieldID, pallet.FieldLotID, pallet.FieldPalletizerID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -100,11 +122,11 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ID = *value
 			}
-		case pallet.FieldPalletNumber:
+		case pallet.FieldPalletCode:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field pallet_number", values[i])
+				return fmt.Errorf("unexpected type %T for field pallet_code", values[i])
 			} else if value.Valid {
-				_m.PalletNumber = value.String
+				_m.PalletCode = value.String
 			}
 		case pallet.FieldLotID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -112,17 +134,35 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.LotID = *value
 			}
-		case pallet.FieldBobbinCount:
+		case pallet.FieldLevel:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field bobbin_count", values[i])
+				return fmt.Errorf("unexpected type %T for field level", values[i])
 			} else if value.Valid {
-				_m.BobbinCount = int(value.Int64)
+				_m.Level = int(value.Int64)
 			}
-		case pallet.FieldTotalWeight:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_weight", values[i])
+		case pallet.FieldBobbinsCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field bobbins_count", values[i])
 			} else if value.Valid {
-				_m.TotalWeight = value.Float64
+				_m.BobbinsCount = int(value.Int64)
+			}
+		case pallet.FieldNetWeight:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field net_weight", values[i])
+			} else if value.Valid {
+				_m.NetWeight = value.Float64
+			}
+		case pallet.FieldGrossWeight:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field gross_weight", values[i])
+			} else if value.Valid {
+				_m.GrossWeight = value.Float64
+			}
+		case pallet.FieldTareWeight:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field tare_weight", values[i])
+			} else if value.Valid {
+				_m.TareWeight = value.Float64
 			}
 		case pallet.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -130,11 +170,17 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Status = pallet.Status(value.String)
 			}
-		case pallet.FieldLabelPrinted:
+		case pallet.FieldPalletizerID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field palletizer_id", values[i])
+			} else if value != nil {
+				_m.PalletizerID = *value
+			}
+		case pallet.FieldPrinted:
 			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field label_printed", values[i])
+				return fmt.Errorf("unexpected type %T for field printed", values[i])
 			} else if value.Valid {
-				_m.LabelPrinted = value.Bool
+				_m.Printed = value.Bool
 			}
 		case pallet.FieldPrintedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -142,11 +188,11 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PrintedAt = value.Time
 			}
-		case pallet.FieldPackedAt:
+		case pallet.FieldCompletedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field packed_at", values[i])
+				return fmt.Errorf("unexpected type %T for field completed_at", values[i])
 			} else if value.Valid {
-				_m.PackedAt = value.Time
+				_m.CompletedAt = value.Time
 			}
 		case pallet.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -171,6 +217,11 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Pallet) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryLot queries the "lot" edge of the Pallet entity.
+func (_m *Pallet) QueryLot() *LotQuery {
+	return NewPalletClient(_m.config).QueryLot(_m)
 }
 
 // QueryBobbins queries the "bobbins" edge of the Pallet entity.
@@ -201,29 +252,41 @@ func (_m *Pallet) String() string {
 	var builder strings.Builder
 	builder.WriteString("Pallet(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("pallet_number=")
-	builder.WriteString(_m.PalletNumber)
+	builder.WriteString("pallet_code=")
+	builder.WriteString(_m.PalletCode)
 	builder.WriteString(", ")
 	builder.WriteString("lot_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LotID))
 	builder.WriteString(", ")
-	builder.WriteString("bobbin_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.BobbinCount))
+	builder.WriteString("level=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Level))
 	builder.WriteString(", ")
-	builder.WriteString("total_weight=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalWeight))
+	builder.WriteString("bobbins_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.BobbinsCount))
+	builder.WriteString(", ")
+	builder.WriteString("net_weight=")
+	builder.WriteString(fmt.Sprintf("%v", _m.NetWeight))
+	builder.WriteString(", ")
+	builder.WriteString("gross_weight=")
+	builder.WriteString(fmt.Sprintf("%v", _m.GrossWeight))
+	builder.WriteString(", ")
+	builder.WriteString("tare_weight=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TareWeight))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
-	builder.WriteString("label_printed=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LabelPrinted))
+	builder.WriteString("palletizer_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PalletizerID))
+	builder.WriteString(", ")
+	builder.WriteString("printed=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Printed))
 	builder.WriteString(", ")
 	builder.WriteString("printed_at=")
 	builder.WriteString(_m.PrintedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("packed_at=")
-	builder.WriteString(_m.PackedAt.Format(time.ANSIC))
+	builder.WriteString("completed_at=")
+	builder.WriteString(_m.CompletedAt.Format(time.ANSIC))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

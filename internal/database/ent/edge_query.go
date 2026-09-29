@@ -13,58 +13,60 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/project"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
 
-// ProjectQuery is the builder for querying Project entities.
-type ProjectQuery struct {
+// EdgeQuery is the builder for querying Edge entities.
+type EdgeQuery struct {
 	config
-	ctx        *QueryContext
-	order      []project.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Project
-	withOrders *OrderQuery
+	ctx               *QueryContext
+	order             []edge.OrderOption
+	inters            []Interceptor
+	predicates        []predicate.Edge
+	withSpinningLines *SpinningLineQuery
+	withLots          *LotQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the ProjectQuery builder.
-func (_q *ProjectQuery) Where(ps ...predicate.Project) *ProjectQuery {
+// Where adds a new predicate for the EdgeQuery builder.
+func (_q *EdgeQuery) Where(ps ...predicate.Edge) *EdgeQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *ProjectQuery) Limit(limit int) *ProjectQuery {
+func (_q *EdgeQuery) Limit(limit int) *EdgeQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *ProjectQuery) Offset(offset int) *ProjectQuery {
+func (_q *EdgeQuery) Offset(offset int) *EdgeQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *ProjectQuery) Unique(unique bool) *ProjectQuery {
+func (_q *EdgeQuery) Unique(unique bool) *EdgeQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *ProjectQuery) Order(o ...project.OrderOption) *ProjectQuery {
+func (_q *EdgeQuery) Order(o ...edge.OrderOption) *EdgeQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryOrders chains the current query on the "orders" edge.
-func (_q *ProjectQuery) QueryOrders() *OrderQuery {
-	query := (&OrderClient{config: _q.config}).Query()
+// QuerySpinningLines chains the current query on the "spinning_lines" edge.
+func (_q *EdgeQuery) QuerySpinningLines() *SpinningLineQuery {
+	query := (&SpinningLineClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -74,9 +76,9 @@ func (_q *ProjectQuery) QueryOrders() *OrderQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(project.Table, project.FieldID, selector),
-			sqlgraph.To(order.Table, order.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, project.OrdersTable, project.OrdersColumn),
+			sqlgraph.From(edge.Table, edge.FieldID, selector),
+			sqlgraph.To(spinningline.Table, spinningline.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, edge.SpinningLinesTable, edge.SpinningLinesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -84,21 +86,43 @@ func (_q *ProjectQuery) QueryOrders() *OrderQuery {
 	return query
 }
 
-// First returns the first Project entity from the query.
-// Returns a *NotFoundError when no Project was found.
-func (_q *ProjectQuery) First(ctx context.Context) (*Project, error) {
+// QueryLots chains the current query on the "lots" edge.
+func (_q *EdgeQuery) QueryLots() *LotQuery {
+	query := (&LotClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(edge.Table, edge.FieldID, selector),
+			sqlgraph.To(lot.Table, lot.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, edge.LotsTable, edge.LotsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// First returns the first Edge entity from the query.
+// Returns a *NotFoundError when no Edge was found.
+func (_q *EdgeQuery) First(ctx context.Context) (*Edge, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{project.Label}
+		return nil, &NotFoundError{edge.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *ProjectQuery) FirstX(ctx context.Context) *Project {
+func (_q *EdgeQuery) FirstX(ctx context.Context) *Edge {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -106,22 +130,22 @@ func (_q *ProjectQuery) FirstX(ctx context.Context) *Project {
 	return node
 }
 
-// FirstID returns the first Project ID from the query.
-// Returns a *NotFoundError when no Project ID was found.
-func (_q *ProjectQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstID returns the first Edge ID from the query.
+// Returns a *NotFoundError when no Edge ID was found.
+func (_q *EdgeQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{project.Label}
+		err = &NotFoundError{edge.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *ProjectQuery) FirstIDX(ctx context.Context) uuid.UUID {
+func (_q *EdgeQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -129,10 +153,10 @@ func (_q *ProjectQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// Only returns a single Project entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one Project entity is found.
-// Returns a *NotFoundError when no Project entities are found.
-func (_q *ProjectQuery) Only(ctx context.Context) (*Project, error) {
+// Only returns a single Edge entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Edge entity is found.
+// Returns a *NotFoundError when no Edge entities are found.
+func (_q *EdgeQuery) Only(ctx context.Context) (*Edge, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -141,14 +165,14 @@ func (_q *ProjectQuery) Only(ctx context.Context) (*Project, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{project.Label}
+		return nil, &NotFoundError{edge.Label}
 	default:
-		return nil, &NotSingularError{project.Label}
+		return nil, &NotSingularError{edge.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *ProjectQuery) OnlyX(ctx context.Context) *Project {
+func (_q *EdgeQuery) OnlyX(ctx context.Context) *Edge {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -156,10 +180,10 @@ func (_q *ProjectQuery) OnlyX(ctx context.Context) *Project {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Project ID in the query.
-// Returns a *NotSingularError when more than one Project ID is found.
+// OnlyID is like Only, but returns the only Edge ID in the query.
+// Returns a *NotSingularError when more than one Edge ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *ProjectQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *EdgeQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -168,15 +192,15 @@ func (_q *ProjectQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{project.Label}
+		err = &NotFoundError{edge.Label}
 	default:
-		err = &NotSingularError{project.Label}
+		err = &NotSingularError{edge.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *ProjectQuery) OnlyIDX(ctx context.Context) uuid.UUID {
+func (_q *EdgeQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -184,18 +208,18 @@ func (_q *ProjectQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Projects.
-func (_q *ProjectQuery) All(ctx context.Context) ([]*Project, error) {
+// All executes the query and returns a list of Edges.
+func (_q *EdgeQuery) All(ctx context.Context) ([]*Edge, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*Project, *ProjectQuery]()
-	return withInterceptors[[]*Project](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Edge, *EdgeQuery]()
+	return withInterceptors[[]*Edge](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *ProjectQuery) AllX(ctx context.Context) []*Project {
+func (_q *EdgeQuery) AllX(ctx context.Context) []*Edge {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -203,20 +227,20 @@ func (_q *ProjectQuery) AllX(ctx context.Context) []*Project {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Project IDs.
-func (_q *ProjectQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// IDs executes the query and returns a list of Edge IDs.
+func (_q *EdgeQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(project.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(edge.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *ProjectQuery) IDsX(ctx context.Context) []uuid.UUID {
+func (_q *EdgeQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -225,16 +249,16 @@ func (_q *ProjectQuery) IDsX(ctx context.Context) []uuid.UUID {
 }
 
 // Count returns the count of the given query.
-func (_q *ProjectQuery) Count(ctx context.Context) (int, error) {
+func (_q *EdgeQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*ProjectQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*EdgeQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *ProjectQuery) CountX(ctx context.Context) int {
+func (_q *EdgeQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -243,7 +267,7 @@ func (_q *ProjectQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *ProjectQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *EdgeQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -256,7 +280,7 @@ func (_q *ProjectQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *ProjectQuery) ExistX(ctx context.Context) bool {
+func (_q *EdgeQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -264,33 +288,45 @@ func (_q *ProjectQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the ProjectQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the EdgeQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *ProjectQuery) Clone() *ProjectQuery {
+func (_q *EdgeQuery) Clone() *EdgeQuery {
 	if _q == nil {
 		return nil
 	}
-	return &ProjectQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]project.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.Project{}, _q.predicates...),
-		withOrders: _q.withOrders.Clone(),
+	return &EdgeQuery{
+		config:            _q.config,
+		ctx:               _q.ctx.Clone(),
+		order:             append([]edge.OrderOption{}, _q.order...),
+		inters:            append([]Interceptor{}, _q.inters...),
+		predicates:        append([]predicate.Edge{}, _q.predicates...),
+		withSpinningLines: _q.withSpinningLines.Clone(),
+		withLots:          _q.withLots.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithOrders tells the query-builder to eager-load the nodes that are connected to
-// the "orders" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *ProjectQuery) WithOrders(opts ...func(*OrderQuery)) *ProjectQuery {
-	query := (&OrderClient{config: _q.config}).Query()
+// WithSpinningLines tells the query-builder to eager-load the nodes that are connected to
+// the "spinning_lines" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *EdgeQuery) WithSpinningLines(opts ...func(*SpinningLineQuery)) *EdgeQuery {
+	query := (&SpinningLineClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withOrders = query
+	_q.withSpinningLines = query
+	return _q
+}
+
+// WithLots tells the query-builder to eager-load the nodes that are connected to
+// the "lots" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *EdgeQuery) WithLots(opts ...func(*LotQuery)) *EdgeQuery {
+	query := (&LotClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withLots = query
 	return _q
 }
 
@@ -300,19 +336,19 @@ func (_q *ProjectQuery) WithOrders(opts ...func(*OrderQuery)) *ProjectQuery {
 // Example:
 //
 //	var v []struct {
-//		ProjectName string `json:"project_name,omitempty"`
+//		EdgeCode string `json:"edge_code,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Project.Query().
-//		GroupBy(project.FieldProjectName).
+//	client.Edge.Query().
+//		GroupBy(edge.FieldEdgeCode).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *ProjectQuery) GroupBy(field string, fields ...string) *ProjectGroupBy {
+func (_q *EdgeQuery) GroupBy(field string, fields ...string) *EdgeGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &ProjectGroupBy{build: _q}
+	grbuild := &EdgeGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = project.Label
+	grbuild.label = edge.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -323,26 +359,26 @@ func (_q *ProjectQuery) GroupBy(field string, fields ...string) *ProjectGroupBy 
 // Example:
 //
 //	var v []struct {
-//		ProjectName string `json:"project_name,omitempty"`
+//		EdgeCode string `json:"edge_code,omitempty"`
 //	}
 //
-//	client.Project.Query().
-//		Select(project.FieldProjectName).
+//	client.Edge.Query().
+//		Select(edge.FieldEdgeCode).
 //		Scan(ctx, &v)
-func (_q *ProjectQuery) Select(fields ...string) *ProjectSelect {
+func (_q *EdgeQuery) Select(fields ...string) *EdgeSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &ProjectSelect{ProjectQuery: _q}
-	sbuild.label = project.Label
+	sbuild := &EdgeSelect{EdgeQuery: _q}
+	sbuild.label = edge.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a ProjectSelect configured with the given aggregations.
-func (_q *ProjectQuery) Aggregate(fns ...AggregateFunc) *ProjectSelect {
+// Aggregate returns a EdgeSelect configured with the given aggregations.
+func (_q *EdgeQuery) Aggregate(fns ...AggregateFunc) *EdgeSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *ProjectQuery) prepareQuery(ctx context.Context) error {
+func (_q *EdgeQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -354,7 +390,7 @@ func (_q *ProjectQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !project.ValidColumn(f) {
+		if !edge.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -368,19 +404,20 @@ func (_q *ProjectQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Project, error) {
+func (_q *EdgeQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Edge, error) {
 	var (
-		nodes       = []*Project{}
+		nodes       = []*Edge{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
-			_q.withOrders != nil,
+		loadedTypes = [2]bool{
+			_q.withSpinningLines != nil,
+			_q.withLots != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*Project).scanValues(nil, columns)
+		return (*Edge).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Project{config: _q.config}
+		node := &Edge{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -394,19 +431,26 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withOrders; query != nil {
-		if err := _q.loadOrders(ctx, query, nodes,
-			func(n *Project) { n.Edges.Orders = []*Order{} },
-			func(n *Project, e *Order) { n.Edges.Orders = append(n.Edges.Orders, e) }); err != nil {
+	if query := _q.withSpinningLines; query != nil {
+		if err := _q.loadSpinningLines(ctx, query, nodes,
+			func(n *Edge) { n.Edges.SpinningLines = []*SpinningLine{} },
+			func(n *Edge, e *SpinningLine) { n.Edges.SpinningLines = append(n.Edges.SpinningLines, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withLots; query != nil {
+		if err := _q.loadLots(ctx, query, nodes,
+			func(n *Edge) { n.Edges.Lots = []*Lot{} },
+			func(n *Edge, e *Lot) { n.Edges.Lots = append(n.Edges.Lots, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *ProjectQuery) loadOrders(ctx context.Context, query *OrderQuery, nodes []*Project, init func(*Project), assign func(*Project, *Order)) error {
+func (_q *EdgeQuery) loadSpinningLines(ctx context.Context, query *SpinningLineQuery, nodes []*Edge, init func(*Edge), assign func(*Edge, *SpinningLine)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[uuid.UUID]*Project)
+	nodeids := make(map[uuid.UUID]*Edge)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -415,27 +459,57 @@ func (_q *ProjectQuery) loadOrders(ctx context.Context, query *OrderQuery, nodes
 		}
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(order.FieldProjectID)
+		query.ctx.AppendFieldOnce(spinningline.FieldEdgeID)
 	}
-	query.Where(predicate.Order(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(project.OrdersColumn), fks...))
+	query.Where(predicate.SpinningLine(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(edge.SpinningLinesColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.ProjectID
+		fk := n.EdgeID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "edge_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *EdgeQuery) loadLots(ctx context.Context, query *LotQuery, nodes []*Edge, init func(*Edge), assign func(*Edge, *Lot)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Edge)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(lot.FieldEdgeID)
+	}
+	query.Where(predicate.Lot(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(edge.LotsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.EdgeID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "edge_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
 	return nil
 }
 
-func (_q *ProjectQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *EdgeQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -444,8 +518,8 @@ func (_q *ProjectQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *ProjectQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(project.Table, project.Columns, sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID))
+func (_q *EdgeQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(edge.Table, edge.Columns, sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -454,9 +528,9 @@ func (_q *ProjectQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, project.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, edge.FieldID)
 		for i := range fields {
-			if fields[i] != project.FieldID {
+			if fields[i] != edge.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
@@ -484,12 +558,12 @@ func (_q *ProjectQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *ProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *EdgeQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(project.Table)
+	t1 := builder.Table(edge.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = project.Columns
+		columns = edge.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -516,28 +590,28 @@ func (_q *ProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// ProjectGroupBy is the group-by builder for Project entities.
-type ProjectGroupBy struct {
+// EdgeGroupBy is the group-by builder for Edge entities.
+type EdgeGroupBy struct {
 	selector
-	build *ProjectQuery
+	build *EdgeQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *ProjectGroupBy) Aggregate(fns ...AggregateFunc) *ProjectGroupBy {
+func (_g *EdgeGroupBy) Aggregate(fns ...AggregateFunc) *EdgeGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *ProjectGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *EdgeGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*ProjectQuery, *ProjectGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*EdgeQuery, *EdgeGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *ProjectGroupBy) sqlScan(ctx context.Context, root *ProjectQuery, v any) error {
+func (_g *EdgeGroupBy) sqlScan(ctx context.Context, root *EdgeQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -564,28 +638,28 @@ func (_g *ProjectGroupBy) sqlScan(ctx context.Context, root *ProjectQuery, v any
 	return sql.ScanSlice(rows, v)
 }
 
-// ProjectSelect is the builder for selecting fields of Project entities.
-type ProjectSelect struct {
-	*ProjectQuery
+// EdgeSelect is the builder for selecting fields of Edge entities.
+type EdgeSelect struct {
+	*EdgeQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *ProjectSelect) Aggregate(fns ...AggregateFunc) *ProjectSelect {
+func (_s *EdgeSelect) Aggregate(fns ...AggregateFunc) *EdgeSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *ProjectSelect) Scan(ctx context.Context, v any) error {
+func (_s *EdgeSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*ProjectQuery, *ProjectSelect](ctx, _s.ProjectQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*EdgeQuery, *EdgeSelect](ctx, _s.EdgeQuery, _s, _s.inters, v)
 }
 
-func (_s *ProjectSelect) sqlScan(ctx context.Context, root *ProjectQuery, v any) error {
+func (_s *EdgeSelect) sqlScan(ctx context.Context, root *EdgeQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

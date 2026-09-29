@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -41,8 +42,26 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgeLot holds the string denoting the lot edge name in mutations.
+	EdgeLot = "lot"
+	// EdgeBarrels holds the string denoting the barrels edge name in mutations.
+	EdgeBarrels = "barrels"
 	// Table holds the table name of the doffing in the database.
 	Table = "doffings"
+	// LotTable is the table that holds the lot relation/edge.
+	LotTable = "doffings"
+	// LotInverseTable is the table name for the Lot entity.
+	// It exists in this package in order to avoid circular dependency with the "lot" package.
+	LotInverseTable = "lots"
+	// LotColumn is the table column denoting the lot relation/edge.
+	LotColumn = "lot_id"
+	// BarrelsTable is the table that holds the barrels relation/edge.
+	BarrelsTable = "barrels"
+	// BarrelsInverseTable is the table name for the Barrel entity.
+	// It exists in this package in order to avoid circular dependency with the "barrel" package.
+	BarrelsInverseTable = "barrels"
+	// BarrelsColumn is the table column denoting the barrels relation/edge.
+	BarrelsColumn = "doffing_id"
 )
 
 // Columns holds all SQL columns for doffing fields.
@@ -192,4 +211,39 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByLotField orders the results by lot field.
+func ByLotField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newLotStep(), sql.OrderByField(field, opts...))
+	}
+}
+
+// ByBarrelsCount orders the results by barrels count.
+func ByBarrelsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newBarrelsStep(), opts...)
+	}
+}
+
+// ByBarrels orders the results by barrels terms.
+func ByBarrels(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newBarrelsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newLotStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(LotInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, LotTable, LotColumn),
+	)
+}
+func newBarrelsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(BarrelsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, BarrelsTable, BarrelsColumn),
+	)
 }

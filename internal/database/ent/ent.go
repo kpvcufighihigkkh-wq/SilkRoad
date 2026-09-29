@@ -12,13 +12,15 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/grade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/project"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 )
@@ -81,13 +83,15 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
+			barrel.Table:       barrel.ValidColumn,
 			bobbin.Table:       bobbin.ValidColumn,
 			carton.Table:       carton.ValidColumn,
 			doffing.Table:      doffing.ValidColumn,
+			edge.Table:         edge.ValidColumn,
+			grade.Table:        grade.ValidColumn,
 			lot.Table:          lot.ValidColumn,
-			order.Table:        order.ValidColumn,
+			module.Table:       module.ValidColumn,
 			pallet.Table:       pallet.ValidColumn,
-			project.Table:      project.ValidColumn,
 			spinningline.Table: spinningline.ValidColumn,
 			user.Table:         user.ValidColumn,
 		})

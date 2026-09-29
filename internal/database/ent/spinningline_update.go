@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
@@ -60,6 +61,26 @@ func (_u *SpinningLineUpdate) SetNillableLineNumber(v *string) *SpinningLineUpda
 // ClearLineNumber clears the value of the "line_number" field.
 func (_u *SpinningLineUpdate) ClearLineNumber() *SpinningLineUpdate {
 	_u.mutation.ClearLineNumber()
+	return _u
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (_u *SpinningLineUpdate) SetEdgeID(v uuid.UUID) *SpinningLineUpdate {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *SpinningLineUpdate) SetNillableEdgeID(v *uuid.UUID) *SpinningLineUpdate {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *SpinningLineUpdate) ClearEdgeID() *SpinningLineUpdate {
+	_u.mutation.ClearEdgeID()
 	return _u
 }
 
@@ -150,9 +171,20 @@ func (_u *SpinningLineUpdate) SetUpdatedAt(v time.Time) *SpinningLineUpdate {
 	return _u
 }
 
+// SetEdge sets the "edge" edge to the Edge entity.
+func (_u *SpinningLineUpdate) SetEdge(v *Edge) *SpinningLineUpdate {
+	return _u.SetEdgeID(v.ID)
+}
+
 // Mutation returns the SpinningLineMutation object of the builder.
 func (_u *SpinningLineUpdate) Mutation() *SpinningLineMutation {
 	return _u.mutation
+}
+
+// ClearEdgeEdge clears the "edge" edge to the Edge entity.
+func (_u *SpinningLineUpdate) ClearEdgeEdge() *SpinningLineUpdate {
+	_u.mutation.ClearEdgeEdge()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -269,6 +301,35 @@ func (_u *SpinningLineUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(spinningline.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.EdgeEdgeCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   spinningline.EdgeTable,
+			Columns: []string{spinningline.EdgeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EdgeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   spinningline.EdgeTable,
+			Columns: []string{spinningline.EdgeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{spinningline.Label}
@@ -320,6 +381,26 @@ func (_u *SpinningLineUpdateOne) SetNillableLineNumber(v *string) *SpinningLineU
 // ClearLineNumber clears the value of the "line_number" field.
 func (_u *SpinningLineUpdateOne) ClearLineNumber() *SpinningLineUpdateOne {
 	_u.mutation.ClearLineNumber()
+	return _u
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (_u *SpinningLineUpdateOne) SetEdgeID(v uuid.UUID) *SpinningLineUpdateOne {
+	_u.mutation.SetEdgeID(v)
+	return _u
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *SpinningLineUpdateOne) SetNillableEdgeID(v *uuid.UUID) *SpinningLineUpdateOne {
+	if v != nil {
+		_u.SetEdgeID(*v)
+	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *SpinningLineUpdateOne) ClearEdgeID() *SpinningLineUpdateOne {
+	_u.mutation.ClearEdgeID()
 	return _u
 }
 
@@ -410,9 +491,20 @@ func (_u *SpinningLineUpdateOne) SetUpdatedAt(v time.Time) *SpinningLineUpdateOn
 	return _u
 }
 
+// SetEdge sets the "edge" edge to the Edge entity.
+func (_u *SpinningLineUpdateOne) SetEdge(v *Edge) *SpinningLineUpdateOne {
+	return _u.SetEdgeID(v.ID)
+}
+
 // Mutation returns the SpinningLineMutation object of the builder.
 func (_u *SpinningLineUpdateOne) Mutation() *SpinningLineMutation {
 	return _u.mutation
+}
+
+// ClearEdgeEdge clears the "edge" edge to the Edge entity.
+func (_u *SpinningLineUpdateOne) ClearEdgeEdge() *SpinningLineUpdateOne {
+	_u.mutation.ClearEdgeEdge()
+	return _u
 }
 
 // Where appends a list predicates to the SpinningLineUpdate builder.
@@ -558,6 +650,35 @@ func (_u *SpinningLineUpdateOne) sqlSave(ctx context.Context) (_node *SpinningLi
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(spinningline.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EdgeEdgeCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   spinningline.EdgeTable,
+			Columns: []string{spinningline.EdgeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EdgeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   spinningline.EdgeTable,
+			Columns: []string{spinningline.EdgeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &SpinningLine{config: _u.config}
 	_spec.Assign = _node.assignValues

@@ -66,6 +66,16 @@ func LotID(v uuid.UUID) predicate.Bobbin {
 	return predicate.Bobbin(sql.FieldEQ(FieldLotID, v))
 }
 
+// BarrelID applies equality check predicate on the "barrel_id" field. It's identical to BarrelIDEQ.
+func BarrelID(v uuid.UUID) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldEQ(FieldBarrelID, v))
+}
+
+// BarrelPosition applies equality check predicate on the "barrel_position" field. It's identical to BarrelPositionEQ.
+func BarrelPosition(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldEQ(FieldBarrelPosition, v))
+}
+
 // SpinningPosition applies equality check predicate on the "spinning_position" field. It's identical to SpinningPositionEQ.
 func SpinningPosition(v int) predicate.Bobbin {
 	return predicate.Bobbin(sql.FieldEQ(FieldSpinningPosition, v))
@@ -209,6 +219,86 @@ func LotIDIn(vs ...uuid.UUID) predicate.Bobbin {
 // LotIDNotIn applies the NotIn predicate on the "lot_id" field.
 func LotIDNotIn(vs ...uuid.UUID) predicate.Bobbin {
 	return predicate.Bobbin(sql.FieldNotIn(FieldLotID, vs...))
+}
+
+// BarrelIDEQ applies the EQ predicate on the "barrel_id" field.
+func BarrelIDEQ(v uuid.UUID) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldEQ(FieldBarrelID, v))
+}
+
+// BarrelIDNEQ applies the NEQ predicate on the "barrel_id" field.
+func BarrelIDNEQ(v uuid.UUID) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldNEQ(FieldBarrelID, v))
+}
+
+// BarrelIDIn applies the In predicate on the "barrel_id" field.
+func BarrelIDIn(vs ...uuid.UUID) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldIn(FieldBarrelID, vs...))
+}
+
+// BarrelIDNotIn applies the NotIn predicate on the "barrel_id" field.
+func BarrelIDNotIn(vs ...uuid.UUID) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldNotIn(FieldBarrelID, vs...))
+}
+
+// BarrelIDIsNil applies the IsNil predicate on the "barrel_id" field.
+func BarrelIDIsNil() predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldIsNull(FieldBarrelID))
+}
+
+// BarrelIDNotNil applies the NotNil predicate on the "barrel_id" field.
+func BarrelIDNotNil() predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldNotNull(FieldBarrelID))
+}
+
+// BarrelPositionEQ applies the EQ predicate on the "barrel_position" field.
+func BarrelPositionEQ(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldEQ(FieldBarrelPosition, v))
+}
+
+// BarrelPositionNEQ applies the NEQ predicate on the "barrel_position" field.
+func BarrelPositionNEQ(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldNEQ(FieldBarrelPosition, v))
+}
+
+// BarrelPositionIn applies the In predicate on the "barrel_position" field.
+func BarrelPositionIn(vs ...int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldIn(FieldBarrelPosition, vs...))
+}
+
+// BarrelPositionNotIn applies the NotIn predicate on the "barrel_position" field.
+func BarrelPositionNotIn(vs ...int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldNotIn(FieldBarrelPosition, vs...))
+}
+
+// BarrelPositionGT applies the GT predicate on the "barrel_position" field.
+func BarrelPositionGT(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldGT(FieldBarrelPosition, v))
+}
+
+// BarrelPositionGTE applies the GTE predicate on the "barrel_position" field.
+func BarrelPositionGTE(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldGTE(FieldBarrelPosition, v))
+}
+
+// BarrelPositionLT applies the LT predicate on the "barrel_position" field.
+func BarrelPositionLT(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldLT(FieldBarrelPosition, v))
+}
+
+// BarrelPositionLTE applies the LTE predicate on the "barrel_position" field.
+func BarrelPositionLTE(v int) predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldLTE(FieldBarrelPosition, v))
+}
+
+// BarrelPositionIsNil applies the IsNil predicate on the "barrel_position" field.
+func BarrelPositionIsNil() predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldIsNull(FieldBarrelPosition))
+}
+
+// BarrelPositionNotNil applies the NotNil predicate on the "barrel_position" field.
+func BarrelPositionNotNil() predicate.Bobbin {
+	return predicate.Bobbin(sql.FieldNotNull(FieldBarrelPosition))
 }
 
 // SpinningPositionEQ applies the EQ predicate on the "spinning_position" field.
@@ -741,6 +831,29 @@ func HasLot() predicate.Bobbin {
 func HasLotWith(preds ...predicate.Lot) predicate.Bobbin {
 	return predicate.Bobbin(func(s *sql.Selector) {
 		step := newLotStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasBarrel applies the HasEdge predicate on the "barrel" edge.
+func HasBarrel() predicate.Bobbin {
+	return predicate.Bobbin(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, BarrelTable, BarrelColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasBarrelWith applies the HasEdge predicate on the "barrel" edge with a given conditions (other predicates).
+func HasBarrelWith(preds ...predicate.Barrel) predicate.Bobbin {
+	return predicate.Bobbin(func(s *sql.Selector) {
+		step := newBarrelStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

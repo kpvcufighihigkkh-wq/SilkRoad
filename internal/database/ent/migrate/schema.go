@@ -8,10 +8,71 @@ import (
 )
 
 var (
+	// BarrelsColumns holds the columns for the "barrels" table.
+	BarrelsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "barrel_number", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "capacity", Type: field.TypeInt, Default: 9},
+		{Name: "current_count", Type: field.TypeInt, Default: 0},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "full", "sorted", "packed"}, Default: "active"},
+		{Name: "filled_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "doffing_id", Type: field.TypeUUID},
+		{Name: "lot_id", Type: field.TypeUUID},
+	}
+	// BarrelsTable holds the schema information for the "barrels" table.
+	BarrelsTable = &schema.Table{
+		Name:       "barrels",
+		Columns:    BarrelsColumns,
+		PrimaryKey: []*schema.Column{BarrelsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "barrels_doffings_barrels",
+				Columns:    []*schema.Column{BarrelsColumns[8]},
+				RefColumns: []*schema.Column{DoffingsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "barrels_lots_barrels",
+				Columns:    []*schema.Column{BarrelsColumns[9]},
+				RefColumns: []*schema.Column{LotsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "barrel_doffing_id",
+				Unique:  false,
+				Columns: []*schema.Column{BarrelsColumns[8]},
+			},
+			{
+				Name:    "barrel_lot_id",
+				Unique:  false,
+				Columns: []*schema.Column{BarrelsColumns[9]},
+			},
+			{
+				Name:    "barrel_status",
+				Unique:  false,
+				Columns: []*schema.Column{BarrelsColumns[4]},
+			},
+			{
+				Name:    "barrel_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{BarrelsColumns[6]},
+			},
+			{
+				Name:    "barrel_lot_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{BarrelsColumns[9], BarrelsColumns[4]},
+			},
+		},
+	}
 	// BobbinsColumns holds the columns for the "bobbins" table.
 	BobbinsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "bobbin_number", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "barrel_position", Type: field.TypeInt, Nullable: true},
 		{Name: "spinning_position", Type: field.TypeInt},
 		{Name: "gross_weight", Type: field.TypeFloat64},
 		{Name: "net_weight", Type: field.TypeFloat64},
@@ -23,6 +84,7 @@ var (
 		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "barrel_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "carton_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "lot_id", Type: field.TypeUUID},
 		{Name: "pallet_id", Type: field.TypeUUID, Nullable: true},
@@ -34,20 +96,26 @@ var (
 		PrimaryKey: []*schema.Column{BobbinsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
+				Symbol:     "bobbins_barrels_bobbins",
+				Columns:    []*schema.Column{BobbinsColumns[14]},
+				RefColumns: []*schema.Column{BarrelsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
 				Symbol:     "bobbins_cartons_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[13]},
+				Columns:    []*schema.Column{BobbinsColumns[15]},
 				RefColumns: []*schema.Column{CartonsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "bobbins_lots_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[14]},
+				Columns:    []*schema.Column{BobbinsColumns[16]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "bobbins_pallets_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[15]},
+				Columns:    []*schema.Column{BobbinsColumns[17]},
 				RefColumns: []*schema.Column{PalletsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -56,47 +124,57 @@ var (
 			{
 				Name:    "bobbin_lot_id",
 				Unique:  false,
+				Columns: []*schema.Column{BobbinsColumns[16]},
+			},
+			{
+				Name:    "bobbin_barrel_id",
+				Unique:  false,
 				Columns: []*schema.Column{BobbinsColumns[14]},
 			},
 			{
 				Name:    "bobbin_spinning_position",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[2]},
+				Columns: []*schema.Column{BobbinsColumns[3]},
 			},
 			{
 				Name:    "bobbin_status",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[7]},
+				Columns: []*schema.Column{BobbinsColumns[8]},
 			},
 			{
 				Name:    "bobbin_grade",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[6]},
+				Columns: []*schema.Column{BobbinsColumns[7]},
 			},
 			{
 				Name:    "bobbin_pallet_id",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[15]},
+				Columns: []*schema.Column{BobbinsColumns[17]},
 			},
 			{
 				Name:    "bobbin_carton_id",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[13]},
+				Columns: []*schema.Column{BobbinsColumns[15]},
 			},
 			{
 				Name:    "bobbin_completed_at",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[10]},
+				Columns: []*schema.Column{BobbinsColumns[11]},
 			},
 			{
 				Name:    "bobbin_lot_id_spinning_position",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[14], BobbinsColumns[2]},
+				Columns: []*schema.Column{BobbinsColumns[16], BobbinsColumns[3]},
 			},
 			{
 				Name:    "bobbin_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[14], BobbinsColumns[7]},
+				Columns: []*schema.Column{BobbinsColumns[16], BobbinsColumns[8]},
+			},
+			{
+				Name:    "bobbin_barrel_id_barrel_position",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinsColumns[14], BobbinsColumns[2]},
 			},
 		},
 	}
@@ -147,7 +225,6 @@ var (
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "spinning_line_id", Type: field.TypeUUID},
 		{Name: "spinning_position", Type: field.TypeInt},
-		{Name: "lot_id", Type: field.TypeUUID},
 		{Name: "operator_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "confirmed", "cancelled"}, Default: "pending"},
 		{Name: "bobbin_number", Type: field.TypeString, Nullable: true, Size: 50},
@@ -158,12 +235,21 @@ var (
 		{Name: "confirmed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "lot_id", Type: field.TypeUUID},
 	}
 	// DoffingsTable holds the schema information for the "doffings" table.
 	DoffingsTable = &schema.Table{
 		Name:       "doffings",
 		Columns:    DoffingsColumns,
 		PrimaryKey: []*schema.Column{DoffingsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "doffings_lots_doffings",
+				Columns:    []*schema.Column{DoffingsColumns[13]},
+				RefColumns: []*schema.Column{LotsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "doffing_spinning_line_id",
@@ -173,22 +259,104 @@ var (
 			{
 				Name:    "doffing_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{DoffingsColumns[3]},
+				Columns: []*schema.Column{DoffingsColumns[13]},
 			},
 			{
 				Name:    "doffing_status",
 				Unique:  false,
-				Columns: []*schema.Column{DoffingsColumns[5]},
+				Columns: []*schema.Column{DoffingsColumns[4]},
 			},
 			{
 				Name:    "doffing_doffing_time",
 				Unique:  false,
-				Columns: []*schema.Column{DoffingsColumns[10]},
+				Columns: []*schema.Column{DoffingsColumns[9]},
 			},
 			{
 				Name:    "doffing_spinning_line_id_spinning_position_status",
 				Unique:  false,
-				Columns: []*schema.Column{DoffingsColumns[1], DoffingsColumns[2], DoffingsColumns[5]},
+				Columns: []*schema.Column{DoffingsColumns[1], DoffingsColumns[2], DoffingsColumns[4]},
+			},
+		},
+	}
+	// EdgesColumns holds the columns for the "edges" table.
+	EdgesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "edge_code", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "edge_name", Type: field.TypeString, Size: 100},
+		{Name: "ip_address", Type: field.TypeString, Nullable: true, Size: 50},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"online", "offline", "error", "maintenance"}, Default: "offline"},
+		{Name: "last_seen", Type: field.TypeTime, Nullable: true},
+		{Name: "version", Type: field.TypeString, Nullable: true, Size: 50},
+		{Name: "config", Type: field.TypeJSON, Nullable: true},
+		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// EdgesTable holds the schema information for the "edges" table.
+	EdgesTable = &schema.Table{
+		Name:       "edges",
+		Columns:    EdgesColumns,
+		PrimaryKey: []*schema.Column{EdgesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "edge_status",
+				Unique:  false,
+				Columns: []*schema.Column{EdgesColumns[4]},
+			},
+			{
+				Name:    "edge_last_seen",
+				Unique:  false,
+				Columns: []*schema.Column{EdgesColumns[5]},
+			},
+			{
+				Name:    "edge_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{EdgesColumns[9]},
+			},
+		},
+	}
+	// GradesColumns holds the columns for the "grades" table.
+	GradesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "grade_type", Type: field.TypeEnum, Enums: []string{"sorting", "weight", "final", "vision", "knitting"}},
+		{Name: "grade_code", Type: field.TypeString, Size: 20},
+		{Name: "grade_name", Type: field.TypeString, Size: 50},
+		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "sort_order", Type: field.TypeInt, Default: 0},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// GradesTable holds the schema information for the "grades" table.
+	GradesTable = &schema.Table{
+		Name:       "grades",
+		Columns:    GradesColumns,
+		PrimaryKey: []*schema.Column{GradesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "grade_grade_type",
+				Unique:  false,
+				Columns: []*schema.Column{GradesColumns[1]},
+			},
+			{
+				Name:    "grade_grade_code",
+				Unique:  false,
+				Columns: []*schema.Column{GradesColumns[2]},
+			},
+			{
+				Name:    "grade_is_active",
+				Unique:  false,
+				Columns: []*schema.Column{GradesColumns[6]},
+			},
+			{
+				Name:    "grade_sort_order",
+				Unique:  false,
+				Columns: []*schema.Column{GradesColumns[5]},
+			},
+			{
+				Name:    "grade_grade_type_grade_code",
+				Unique:  true,
+				Columns: []*schema.Column{GradesColumns[1], GradesColumns[2]},
 			},
 		},
 	}
@@ -196,6 +364,8 @@ var (
 	LotsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
 		{Name: "lot_number", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "plc_lot_number", Type: field.TypeString, Nullable: true, Size: 50},
+		{Name: "order_code", Type: field.TypeString, Nullable: true, Size: 50},
 		{Name: "product_type", Type: field.TypeEnum, Enums: []string{"FDY", "POY", "DTY"}},
 		{Name: "product_spec", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "planned_quantity", Type: field.TypeInt},
@@ -206,7 +376,7 @@ var (
 		{Name: "is_locked", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "order_id", Type: field.TypeUUID},
+		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// LotsTable holds the schema information for the "lots" table.
 	LotsTable = &schema.Table{
@@ -215,171 +385,146 @@ var (
 		PrimaryKey: []*schema.Column{LotsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "lots_orders_lots",
-				Columns:    []*schema.Column{LotsColumns[12]},
-				RefColumns: []*schema.Column{OrdersColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "lot_order_id",
-				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[12]},
-			},
-			{
-				Name:    "lot_product_type",
-				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[2]},
-			},
-			{
-				Name:    "lot_status",
-				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[6]},
-			},
-			{
-				Name:    "lot_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[10]},
-			},
-			{
-				Name:    "lot_order_id_status",
-				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[12], LotsColumns[6]},
-			},
-		},
-	}
-	// OrdersColumns holds the columns for the "orders" table.
-	OrdersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "order_number", Type: field.TypeString, Unique: true, Size: 50},
-		{Name: "product_type", Type: field.TypeEnum, Enums: []string{"FDY", "POY", "DTY"}},
-		{Name: "product_spec", Type: field.TypeString, Nullable: true, Size: 100},
-		{Name: "target_quantity", Type: field.TypeInt},
-		{Name: "actual_quantity", Type: field.TypeInt, Default: 0},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "in_progress", "completed", "cancelled"}, Default: "pending"},
-		{Name: "priority", Type: field.TypeInt, Default: 0},
-		{Name: "delivery_date", Type: field.TypeTime, Nullable: true},
-		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "project_id", Type: field.TypeUUID, Nullable: true},
-	}
-	// OrdersTable holds the schema information for the "orders" table.
-	OrdersTable = &schema.Table{
-		Name:       "orders",
-		Columns:    OrdersColumns,
-		PrimaryKey: []*schema.Column{OrdersColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "orders_projects_orders",
-				Columns:    []*schema.Column{OrdersColumns[12]},
-				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				Symbol:     "lots_edges_lots",
+				Columns:    []*schema.Column{LotsColumns[14]},
+				RefColumns: []*schema.Column{EdgesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "order_project_id",
+				Name:    "lot_edge_id",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[12]},
+				Columns: []*schema.Column{LotsColumns[14]},
 			},
 			{
-				Name:    "order_product_type",
+				Name:    "lot_product_type",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[2]},
+				Columns: []*schema.Column{LotsColumns[4]},
 			},
 			{
-				Name:    "order_status",
+				Name:    "lot_status",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[6]},
+				Columns: []*schema.Column{LotsColumns[8]},
 			},
 			{
-				Name:    "order_priority",
+				Name:    "lot_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[7]},
+				Columns: []*schema.Column{LotsColumns[12]},
 			},
 			{
-				Name:    "order_delivery_date",
+				Name:    "lot_edge_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{OrdersColumns[8]},
+				Columns: []*schema.Column{LotsColumns[14], LotsColumns[8]},
+			},
+		},
+	}
+	// ModulesColumns holds the columns for the "modules" table.
+	ModulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "module_number", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "barrel1_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "barrel2_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"loading", "transporting", "sorting", "warehouse", "idle"}, Default: "idle"},
+		{Name: "rfid", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "current_location", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// ModulesTable holds the schema information for the "modules" table.
+	ModulesTable = &schema.Table{
+		Name:       "modules",
+		Columns:    ModulesColumns,
+		PrimaryKey: []*schema.Column{ModulesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "module_status",
+				Unique:  false,
+				Columns: []*schema.Column{ModulesColumns[4]},
+			},
+			{
+				Name:    "module_rfid",
+				Unique:  false,
+				Columns: []*schema.Column{ModulesColumns[5]},
+			},
+			{
+				Name:    "module_barrel1_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModulesColumns[2]},
+			},
+			{
+				Name:    "module_barrel2_id",
+				Unique:  false,
+				Columns: []*schema.Column{ModulesColumns[3]},
 			},
 		},
 	}
 	// PalletsColumns holds the columns for the "pallets" table.
 	PalletsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "pallet_number", Type: field.TypeString, Unique: true, Size: 50},
-		{Name: "lot_id", Type: field.TypeUUID, Nullable: true},
-		{Name: "bobbin_count", Type: field.TypeInt, Default: 0},
-		{Name: "total_weight", Type: field.TypeFloat64, Nullable: true},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"packing", "packed", "shipped"}, Default: "packing"},
-		{Name: "label_printed", Type: field.TypeBool, Default: false},
+		{Name: "pallet_code", Type: field.TypeString, Unique: true, Size: 50},
+		{Name: "level", Type: field.TypeInt, Default: 1},
+		{Name: "bobbins_count", Type: field.TypeInt, Default: 0},
+		{Name: "net_weight", Type: field.TypeFloat64, Nullable: true},
+		{Name: "gross_weight", Type: field.TypeFloat64, Nullable: true},
+		{Name: "tare_weight", Type: field.TypeFloat64, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"building", "completed", "shipped"}, Default: "building"},
+		{Name: "palletizer_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "printed", Type: field.TypeBool, Default: false},
 		{Name: "printed_at", Type: field.TypeTime, Nullable: true},
-		{Name: "packed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "lot_id", Type: field.TypeUUID},
 	}
 	// PalletsTable holds the schema information for the "pallets" table.
 	PalletsTable = &schema.Table{
 		Name:       "pallets",
 		Columns:    PalletsColumns,
 		PrimaryKey: []*schema.Column{PalletsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "pallets_lots_pallets",
+				Columns:    []*schema.Column{PalletsColumns[14]},
+				RefColumns: []*schema.Column{LotsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "pallet_lot_id",
+				Unique:  false,
+				Columns: []*schema.Column{PalletsColumns[14]},
+			},
+			{
+				Name:    "pallet_level",
 				Unique:  false,
 				Columns: []*schema.Column{PalletsColumns[2]},
 			},
 			{
 				Name:    "pallet_status",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[5]},
+				Columns: []*schema.Column{PalletsColumns[7]},
 			},
 			{
-				Name:    "pallet_packed_at",
+				Name:    "pallet_palletizer_id",
 				Unique:  false,
 				Columns: []*schema.Column{PalletsColumns[8]},
 			},
 			{
+				Name:    "pallet_completed_at",
+				Unique:  false,
+				Columns: []*schema.Column{PalletsColumns[11]},
+			},
+			{
 				Name:    "pallet_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[9]},
-			},
-		},
-	}
-	// ProjectsColumns holds the columns for the "projects" table.
-	ProjectsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "project_name", Type: field.TypeString, Unique: true, Size: 100},
-		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
-		{Name: "customer_name", Type: field.TypeString, Nullable: true, Size: 100},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "completed", "archived"}, Default: "active"},
-		{Name: "start_date", Type: field.TypeTime, Nullable: true},
-		{Name: "end_date", Type: field.TypeTime, Nullable: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
-	}
-	// ProjectsTable holds the schema information for the "projects" table.
-	ProjectsTable = &schema.Table{
-		Name:       "projects",
-		Columns:    ProjectsColumns,
-		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
-		Indexes: []*schema.Index{
-			{
-				Name:    "project_status",
-				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[4]},
+				Columns: []*schema.Column{PalletsColumns[12]},
 			},
 			{
-				Name:    "project_customer_name",
+				Name:    "pallet_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[3]},
-			},
-			{
-				Name:    "project_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{ProjectsColumns[7]},
+				Columns: []*schema.Column{PalletsColumns[14], PalletsColumns[7]},
 			},
 		},
 	}
@@ -394,17 +539,36 @@ var (
 		{Name: "current_lot_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
 	}
 	// SpinningLinesTable holds the schema information for the "spinning_lines" table.
 	SpinningLinesTable = &schema.Table{
 		Name:       "spinning_lines",
 		Columns:    SpinningLinesColumns,
 		PrimaryKey: []*schema.Column{SpinningLinesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "spinning_lines_edges_spinning_lines",
+				Columns:    []*schema.Column{SpinningLinesColumns[9]},
+				RefColumns: []*schema.Column{EdgesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 		Indexes: []*schema.Index{
+			{
+				Name:    "spinningline_edge_id",
+				Unique:  false,
+				Columns: []*schema.Column{SpinningLinesColumns[9]},
+			},
 			{
 				Name:    "spinningline_status",
 				Unique:  false,
 				Columns: []*schema.Column{SpinningLinesColumns[5]},
+			},
+			{
+				Name:    "spinningline_edge_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{SpinningLinesColumns[9], SpinningLinesColumns[5]},
 			},
 		},
 	}
@@ -453,22 +617,29 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		BarrelsTable,
 		BobbinsTable,
 		CartonsTable,
 		DoffingsTable,
+		EdgesTable,
+		GradesTable,
 		LotsTable,
-		OrdersTable,
+		ModulesTable,
 		PalletsTable,
-		ProjectsTable,
 		SpinningLinesTable,
 		UsersTable,
 	}
 )
 
 func init() {
-	BobbinsTable.ForeignKeys[0].RefTable = CartonsTable
-	BobbinsTable.ForeignKeys[1].RefTable = LotsTable
-	BobbinsTable.ForeignKeys[2].RefTable = PalletsTable
-	LotsTable.ForeignKeys[0].RefTable = OrdersTable
-	OrdersTable.ForeignKeys[0].RefTable = ProjectsTable
+	BarrelsTable.ForeignKeys[0].RefTable = DoffingsTable
+	BarrelsTable.ForeignKeys[1].RefTable = LotsTable
+	BobbinsTable.ForeignKeys[0].RefTable = BarrelsTable
+	BobbinsTable.ForeignKeys[1].RefTable = CartonsTable
+	BobbinsTable.ForeignKeys[2].RefTable = LotsTable
+	BobbinsTable.ForeignKeys[3].RefTable = PalletsTable
+	DoffingsTable.ForeignKeys[0].RefTable = LotsTable
+	LotsTable.ForeignKeys[0].RefTable = EdgesTable
+	PalletsTable.ForeignKeys[0].RefTable = LotsTable
+	SpinningLinesTable.ForeignKeys[0].RefTable = EdgesTable
 }

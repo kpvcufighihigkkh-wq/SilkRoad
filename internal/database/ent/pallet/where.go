@@ -56,9 +56,9 @@ func IDLTE(id uuid.UUID) predicate.Pallet {
 	return predicate.Pallet(sql.FieldLTE(FieldID, id))
 }
 
-// PalletNumber applies equality check predicate on the "pallet_number" field. It's identical to PalletNumberEQ.
-func PalletNumber(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldPalletNumber, v))
+// PalletCode applies equality check predicate on the "pallet_code" field. It's identical to PalletCodeEQ.
+func PalletCode(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPalletCode, v))
 }
 
 // LotID applies equality check predicate on the "lot_id" field. It's identical to LotIDEQ.
@@ -66,19 +66,39 @@ func LotID(v uuid.UUID) predicate.Pallet {
 	return predicate.Pallet(sql.FieldEQ(FieldLotID, v))
 }
 
-// BobbinCount applies equality check predicate on the "bobbin_count" field. It's identical to BobbinCountEQ.
-func BobbinCount(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldBobbinCount, v))
+// Level applies equality check predicate on the "level" field. It's identical to LevelEQ.
+func Level(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldLevel, v))
 }
 
-// TotalWeight applies equality check predicate on the "total_weight" field. It's identical to TotalWeightEQ.
-func TotalWeight(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldTotalWeight, v))
+// BobbinsCount applies equality check predicate on the "bobbins_count" field. It's identical to BobbinsCountEQ.
+func BobbinsCount(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldBobbinsCount, v))
 }
 
-// LabelPrinted applies equality check predicate on the "label_printed" field. It's identical to LabelPrintedEQ.
-func LabelPrinted(v bool) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldLabelPrinted, v))
+// NetWeight applies equality check predicate on the "net_weight" field. It's identical to NetWeightEQ.
+func NetWeight(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldNetWeight, v))
+}
+
+// GrossWeight applies equality check predicate on the "gross_weight" field. It's identical to GrossWeightEQ.
+func GrossWeight(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldGrossWeight, v))
+}
+
+// TareWeight applies equality check predicate on the "tare_weight" field. It's identical to TareWeightEQ.
+func TareWeight(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldTareWeight, v))
+}
+
+// PalletizerID applies equality check predicate on the "palletizer_id" field. It's identical to PalletizerIDEQ.
+func PalletizerID(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPalletizerID, v))
+}
+
+// Printed applies equality check predicate on the "printed" field. It's identical to PrintedEQ.
+func Printed(v bool) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPrinted, v))
 }
 
 // PrintedAt applies equality check predicate on the "printed_at" field. It's identical to PrintedAtEQ.
@@ -86,9 +106,9 @@ func PrintedAt(v time.Time) predicate.Pallet {
 	return predicate.Pallet(sql.FieldEQ(FieldPrintedAt, v))
 }
 
-// PackedAt applies equality check predicate on the "packed_at" field. It's identical to PackedAtEQ.
-func PackedAt(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldPackedAt, v))
+// CompletedAt applies equality check predicate on the "completed_at" field. It's identical to CompletedAtEQ.
+func CompletedAt(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldCompletedAt, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -101,69 +121,69 @@ func UpdatedAt(v time.Time) predicate.Pallet {
 	return predicate.Pallet(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// PalletNumberEQ applies the EQ predicate on the "pallet_number" field.
-func PalletNumberEQ(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldPalletNumber, v))
+// PalletCodeEQ applies the EQ predicate on the "pallet_code" field.
+func PalletCodeEQ(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPalletCode, v))
 }
 
-// PalletNumberNEQ applies the NEQ predicate on the "pallet_number" field.
-func PalletNumberNEQ(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNEQ(FieldPalletNumber, v))
+// PalletCodeNEQ applies the NEQ predicate on the "pallet_code" field.
+func PalletCodeNEQ(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldPalletCode, v))
 }
 
-// PalletNumberIn applies the In predicate on the "pallet_number" field.
-func PalletNumberIn(vs ...string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldIn(FieldPalletNumber, vs...))
+// PalletCodeIn applies the In predicate on the "pallet_code" field.
+func PalletCodeIn(vs ...string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldPalletCode, vs...))
 }
 
-// PalletNumberNotIn applies the NotIn predicate on the "pallet_number" field.
-func PalletNumberNotIn(vs ...string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotIn(FieldPalletNumber, vs...))
+// PalletCodeNotIn applies the NotIn predicate on the "pallet_code" field.
+func PalletCodeNotIn(vs ...string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldPalletCode, vs...))
 }
 
-// PalletNumberGT applies the GT predicate on the "pallet_number" field.
-func PalletNumberGT(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGT(FieldPalletNumber, v))
+// PalletCodeGT applies the GT predicate on the "pallet_code" field.
+func PalletCodeGT(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldPalletCode, v))
 }
 
-// PalletNumberGTE applies the GTE predicate on the "pallet_number" field.
-func PalletNumberGTE(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGTE(FieldPalletNumber, v))
+// PalletCodeGTE applies the GTE predicate on the "pallet_code" field.
+func PalletCodeGTE(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldPalletCode, v))
 }
 
-// PalletNumberLT applies the LT predicate on the "pallet_number" field.
-func PalletNumberLT(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLT(FieldPalletNumber, v))
+// PalletCodeLT applies the LT predicate on the "pallet_code" field.
+func PalletCodeLT(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldPalletCode, v))
 }
 
-// PalletNumberLTE applies the LTE predicate on the "pallet_number" field.
-func PalletNumberLTE(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLTE(FieldPalletNumber, v))
+// PalletCodeLTE applies the LTE predicate on the "pallet_code" field.
+func PalletCodeLTE(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldPalletCode, v))
 }
 
-// PalletNumberContains applies the Contains predicate on the "pallet_number" field.
-func PalletNumberContains(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldContains(FieldPalletNumber, v))
+// PalletCodeContains applies the Contains predicate on the "pallet_code" field.
+func PalletCodeContains(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldContains(FieldPalletCode, v))
 }
 
-// PalletNumberHasPrefix applies the HasPrefix predicate on the "pallet_number" field.
-func PalletNumberHasPrefix(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldHasPrefix(FieldPalletNumber, v))
+// PalletCodeHasPrefix applies the HasPrefix predicate on the "pallet_code" field.
+func PalletCodeHasPrefix(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldHasPrefix(FieldPalletCode, v))
 }
 
-// PalletNumberHasSuffix applies the HasSuffix predicate on the "pallet_number" field.
-func PalletNumberHasSuffix(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldHasSuffix(FieldPalletNumber, v))
+// PalletCodeHasSuffix applies the HasSuffix predicate on the "pallet_code" field.
+func PalletCodeHasSuffix(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldHasSuffix(FieldPalletCode, v))
 }
 
-// PalletNumberEqualFold applies the EqualFold predicate on the "pallet_number" field.
-func PalletNumberEqualFold(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEqualFold(FieldPalletNumber, v))
+// PalletCodeEqualFold applies the EqualFold predicate on the "pallet_code" field.
+func PalletCodeEqualFold(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEqualFold(FieldPalletCode, v))
 }
 
-// PalletNumberContainsFold applies the ContainsFold predicate on the "pallet_number" field.
-func PalletNumberContainsFold(v string) predicate.Pallet {
-	return predicate.Pallet(sql.FieldContainsFold(FieldPalletNumber, v))
+// PalletCodeContainsFold applies the ContainsFold predicate on the "pallet_code" field.
+func PalletCodeContainsFold(v string) predicate.Pallet {
+	return predicate.Pallet(sql.FieldContainsFold(FieldPalletCode, v))
 }
 
 // LotIDEQ applies the EQ predicate on the "lot_id" field.
@@ -186,124 +206,234 @@ func LotIDNotIn(vs ...uuid.UUID) predicate.Pallet {
 	return predicate.Pallet(sql.FieldNotIn(FieldLotID, vs...))
 }
 
-// LotIDGT applies the GT predicate on the "lot_id" field.
-func LotIDGT(v uuid.UUID) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGT(FieldLotID, v))
+// LevelEQ applies the EQ predicate on the "level" field.
+func LevelEQ(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldLevel, v))
 }
 
-// LotIDGTE applies the GTE predicate on the "lot_id" field.
-func LotIDGTE(v uuid.UUID) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGTE(FieldLotID, v))
+// LevelNEQ applies the NEQ predicate on the "level" field.
+func LevelNEQ(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldLevel, v))
 }
 
-// LotIDLT applies the LT predicate on the "lot_id" field.
-func LotIDLT(v uuid.UUID) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLT(FieldLotID, v))
+// LevelIn applies the In predicate on the "level" field.
+func LevelIn(vs ...int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldLevel, vs...))
 }
 
-// LotIDLTE applies the LTE predicate on the "lot_id" field.
-func LotIDLTE(v uuid.UUID) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLTE(FieldLotID, v))
+// LevelNotIn applies the NotIn predicate on the "level" field.
+func LevelNotIn(vs ...int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldLevel, vs...))
 }
 
-// LotIDIsNil applies the IsNil predicate on the "lot_id" field.
-func LotIDIsNil() predicate.Pallet {
-	return predicate.Pallet(sql.FieldIsNull(FieldLotID))
+// LevelGT applies the GT predicate on the "level" field.
+func LevelGT(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldLevel, v))
 }
 
-// LotIDNotNil applies the NotNil predicate on the "lot_id" field.
-func LotIDNotNil() predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotNull(FieldLotID))
+// LevelGTE applies the GTE predicate on the "level" field.
+func LevelGTE(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldLevel, v))
 }
 
-// BobbinCountEQ applies the EQ predicate on the "bobbin_count" field.
-func BobbinCountEQ(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldBobbinCount, v))
+// LevelLT applies the LT predicate on the "level" field.
+func LevelLT(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldLevel, v))
 }
 
-// BobbinCountNEQ applies the NEQ predicate on the "bobbin_count" field.
-func BobbinCountNEQ(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNEQ(FieldBobbinCount, v))
+// LevelLTE applies the LTE predicate on the "level" field.
+func LevelLTE(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldLevel, v))
 }
 
-// BobbinCountIn applies the In predicate on the "bobbin_count" field.
-func BobbinCountIn(vs ...int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldIn(FieldBobbinCount, vs...))
+// BobbinsCountEQ applies the EQ predicate on the "bobbins_count" field.
+func BobbinsCountEQ(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldBobbinsCount, v))
 }
 
-// BobbinCountNotIn applies the NotIn predicate on the "bobbin_count" field.
-func BobbinCountNotIn(vs ...int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotIn(FieldBobbinCount, vs...))
+// BobbinsCountNEQ applies the NEQ predicate on the "bobbins_count" field.
+func BobbinsCountNEQ(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldBobbinsCount, v))
 }
 
-// BobbinCountGT applies the GT predicate on the "bobbin_count" field.
-func BobbinCountGT(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGT(FieldBobbinCount, v))
+// BobbinsCountIn applies the In predicate on the "bobbins_count" field.
+func BobbinsCountIn(vs ...int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldBobbinsCount, vs...))
 }
 
-// BobbinCountGTE applies the GTE predicate on the "bobbin_count" field.
-func BobbinCountGTE(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGTE(FieldBobbinCount, v))
+// BobbinsCountNotIn applies the NotIn predicate on the "bobbins_count" field.
+func BobbinsCountNotIn(vs ...int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldBobbinsCount, vs...))
 }
 
-// BobbinCountLT applies the LT predicate on the "bobbin_count" field.
-func BobbinCountLT(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLT(FieldBobbinCount, v))
+// BobbinsCountGT applies the GT predicate on the "bobbins_count" field.
+func BobbinsCountGT(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldBobbinsCount, v))
 }
 
-// BobbinCountLTE applies the LTE predicate on the "bobbin_count" field.
-func BobbinCountLTE(v int) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLTE(FieldBobbinCount, v))
+// BobbinsCountGTE applies the GTE predicate on the "bobbins_count" field.
+func BobbinsCountGTE(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldBobbinsCount, v))
 }
 
-// TotalWeightEQ applies the EQ predicate on the "total_weight" field.
-func TotalWeightEQ(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldTotalWeight, v))
+// BobbinsCountLT applies the LT predicate on the "bobbins_count" field.
+func BobbinsCountLT(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldBobbinsCount, v))
 }
 
-// TotalWeightNEQ applies the NEQ predicate on the "total_weight" field.
-func TotalWeightNEQ(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNEQ(FieldTotalWeight, v))
+// BobbinsCountLTE applies the LTE predicate on the "bobbins_count" field.
+func BobbinsCountLTE(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldBobbinsCount, v))
 }
 
-// TotalWeightIn applies the In predicate on the "total_weight" field.
-func TotalWeightIn(vs ...float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldIn(FieldTotalWeight, vs...))
+// NetWeightEQ applies the EQ predicate on the "net_weight" field.
+func NetWeightEQ(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldNetWeight, v))
 }
 
-// TotalWeightNotIn applies the NotIn predicate on the "total_weight" field.
-func TotalWeightNotIn(vs ...float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotIn(FieldTotalWeight, vs...))
+// NetWeightNEQ applies the NEQ predicate on the "net_weight" field.
+func NetWeightNEQ(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldNetWeight, v))
 }
 
-// TotalWeightGT applies the GT predicate on the "total_weight" field.
-func TotalWeightGT(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGT(FieldTotalWeight, v))
+// NetWeightIn applies the In predicate on the "net_weight" field.
+func NetWeightIn(vs ...float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldNetWeight, vs...))
 }
 
-// TotalWeightGTE applies the GTE predicate on the "total_weight" field.
-func TotalWeightGTE(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGTE(FieldTotalWeight, v))
+// NetWeightNotIn applies the NotIn predicate on the "net_weight" field.
+func NetWeightNotIn(vs ...float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldNetWeight, vs...))
 }
 
-// TotalWeightLT applies the LT predicate on the "total_weight" field.
-func TotalWeightLT(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLT(FieldTotalWeight, v))
+// NetWeightGT applies the GT predicate on the "net_weight" field.
+func NetWeightGT(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldNetWeight, v))
 }
 
-// TotalWeightLTE applies the LTE predicate on the "total_weight" field.
-func TotalWeightLTE(v float64) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLTE(FieldTotalWeight, v))
+// NetWeightGTE applies the GTE predicate on the "net_weight" field.
+func NetWeightGTE(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldNetWeight, v))
 }
 
-// TotalWeightIsNil applies the IsNil predicate on the "total_weight" field.
-func TotalWeightIsNil() predicate.Pallet {
-	return predicate.Pallet(sql.FieldIsNull(FieldTotalWeight))
+// NetWeightLT applies the LT predicate on the "net_weight" field.
+func NetWeightLT(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldNetWeight, v))
 }
 
-// TotalWeightNotNil applies the NotNil predicate on the "total_weight" field.
-func TotalWeightNotNil() predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotNull(FieldTotalWeight))
+// NetWeightLTE applies the LTE predicate on the "net_weight" field.
+func NetWeightLTE(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldNetWeight, v))
+}
+
+// NetWeightIsNil applies the IsNil predicate on the "net_weight" field.
+func NetWeightIsNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldIsNull(FieldNetWeight))
+}
+
+// NetWeightNotNil applies the NotNil predicate on the "net_weight" field.
+func NetWeightNotNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotNull(FieldNetWeight))
+}
+
+// GrossWeightEQ applies the EQ predicate on the "gross_weight" field.
+func GrossWeightEQ(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldGrossWeight, v))
+}
+
+// GrossWeightNEQ applies the NEQ predicate on the "gross_weight" field.
+func GrossWeightNEQ(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldGrossWeight, v))
+}
+
+// GrossWeightIn applies the In predicate on the "gross_weight" field.
+func GrossWeightIn(vs ...float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldGrossWeight, vs...))
+}
+
+// GrossWeightNotIn applies the NotIn predicate on the "gross_weight" field.
+func GrossWeightNotIn(vs ...float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldGrossWeight, vs...))
+}
+
+// GrossWeightGT applies the GT predicate on the "gross_weight" field.
+func GrossWeightGT(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldGrossWeight, v))
+}
+
+// GrossWeightGTE applies the GTE predicate on the "gross_weight" field.
+func GrossWeightGTE(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldGrossWeight, v))
+}
+
+// GrossWeightLT applies the LT predicate on the "gross_weight" field.
+func GrossWeightLT(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldGrossWeight, v))
+}
+
+// GrossWeightLTE applies the LTE predicate on the "gross_weight" field.
+func GrossWeightLTE(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldGrossWeight, v))
+}
+
+// GrossWeightIsNil applies the IsNil predicate on the "gross_weight" field.
+func GrossWeightIsNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldIsNull(FieldGrossWeight))
+}
+
+// GrossWeightNotNil applies the NotNil predicate on the "gross_weight" field.
+func GrossWeightNotNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotNull(FieldGrossWeight))
+}
+
+// TareWeightEQ applies the EQ predicate on the "tare_weight" field.
+func TareWeightEQ(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldTareWeight, v))
+}
+
+// TareWeightNEQ applies the NEQ predicate on the "tare_weight" field.
+func TareWeightNEQ(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldTareWeight, v))
+}
+
+// TareWeightIn applies the In predicate on the "tare_weight" field.
+func TareWeightIn(vs ...float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldTareWeight, vs...))
+}
+
+// TareWeightNotIn applies the NotIn predicate on the "tare_weight" field.
+func TareWeightNotIn(vs ...float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldTareWeight, vs...))
+}
+
+// TareWeightGT applies the GT predicate on the "tare_weight" field.
+func TareWeightGT(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldTareWeight, v))
+}
+
+// TareWeightGTE applies the GTE predicate on the "tare_weight" field.
+func TareWeightGTE(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldTareWeight, v))
+}
+
+// TareWeightLT applies the LT predicate on the "tare_weight" field.
+func TareWeightLT(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldTareWeight, v))
+}
+
+// TareWeightLTE applies the LTE predicate on the "tare_weight" field.
+func TareWeightLTE(v float64) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldTareWeight, v))
+}
+
+// TareWeightIsNil applies the IsNil predicate on the "tare_weight" field.
+func TareWeightIsNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldIsNull(FieldTareWeight))
+}
+
+// TareWeightNotNil applies the NotNil predicate on the "tare_weight" field.
+func TareWeightNotNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotNull(FieldTareWeight))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.
@@ -326,14 +456,64 @@ func StatusNotIn(vs ...Status) predicate.Pallet {
 	return predicate.Pallet(sql.FieldNotIn(FieldStatus, vs...))
 }
 
-// LabelPrintedEQ applies the EQ predicate on the "label_printed" field.
-func LabelPrintedEQ(v bool) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldLabelPrinted, v))
+// PalletizerIDEQ applies the EQ predicate on the "palletizer_id" field.
+func PalletizerIDEQ(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPalletizerID, v))
 }
 
-// LabelPrintedNEQ applies the NEQ predicate on the "label_printed" field.
-func LabelPrintedNEQ(v bool) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNEQ(FieldLabelPrinted, v))
+// PalletizerIDNEQ applies the NEQ predicate on the "palletizer_id" field.
+func PalletizerIDNEQ(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldPalletizerID, v))
+}
+
+// PalletizerIDIn applies the In predicate on the "palletizer_id" field.
+func PalletizerIDIn(vs ...uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldPalletizerID, vs...))
+}
+
+// PalletizerIDNotIn applies the NotIn predicate on the "palletizer_id" field.
+func PalletizerIDNotIn(vs ...uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldPalletizerID, vs...))
+}
+
+// PalletizerIDGT applies the GT predicate on the "palletizer_id" field.
+func PalletizerIDGT(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldPalletizerID, v))
+}
+
+// PalletizerIDGTE applies the GTE predicate on the "palletizer_id" field.
+func PalletizerIDGTE(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldPalletizerID, v))
+}
+
+// PalletizerIDLT applies the LT predicate on the "palletizer_id" field.
+func PalletizerIDLT(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldPalletizerID, v))
+}
+
+// PalletizerIDLTE applies the LTE predicate on the "palletizer_id" field.
+func PalletizerIDLTE(v uuid.UUID) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldPalletizerID, v))
+}
+
+// PalletizerIDIsNil applies the IsNil predicate on the "palletizer_id" field.
+func PalletizerIDIsNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldIsNull(FieldPalletizerID))
+}
+
+// PalletizerIDNotNil applies the NotNil predicate on the "palletizer_id" field.
+func PalletizerIDNotNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotNull(FieldPalletizerID))
+}
+
+// PrintedEQ applies the EQ predicate on the "printed" field.
+func PrintedEQ(v bool) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPrinted, v))
+}
+
+// PrintedNEQ applies the NEQ predicate on the "printed" field.
+func PrintedNEQ(v bool) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldPrinted, v))
 }
 
 // PrintedAtEQ applies the EQ predicate on the "printed_at" field.
@@ -386,54 +566,54 @@ func PrintedAtNotNil() predicate.Pallet {
 	return predicate.Pallet(sql.FieldNotNull(FieldPrintedAt))
 }
 
-// PackedAtEQ applies the EQ predicate on the "packed_at" field.
-func PackedAtEQ(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldEQ(FieldPackedAt, v))
+// CompletedAtEQ applies the EQ predicate on the "completed_at" field.
+func CompletedAtEQ(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldCompletedAt, v))
 }
 
-// PackedAtNEQ applies the NEQ predicate on the "packed_at" field.
-func PackedAtNEQ(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNEQ(FieldPackedAt, v))
+// CompletedAtNEQ applies the NEQ predicate on the "completed_at" field.
+func CompletedAtNEQ(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldCompletedAt, v))
 }
 
-// PackedAtIn applies the In predicate on the "packed_at" field.
-func PackedAtIn(vs ...time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldIn(FieldPackedAt, vs...))
+// CompletedAtIn applies the In predicate on the "completed_at" field.
+func CompletedAtIn(vs ...time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldCompletedAt, vs...))
 }
 
-// PackedAtNotIn applies the NotIn predicate on the "packed_at" field.
-func PackedAtNotIn(vs ...time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotIn(FieldPackedAt, vs...))
+// CompletedAtNotIn applies the NotIn predicate on the "completed_at" field.
+func CompletedAtNotIn(vs ...time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldCompletedAt, vs...))
 }
 
-// PackedAtGT applies the GT predicate on the "packed_at" field.
-func PackedAtGT(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGT(FieldPackedAt, v))
+// CompletedAtGT applies the GT predicate on the "completed_at" field.
+func CompletedAtGT(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldCompletedAt, v))
 }
 
-// PackedAtGTE applies the GTE predicate on the "packed_at" field.
-func PackedAtGTE(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldGTE(FieldPackedAt, v))
+// CompletedAtGTE applies the GTE predicate on the "completed_at" field.
+func CompletedAtGTE(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldCompletedAt, v))
 }
 
-// PackedAtLT applies the LT predicate on the "packed_at" field.
-func PackedAtLT(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLT(FieldPackedAt, v))
+// CompletedAtLT applies the LT predicate on the "completed_at" field.
+func CompletedAtLT(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldCompletedAt, v))
 }
 
-// PackedAtLTE applies the LTE predicate on the "packed_at" field.
-func PackedAtLTE(v time.Time) predicate.Pallet {
-	return predicate.Pallet(sql.FieldLTE(FieldPackedAt, v))
+// CompletedAtLTE applies the LTE predicate on the "completed_at" field.
+func CompletedAtLTE(v time.Time) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldCompletedAt, v))
 }
 
-// PackedAtIsNil applies the IsNil predicate on the "packed_at" field.
-func PackedAtIsNil() predicate.Pallet {
-	return predicate.Pallet(sql.FieldIsNull(FieldPackedAt))
+// CompletedAtIsNil applies the IsNil predicate on the "completed_at" field.
+func CompletedAtIsNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldIsNull(FieldCompletedAt))
 }
 
-// PackedAtNotNil applies the NotNil predicate on the "packed_at" field.
-func PackedAtNotNil() predicate.Pallet {
-	return predicate.Pallet(sql.FieldNotNull(FieldPackedAt))
+// CompletedAtNotNil applies the NotNil predicate on the "completed_at" field.
+func CompletedAtNotNil() predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotNull(FieldCompletedAt))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -514,6 +694,29 @@ func UpdatedAtLT(v time.Time) predicate.Pallet {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Pallet {
 	return predicate.Pallet(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// HasLot applies the HasEdge predicate on the "lot" edge.
+func HasLot() predicate.Pallet {
+	return predicate.Pallet(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, LotTable, LotColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasLotWith applies the HasEdge predicate on the "lot" edge with a given conditions (other predicates).
+func HasLotWith(preds ...predicate.Lot) predicate.Pallet {
+	return predicate.Pallet(func(s *sql.Selector) {
+		step := newLotStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // HasBobbins applies the HasEdge predicate on the "bobbins" edge.

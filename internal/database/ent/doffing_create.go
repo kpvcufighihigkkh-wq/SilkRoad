@@ -11,7 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 )
 
 // DoffingCreate is the builder for creating a Doffing entity.
@@ -193,6 +195,26 @@ func (_c *DoffingCreate) SetNillableID(v *uuid.UUID) *DoffingCreate {
 	return _c
 }
 
+// SetLot sets the "lot" edge to the Lot entity.
+func (_c *DoffingCreate) SetLot(v *Lot) *DoffingCreate {
+	return _c.SetLotID(v.ID)
+}
+
+// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
+func (_c *DoffingCreate) AddBarrelIDs(ids ...uuid.UUID) *DoffingCreate {
+	_c.mutation.AddBarrelIDs(ids...)
+	return _c
+}
+
+// AddBarrels adds the "barrels" edges to the Barrel entity.
+func (_c *DoffingCreate) AddBarrels(v ...*Barrel) *DoffingCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddBarrelIDs(ids...)
+}
+
 // Mutation returns the DoffingMutation object of the builder.
 func (_c *DoffingCreate) Mutation() *DoffingMutation {
 	return _c.mutation
@@ -298,6 +320,9 @@ func (_c *DoffingCreate) check() error {
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Doffing.updated_at"`)}
 	}
+	if len(_c.mutation.LotIDs()) == 0 {
+		return &ValidationError{Name: "lot", err: errors.New(`ent: missing required edge "Doffing.lot"`)}
+	}
 	return nil
 }
 
@@ -341,10 +366,6 @@ func (_c *DoffingCreate) createSpec() (*Doffing, *sqlgraph.CreateSpec) {
 		_spec.SetField(doffing.FieldSpinningPosition, field.TypeInt, value)
 		_node.SpinningPosition = value
 	}
-	if value, ok := _c.mutation.LotID(); ok {
-		_spec.SetField(doffing.FieldLotID, field.TypeUUID, value)
-		_node.LotID = value
-	}
 	if value, ok := _c.mutation.OperatorID(); ok {
 		_spec.SetField(doffing.FieldOperatorID, field.TypeUUID, value)
 		_node.OperatorID = value
@@ -384,6 +405,39 @@ func (_c *DoffingCreate) createSpec() (*Doffing, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(doffing.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.LotIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   doffing.LotTable,
+			Columns: []string{doffing.LotColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(lot.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.LotID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BarrelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   doffing.BarrelsTable,
+			Columns: []string{doffing.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

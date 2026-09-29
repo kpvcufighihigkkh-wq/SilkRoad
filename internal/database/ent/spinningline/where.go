@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
@@ -63,6 +64,11 @@ func LineName(v string) predicate.SpinningLine {
 // LineNumber applies equality check predicate on the "line_number" field. It's identical to LineNumberEQ.
 func LineNumber(v string) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldEQ(FieldLineNumber, v))
+}
+
+// EdgeID applies equality check predicate on the "edge_id" field. It's identical to EdgeIDEQ.
+func EdgeID(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldEdgeID, v))
 }
 
 // Location applies equality check predicate on the "location" field. It's identical to LocationEQ.
@@ -228,6 +234,36 @@ func LineNumberEqualFold(v string) predicate.SpinningLine {
 // LineNumberContainsFold applies the ContainsFold predicate on the "line_number" field.
 func LineNumberContainsFold(v string) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldContainsFold(FieldLineNumber, v))
+}
+
+// EdgeIDEQ applies the EQ predicate on the "edge_id" field.
+func EdgeIDEQ(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldEQ(FieldEdgeID, v))
+}
+
+// EdgeIDNEQ applies the NEQ predicate on the "edge_id" field.
+func EdgeIDNEQ(v uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNEQ(FieldEdgeID, v))
+}
+
+// EdgeIDIn applies the In predicate on the "edge_id" field.
+func EdgeIDIn(vs ...uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDNotIn applies the NotIn predicate on the "edge_id" field.
+func EdgeIDNotIn(vs ...uuid.UUID) predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDIsNil applies the IsNil predicate on the "edge_id" field.
+func EdgeIDIsNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldIsNull(FieldEdgeID))
+}
+
+// EdgeIDNotNil applies the NotNil predicate on the "edge_id" field.
+func EdgeIDNotNil() predicate.SpinningLine {
+	return predicate.SpinningLine(sql.FieldNotNull(FieldEdgeID))
 }
 
 // LocationEQ applies the EQ predicate on the "location" field.
@@ -503,6 +539,29 @@ func UpdatedAtLT(v time.Time) predicate.SpinningLine {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.SpinningLine {
 	return predicate.SpinningLine(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// HasEdge applies the HasEdge predicate on the "edge" edge.
+func HasEdge() predicate.SpinningLine {
+	return predicate.SpinningLine(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, EdgeTable, EdgeColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasEdgeWith applies the HasEdge predicate on the "edge" edge with a given conditions (other predicates).
+func HasEdgeWith(preds ...predicate.Edge) predicate.SpinningLine {
+	return predicate.SpinningLine(func(s *sql.Selector) {
+		step := newEdgeStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

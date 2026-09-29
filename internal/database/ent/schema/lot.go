@@ -118,6 +118,9 @@ func (Lot) Edges() []ent.Edge {
 
 		// 一个批次有多个落纱记录
 		edge.To("doffings", Doffing.Type),
+
+		// 一个批次有多个托盘
+		edge.To("pallets", Pallet.Type),
 	}
 }
 

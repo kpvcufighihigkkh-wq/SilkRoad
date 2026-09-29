@@ -12,9 +12,12 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
 
@@ -45,17 +48,63 @@ func (_u *LotUpdate) SetNillableLotNumber(v *string) *LotUpdate {
 	return _u
 }
 
-// SetOrderID sets the "order_id" field.
-func (_u *LotUpdate) SetOrderID(v uuid.UUID) *LotUpdate {
-	_u.mutation.SetOrderID(v)
+// SetEdgeID sets the "edge_id" field.
+func (_u *LotUpdate) SetEdgeID(v uuid.UUID) *LotUpdate {
+	_u.mutation.SetEdgeID(v)
 	return _u
 }
 
-// SetNillableOrderID sets the "order_id" field if the given value is not nil.
-func (_u *LotUpdate) SetNillableOrderID(v *uuid.UUID) *LotUpdate {
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *LotUpdate) SetNillableEdgeID(v *uuid.UUID) *LotUpdate {
 	if v != nil {
-		_u.SetOrderID(*v)
+		_u.SetEdgeID(*v)
 	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *LotUpdate) ClearEdgeID() *LotUpdate {
+	_u.mutation.ClearEdgeID()
+	return _u
+}
+
+// SetPlcLotNumber sets the "plc_lot_number" field.
+func (_u *LotUpdate) SetPlcLotNumber(v string) *LotUpdate {
+	_u.mutation.SetPlcLotNumber(v)
+	return _u
+}
+
+// SetNillablePlcLotNumber sets the "plc_lot_number" field if the given value is not nil.
+func (_u *LotUpdate) SetNillablePlcLotNumber(v *string) *LotUpdate {
+	if v != nil {
+		_u.SetPlcLotNumber(*v)
+	}
+	return _u
+}
+
+// ClearPlcLotNumber clears the value of the "plc_lot_number" field.
+func (_u *LotUpdate) ClearPlcLotNumber() *LotUpdate {
+	_u.mutation.ClearPlcLotNumber()
+	return _u
+}
+
+// SetOrderCode sets the "order_code" field.
+func (_u *LotUpdate) SetOrderCode(v string) *LotUpdate {
+	_u.mutation.SetOrderCode(v)
+	return _u
+}
+
+// SetNillableOrderCode sets the "order_code" field if the given value is not nil.
+func (_u *LotUpdate) SetNillableOrderCode(v *string) *LotUpdate {
+	if v != nil {
+		_u.SetOrderCode(*v)
+	}
+	return _u
+}
+
+// ClearOrderCode clears the value of the "order_code" field.
+func (_u *LotUpdate) ClearOrderCode() *LotUpdate {
+	_u.mutation.ClearOrderCode()
 	return _u
 }
 
@@ -209,9 +258,24 @@ func (_u *LotUpdate) SetUpdatedAt(v time.Time) *LotUpdate {
 	return _u
 }
 
-// SetOrder sets the "order" edge to the Order entity.
-func (_u *LotUpdate) SetOrder(v *Order) *LotUpdate {
-	return _u.SetOrderID(v.ID)
+// SetEdge sets the "edge" edge to the Edge entity.
+func (_u *LotUpdate) SetEdge(v *Edge) *LotUpdate {
+	return _u.SetEdgeID(v.ID)
+}
+
+// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
+func (_u *LotUpdate) AddBarrelIDs(ids ...uuid.UUID) *LotUpdate {
+	_u.mutation.AddBarrelIDs(ids...)
+	return _u
+}
+
+// AddBarrels adds the "barrels" edges to the Barrel entity.
+func (_u *LotUpdate) AddBarrels(v ...*Barrel) *LotUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddBarrelIDs(ids...)
 }
 
 // AddBobbinIDs adds the "bobbins" edge to the Bobbin entity by IDs.
@@ -229,15 +293,66 @@ func (_u *LotUpdate) AddBobbins(v ...*Bobbin) *LotUpdate {
 	return _u.AddBobbinIDs(ids...)
 }
 
+// AddDoffingIDs adds the "doffings" edge to the Doffing entity by IDs.
+func (_u *LotUpdate) AddDoffingIDs(ids ...uuid.UUID) *LotUpdate {
+	_u.mutation.AddDoffingIDs(ids...)
+	return _u
+}
+
+// AddDoffings adds the "doffings" edges to the Doffing entity.
+func (_u *LotUpdate) AddDoffings(v ...*Doffing) *LotUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDoffingIDs(ids...)
+}
+
+// AddPalletIDs adds the "pallets" edge to the Pallet entity by IDs.
+func (_u *LotUpdate) AddPalletIDs(ids ...uuid.UUID) *LotUpdate {
+	_u.mutation.AddPalletIDs(ids...)
+	return _u
+}
+
+// AddPallets adds the "pallets" edges to the Pallet entity.
+func (_u *LotUpdate) AddPallets(v ...*Pallet) *LotUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPalletIDs(ids...)
+}
+
 // Mutation returns the LotMutation object of the builder.
 func (_u *LotUpdate) Mutation() *LotMutation {
 	return _u.mutation
 }
 
-// ClearOrder clears the "order" edge to the Order entity.
-func (_u *LotUpdate) ClearOrder() *LotUpdate {
-	_u.mutation.ClearOrder()
+// ClearEdgeEdge clears the "edge" edge to the Edge entity.
+func (_u *LotUpdate) ClearEdgeEdge() *LotUpdate {
+	_u.mutation.ClearEdgeEdge()
 	return _u
+}
+
+// ClearBarrels clears all "barrels" edges to the Barrel entity.
+func (_u *LotUpdate) ClearBarrels() *LotUpdate {
+	_u.mutation.ClearBarrels()
+	return _u
+}
+
+// RemoveBarrelIDs removes the "barrels" edge to Barrel entities by IDs.
+func (_u *LotUpdate) RemoveBarrelIDs(ids ...uuid.UUID) *LotUpdate {
+	_u.mutation.RemoveBarrelIDs(ids...)
+	return _u
+}
+
+// RemoveBarrels removes "barrels" edges to Barrel entities.
+func (_u *LotUpdate) RemoveBarrels(v ...*Barrel) *LotUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveBarrelIDs(ids...)
 }
 
 // ClearBobbins clears all "bobbins" edges to the Bobbin entity.
@@ -259,6 +374,48 @@ func (_u *LotUpdate) RemoveBobbins(v ...*Bobbin) *LotUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveBobbinIDs(ids...)
+}
+
+// ClearDoffings clears all "doffings" edges to the Doffing entity.
+func (_u *LotUpdate) ClearDoffings() *LotUpdate {
+	_u.mutation.ClearDoffings()
+	return _u
+}
+
+// RemoveDoffingIDs removes the "doffings" edge to Doffing entities by IDs.
+func (_u *LotUpdate) RemoveDoffingIDs(ids ...uuid.UUID) *LotUpdate {
+	_u.mutation.RemoveDoffingIDs(ids...)
+	return _u
+}
+
+// RemoveDoffings removes "doffings" edges to Doffing entities.
+func (_u *LotUpdate) RemoveDoffings(v ...*Doffing) *LotUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDoffingIDs(ids...)
+}
+
+// ClearPallets clears all "pallets" edges to the Pallet entity.
+func (_u *LotUpdate) ClearPallets() *LotUpdate {
+	_u.mutation.ClearPallets()
+	return _u
+}
+
+// RemovePalletIDs removes the "pallets" edge to Pallet entities by IDs.
+func (_u *LotUpdate) RemovePalletIDs(ids ...uuid.UUID) *LotUpdate {
+	_u.mutation.RemovePalletIDs(ids...)
+	return _u
+}
+
+// RemovePallets removes "pallets" edges to Pallet entities.
+func (_u *LotUpdate) RemovePallets(v ...*Pallet) *LotUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePalletIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -304,6 +461,16 @@ func (_u *LotUpdate) check() error {
 			return &ValidationError{Name: "lot_number", err: fmt.Errorf(`ent: validator failed for field "Lot.lot_number": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PlcLotNumber(); ok {
+		if err := lot.PlcLotNumberValidator(v); err != nil {
+			return &ValidationError{Name: "plc_lot_number", err: fmt.Errorf(`ent: validator failed for field "Lot.plc_lot_number": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.OrderCode(); ok {
+		if err := lot.OrderCodeValidator(v); err != nil {
+			return &ValidationError{Name: "order_code", err: fmt.Errorf(`ent: validator failed for field "Lot.order_code": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ProductType(); ok {
 		if err := lot.ProductTypeValidator(v); err != nil {
 			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Lot.product_type": %w`, err)}
@@ -329,9 +496,6 @@ func (_u *LotUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Lot.status": %w`, err)}
 		}
 	}
-	if _u.mutation.OrderCleared() && len(_u.mutation.OrderIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Lot.order"`)
-	}
 	return nil
 }
 
@@ -349,6 +513,18 @@ func (_u *LotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.LotNumber(); ok {
 		_spec.SetField(lot.FieldLotNumber, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PlcLotNumber(); ok {
+		_spec.SetField(lot.FieldPlcLotNumber, field.TypeString, value)
+	}
+	if _u.mutation.PlcLotNumberCleared() {
+		_spec.ClearField(lot.FieldPlcLotNumber, field.TypeString)
+	}
+	if value, ok := _u.mutation.OrderCode(); ok {
+		_spec.SetField(lot.FieldOrderCode, field.TypeString, value)
+	}
+	if _u.mutation.OrderCodeCleared() {
+		_spec.ClearField(lot.FieldOrderCode, field.TypeString)
 	}
 	if value, ok := _u.mutation.ProductType(); ok {
 		_spec.SetField(lot.FieldProductType, field.TypeEnum, value)
@@ -392,28 +568,73 @@ func (_u *LotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(lot.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if _u.mutation.OrderCleared() {
+	if _u.mutation.EdgeEdgeCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   lot.OrderTable,
-			Columns: []string{lot.OrderColumn},
+			Table:   lot.EdgeTable,
+			Columns: []string{lot.EdgeColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(order.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.OrderIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.EdgeIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   lot.OrderTable,
-			Columns: []string{lot.OrderColumn},
+			Table:   lot.EdgeTable,
+			Columns: []string{lot.EdgeColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(order.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BarrelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedBarrelsIDs(); len(nodes) > 0 && !_u.mutation.BarrelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BarrelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -466,6 +687,96 @@ func (_u *LotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.DoffingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDoffingsIDs(); len(nodes) > 0 && !_u.mutation.DoffingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DoffingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PalletsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPalletsIDs(); len(nodes) > 0 && !_u.mutation.PalletsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PalletsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{lot.Label}
@@ -500,17 +811,63 @@ func (_u *LotUpdateOne) SetNillableLotNumber(v *string) *LotUpdateOne {
 	return _u
 }
 
-// SetOrderID sets the "order_id" field.
-func (_u *LotUpdateOne) SetOrderID(v uuid.UUID) *LotUpdateOne {
-	_u.mutation.SetOrderID(v)
+// SetEdgeID sets the "edge_id" field.
+func (_u *LotUpdateOne) SetEdgeID(v uuid.UUID) *LotUpdateOne {
+	_u.mutation.SetEdgeID(v)
 	return _u
 }
 
-// SetNillableOrderID sets the "order_id" field if the given value is not nil.
-func (_u *LotUpdateOne) SetNillableOrderID(v *uuid.UUID) *LotUpdateOne {
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_u *LotUpdateOne) SetNillableEdgeID(v *uuid.UUID) *LotUpdateOne {
 	if v != nil {
-		_u.SetOrderID(*v)
+		_u.SetEdgeID(*v)
 	}
+	return _u
+}
+
+// ClearEdgeID clears the value of the "edge_id" field.
+func (_u *LotUpdateOne) ClearEdgeID() *LotUpdateOne {
+	_u.mutation.ClearEdgeID()
+	return _u
+}
+
+// SetPlcLotNumber sets the "plc_lot_number" field.
+func (_u *LotUpdateOne) SetPlcLotNumber(v string) *LotUpdateOne {
+	_u.mutation.SetPlcLotNumber(v)
+	return _u
+}
+
+// SetNillablePlcLotNumber sets the "plc_lot_number" field if the given value is not nil.
+func (_u *LotUpdateOne) SetNillablePlcLotNumber(v *string) *LotUpdateOne {
+	if v != nil {
+		_u.SetPlcLotNumber(*v)
+	}
+	return _u
+}
+
+// ClearPlcLotNumber clears the value of the "plc_lot_number" field.
+func (_u *LotUpdateOne) ClearPlcLotNumber() *LotUpdateOne {
+	_u.mutation.ClearPlcLotNumber()
+	return _u
+}
+
+// SetOrderCode sets the "order_code" field.
+func (_u *LotUpdateOne) SetOrderCode(v string) *LotUpdateOne {
+	_u.mutation.SetOrderCode(v)
+	return _u
+}
+
+// SetNillableOrderCode sets the "order_code" field if the given value is not nil.
+func (_u *LotUpdateOne) SetNillableOrderCode(v *string) *LotUpdateOne {
+	if v != nil {
+		_u.SetOrderCode(*v)
+	}
+	return _u
+}
+
+// ClearOrderCode clears the value of the "order_code" field.
+func (_u *LotUpdateOne) ClearOrderCode() *LotUpdateOne {
+	_u.mutation.ClearOrderCode()
 	return _u
 }
 
@@ -664,9 +1021,24 @@ func (_u *LotUpdateOne) SetUpdatedAt(v time.Time) *LotUpdateOne {
 	return _u
 }
 
-// SetOrder sets the "order" edge to the Order entity.
-func (_u *LotUpdateOne) SetOrder(v *Order) *LotUpdateOne {
-	return _u.SetOrderID(v.ID)
+// SetEdge sets the "edge" edge to the Edge entity.
+func (_u *LotUpdateOne) SetEdge(v *Edge) *LotUpdateOne {
+	return _u.SetEdgeID(v.ID)
+}
+
+// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
+func (_u *LotUpdateOne) AddBarrelIDs(ids ...uuid.UUID) *LotUpdateOne {
+	_u.mutation.AddBarrelIDs(ids...)
+	return _u
+}
+
+// AddBarrels adds the "barrels" edges to the Barrel entity.
+func (_u *LotUpdateOne) AddBarrels(v ...*Barrel) *LotUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddBarrelIDs(ids...)
 }
 
 // AddBobbinIDs adds the "bobbins" edge to the Bobbin entity by IDs.
@@ -684,15 +1056,66 @@ func (_u *LotUpdateOne) AddBobbins(v ...*Bobbin) *LotUpdateOne {
 	return _u.AddBobbinIDs(ids...)
 }
 
+// AddDoffingIDs adds the "doffings" edge to the Doffing entity by IDs.
+func (_u *LotUpdateOne) AddDoffingIDs(ids ...uuid.UUID) *LotUpdateOne {
+	_u.mutation.AddDoffingIDs(ids...)
+	return _u
+}
+
+// AddDoffings adds the "doffings" edges to the Doffing entity.
+func (_u *LotUpdateOne) AddDoffings(v ...*Doffing) *LotUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDoffingIDs(ids...)
+}
+
+// AddPalletIDs adds the "pallets" edge to the Pallet entity by IDs.
+func (_u *LotUpdateOne) AddPalletIDs(ids ...uuid.UUID) *LotUpdateOne {
+	_u.mutation.AddPalletIDs(ids...)
+	return _u
+}
+
+// AddPallets adds the "pallets" edges to the Pallet entity.
+func (_u *LotUpdateOne) AddPallets(v ...*Pallet) *LotUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddPalletIDs(ids...)
+}
+
 // Mutation returns the LotMutation object of the builder.
 func (_u *LotUpdateOne) Mutation() *LotMutation {
 	return _u.mutation
 }
 
-// ClearOrder clears the "order" edge to the Order entity.
-func (_u *LotUpdateOne) ClearOrder() *LotUpdateOne {
-	_u.mutation.ClearOrder()
+// ClearEdgeEdge clears the "edge" edge to the Edge entity.
+func (_u *LotUpdateOne) ClearEdgeEdge() *LotUpdateOne {
+	_u.mutation.ClearEdgeEdge()
 	return _u
+}
+
+// ClearBarrels clears all "barrels" edges to the Barrel entity.
+func (_u *LotUpdateOne) ClearBarrels() *LotUpdateOne {
+	_u.mutation.ClearBarrels()
+	return _u
+}
+
+// RemoveBarrelIDs removes the "barrels" edge to Barrel entities by IDs.
+func (_u *LotUpdateOne) RemoveBarrelIDs(ids ...uuid.UUID) *LotUpdateOne {
+	_u.mutation.RemoveBarrelIDs(ids...)
+	return _u
+}
+
+// RemoveBarrels removes "barrels" edges to Barrel entities.
+func (_u *LotUpdateOne) RemoveBarrels(v ...*Barrel) *LotUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveBarrelIDs(ids...)
 }
 
 // ClearBobbins clears all "bobbins" edges to the Bobbin entity.
@@ -714,6 +1137,48 @@ func (_u *LotUpdateOne) RemoveBobbins(v ...*Bobbin) *LotUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveBobbinIDs(ids...)
+}
+
+// ClearDoffings clears all "doffings" edges to the Doffing entity.
+func (_u *LotUpdateOne) ClearDoffings() *LotUpdateOne {
+	_u.mutation.ClearDoffings()
+	return _u
+}
+
+// RemoveDoffingIDs removes the "doffings" edge to Doffing entities by IDs.
+func (_u *LotUpdateOne) RemoveDoffingIDs(ids ...uuid.UUID) *LotUpdateOne {
+	_u.mutation.RemoveDoffingIDs(ids...)
+	return _u
+}
+
+// RemoveDoffings removes "doffings" edges to Doffing entities.
+func (_u *LotUpdateOne) RemoveDoffings(v ...*Doffing) *LotUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDoffingIDs(ids...)
+}
+
+// ClearPallets clears all "pallets" edges to the Pallet entity.
+func (_u *LotUpdateOne) ClearPallets() *LotUpdateOne {
+	_u.mutation.ClearPallets()
+	return _u
+}
+
+// RemovePalletIDs removes the "pallets" edge to Pallet entities by IDs.
+func (_u *LotUpdateOne) RemovePalletIDs(ids ...uuid.UUID) *LotUpdateOne {
+	_u.mutation.RemovePalletIDs(ids...)
+	return _u
+}
+
+// RemovePallets removes "pallets" edges to Pallet entities.
+func (_u *LotUpdateOne) RemovePallets(v ...*Pallet) *LotUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemovePalletIDs(ids...)
 }
 
 // Where appends a list predicates to the LotUpdate builder.
@@ -772,6 +1237,16 @@ func (_u *LotUpdateOne) check() error {
 			return &ValidationError{Name: "lot_number", err: fmt.Errorf(`ent: validator failed for field "Lot.lot_number": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PlcLotNumber(); ok {
+		if err := lot.PlcLotNumberValidator(v); err != nil {
+			return &ValidationError{Name: "plc_lot_number", err: fmt.Errorf(`ent: validator failed for field "Lot.plc_lot_number": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.OrderCode(); ok {
+		if err := lot.OrderCodeValidator(v); err != nil {
+			return &ValidationError{Name: "order_code", err: fmt.Errorf(`ent: validator failed for field "Lot.order_code": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.ProductType(); ok {
 		if err := lot.ProductTypeValidator(v); err != nil {
 			return &ValidationError{Name: "product_type", err: fmt.Errorf(`ent: validator failed for field "Lot.product_type": %w`, err)}
@@ -796,9 +1271,6 @@ func (_u *LotUpdateOne) check() error {
 		if err := lot.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Lot.status": %w`, err)}
 		}
-	}
-	if _u.mutation.OrderCleared() && len(_u.mutation.OrderIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Lot.order"`)
 	}
 	return nil
 }
@@ -834,6 +1306,18 @@ func (_u *LotUpdateOne) sqlSave(ctx context.Context) (_node *Lot, err error) {
 	}
 	if value, ok := _u.mutation.LotNumber(); ok {
 		_spec.SetField(lot.FieldLotNumber, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PlcLotNumber(); ok {
+		_spec.SetField(lot.FieldPlcLotNumber, field.TypeString, value)
+	}
+	if _u.mutation.PlcLotNumberCleared() {
+		_spec.ClearField(lot.FieldPlcLotNumber, field.TypeString)
+	}
+	if value, ok := _u.mutation.OrderCode(); ok {
+		_spec.SetField(lot.FieldOrderCode, field.TypeString, value)
+	}
+	if _u.mutation.OrderCodeCleared() {
+		_spec.ClearField(lot.FieldOrderCode, field.TypeString)
 	}
 	if value, ok := _u.mutation.ProductType(); ok {
 		_spec.SetField(lot.FieldProductType, field.TypeEnum, value)
@@ -877,28 +1361,73 @@ func (_u *LotUpdateOne) sqlSave(ctx context.Context) (_node *Lot, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(lot.FieldUpdatedAt, field.TypeTime, value)
 	}
-	if _u.mutation.OrderCleared() {
+	if _u.mutation.EdgeEdgeCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   lot.OrderTable,
-			Columns: []string{lot.OrderColumn},
+			Table:   lot.EdgeTable,
+			Columns: []string{lot.EdgeColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(order.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.OrderIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.EdgeIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   lot.OrderTable,
-			Columns: []string{lot.OrderColumn},
+			Table:   lot.EdgeTable,
+			Columns: []string{lot.EdgeColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(order.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BarrelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedBarrelsIDs(); len(nodes) > 0 && !_u.mutation.BarrelsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BarrelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -944,6 +1473,96 @@ func (_u *LotUpdateOne) sqlSave(ctx context.Context) (_node *Lot, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(bobbin.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DoffingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDoffingsIDs(); len(nodes) > 0 && !_u.mutation.DoffingsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DoffingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.PalletsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedPalletsIDs(); len(nodes) > 0 && !_u.mutation.PalletsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.PalletsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

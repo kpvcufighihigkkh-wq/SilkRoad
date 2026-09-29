@@ -6,13 +6,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/grade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/project"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/schema"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
@@ -22,6 +24,52 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	barrelFields := schema.Barrel{}.Fields()
+	_ = barrelFields
+	// barrelDescBarrelNumber is the schema descriptor for barrel_number field.
+	barrelDescBarrelNumber := barrelFields[1].Descriptor()
+	// barrel.BarrelNumberValidator is a validator for the "barrel_number" field. It is called by the builders before save.
+	barrel.BarrelNumberValidator = func() func(string) error {
+		validators := barrelDescBarrelNumber.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(barrel_number string) error {
+			for _, fn := range fns {
+				if err := fn(barrel_number); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// barrelDescCapacity is the schema descriptor for capacity field.
+	barrelDescCapacity := barrelFields[4].Descriptor()
+	// barrel.DefaultCapacity holds the default value on creation for the capacity field.
+	barrel.DefaultCapacity = barrelDescCapacity.Default.(int)
+	// barrel.CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
+	barrel.CapacityValidator = barrelDescCapacity.Validators[0].(func(int) error)
+	// barrelDescCurrentCount is the schema descriptor for current_count field.
+	barrelDescCurrentCount := barrelFields[5].Descriptor()
+	// barrel.DefaultCurrentCount holds the default value on creation for the current_count field.
+	barrel.DefaultCurrentCount = barrelDescCurrentCount.Default.(int)
+	// barrel.CurrentCountValidator is a validator for the "current_count" field. It is called by the builders before save.
+	barrel.CurrentCountValidator = barrelDescCurrentCount.Validators[0].(func(int) error)
+	// barrelDescCreatedAt is the schema descriptor for created_at field.
+	barrelDescCreatedAt := barrelFields[8].Descriptor()
+	// barrel.DefaultCreatedAt holds the default value on creation for the created_at field.
+	barrel.DefaultCreatedAt = barrelDescCreatedAt.Default.(func() time.Time)
+	// barrelDescUpdatedAt is the schema descriptor for updated_at field.
+	barrelDescUpdatedAt := barrelFields[9].Descriptor()
+	// barrel.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	barrel.DefaultUpdatedAt = barrelDescUpdatedAt.Default.(func() time.Time)
+	// barrel.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	barrel.UpdateDefaultUpdatedAt = barrelDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// barrelDescID is the schema descriptor for id field.
+	barrelDescID := barrelFields[0].Descriptor()
+	// barrel.DefaultID holds the default value on creation for the id field.
+	barrel.DefaultID = barrelDescID.Default.(func() uuid.UUID)
 	bobbinFields := schema.Bobbin{}.Fields()
 	_ = bobbinFields
 	// bobbinDescBobbinNumber is the schema descriptor for bobbin_number field.
@@ -42,36 +90,54 @@ func init() {
 			return nil
 		}
 	}()
+	// bobbinDescBarrelPosition is the schema descriptor for barrel_position field.
+	bobbinDescBarrelPosition := bobbinFields[4].Descriptor()
+	// bobbin.BarrelPositionValidator is a validator for the "barrel_position" field. It is called by the builders before save.
+	bobbin.BarrelPositionValidator = func() func(int) error {
+		validators := bobbinDescBarrelPosition.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(barrel_position int) error {
+			for _, fn := range fns {
+				if err := fn(barrel_position); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
 	// bobbinDescSpinningPosition is the schema descriptor for spinning_position field.
-	bobbinDescSpinningPosition := bobbinFields[3].Descriptor()
+	bobbinDescSpinningPosition := bobbinFields[5].Descriptor()
 	// bobbin.SpinningPositionValidator is a validator for the "spinning_position" field. It is called by the builders before save.
 	bobbin.SpinningPositionValidator = bobbinDescSpinningPosition.Validators[0].(func(int) error)
 	// bobbinDescGrossWeight is the schema descriptor for gross_weight field.
-	bobbinDescGrossWeight := bobbinFields[4].Descriptor()
+	bobbinDescGrossWeight := bobbinFields[6].Descriptor()
 	// bobbin.GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
 	bobbin.GrossWeightValidator = bobbinDescGrossWeight.Validators[0].(func(float64) error)
 	// bobbinDescNetWeight is the schema descriptor for net_weight field.
-	bobbinDescNetWeight := bobbinFields[5].Descriptor()
+	bobbinDescNetWeight := bobbinFields[7].Descriptor()
 	// bobbin.NetWeightValidator is a validator for the "net_weight" field. It is called by the builders before save.
 	bobbin.NetWeightValidator = bobbinDescNetWeight.Validators[0].(func(float64) error)
 	// bobbinDescTareWeight is the schema descriptor for tare_weight field.
-	bobbinDescTareWeight := bobbinFields[6].Descriptor()
+	bobbinDescTareWeight := bobbinFields[8].Descriptor()
 	// bobbin.TareWeightValidator is a validator for the "tare_weight" field. It is called by the builders before save.
 	bobbin.TareWeightValidator = bobbinDescTareWeight.Validators[0].(func(float64) error)
 	// bobbinDescGrade is the schema descriptor for grade field.
-	bobbinDescGrade := bobbinFields[7].Descriptor()
+	bobbinDescGrade := bobbinFields[9].Descriptor()
 	// bobbin.GradeValidator is a validator for the "grade" field. It is called by the builders before save.
 	bobbin.GradeValidator = bobbinDescGrade.Validators[0].(func(string) error)
 	// bobbinDescLabelPrinted is the schema descriptor for label_printed field.
-	bobbinDescLabelPrinted := bobbinFields[11].Descriptor()
+	bobbinDescLabelPrinted := bobbinFields[13].Descriptor()
 	// bobbin.DefaultLabelPrinted holds the default value on creation for the label_printed field.
 	bobbin.DefaultLabelPrinted = bobbinDescLabelPrinted.Default.(bool)
 	// bobbinDescCreatedAt is the schema descriptor for created_at field.
-	bobbinDescCreatedAt := bobbinFields[14].Descriptor()
+	bobbinDescCreatedAt := bobbinFields[16].Descriptor()
 	// bobbin.DefaultCreatedAt holds the default value on creation for the created_at field.
 	bobbin.DefaultCreatedAt = bobbinDescCreatedAt.Default.(func() time.Time)
 	// bobbinDescUpdatedAt is the schema descriptor for updated_at field.
-	bobbinDescUpdatedAt := bobbinFields[15].Descriptor()
+	bobbinDescUpdatedAt := bobbinFields[17].Descriptor()
 	// bobbin.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	bobbin.DefaultUpdatedAt = bobbinDescUpdatedAt.Default.(func() time.Time)
 	// bobbin.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -164,6 +230,126 @@ func init() {
 	doffingDescID := doffingFields[0].Descriptor()
 	// doffing.DefaultID holds the default value on creation for the id field.
 	doffing.DefaultID = doffingDescID.Default.(func() uuid.UUID)
+	edgeFields := schema.Edge{}.Fields()
+	_ = edgeFields
+	// edgeDescEdgeCode is the schema descriptor for edge_code field.
+	edgeDescEdgeCode := edgeFields[1].Descriptor()
+	// edge.EdgeCodeValidator is a validator for the "edge_code" field. It is called by the builders before save.
+	edge.EdgeCodeValidator = func() func(string) error {
+		validators := edgeDescEdgeCode.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(edge_code string) error {
+			for _, fn := range fns {
+				if err := fn(edge_code); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// edgeDescEdgeName is the schema descriptor for edge_name field.
+	edgeDescEdgeName := edgeFields[2].Descriptor()
+	// edge.EdgeNameValidator is a validator for the "edge_name" field. It is called by the builders before save.
+	edge.EdgeNameValidator = func() func(string) error {
+		validators := edgeDescEdgeName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(edge_name string) error {
+			for _, fn := range fns {
+				if err := fn(edge_name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// edgeDescIPAddress is the schema descriptor for ip_address field.
+	edgeDescIPAddress := edgeFields[3].Descriptor()
+	// edge.IPAddressValidator is a validator for the "ip_address" field. It is called by the builders before save.
+	edge.IPAddressValidator = edgeDescIPAddress.Validators[0].(func(string) error)
+	// edgeDescVersion is the schema descriptor for version field.
+	edgeDescVersion := edgeFields[6].Descriptor()
+	// edge.VersionValidator is a validator for the "version" field. It is called by the builders before save.
+	edge.VersionValidator = edgeDescVersion.Validators[0].(func(string) error)
+	// edgeDescCreatedAt is the schema descriptor for created_at field.
+	edgeDescCreatedAt := edgeFields[9].Descriptor()
+	// edge.DefaultCreatedAt holds the default value on creation for the created_at field.
+	edge.DefaultCreatedAt = edgeDescCreatedAt.Default.(func() time.Time)
+	// edgeDescUpdatedAt is the schema descriptor for updated_at field.
+	edgeDescUpdatedAt := edgeFields[10].Descriptor()
+	// edge.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	edge.DefaultUpdatedAt = edgeDescUpdatedAt.Default.(func() time.Time)
+	// edge.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	edge.UpdateDefaultUpdatedAt = edgeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// edgeDescID is the schema descriptor for id field.
+	edgeDescID := edgeFields[0].Descriptor()
+	// edge.DefaultID holds the default value on creation for the id field.
+	edge.DefaultID = edgeDescID.Default.(func() uuid.UUID)
+	gradeFields := schema.Grade{}.Fields()
+	_ = gradeFields
+	// gradeDescGradeCode is the schema descriptor for grade_code field.
+	gradeDescGradeCode := gradeFields[2].Descriptor()
+	// grade.GradeCodeValidator is a validator for the "grade_code" field. It is called by the builders before save.
+	grade.GradeCodeValidator = func() func(string) error {
+		validators := gradeDescGradeCode.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(grade_code string) error {
+			for _, fn := range fns {
+				if err := fn(grade_code); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// gradeDescGradeName is the schema descriptor for grade_name field.
+	gradeDescGradeName := gradeFields[3].Descriptor()
+	// grade.GradeNameValidator is a validator for the "grade_name" field. It is called by the builders before save.
+	grade.GradeNameValidator = func() func(string) error {
+		validators := gradeDescGradeName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(grade_name string) error {
+			for _, fn := range fns {
+				if err := fn(grade_name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// gradeDescSortOrder is the schema descriptor for sort_order field.
+	gradeDescSortOrder := gradeFields[5].Descriptor()
+	// grade.DefaultSortOrder holds the default value on creation for the sort_order field.
+	grade.DefaultSortOrder = gradeDescSortOrder.Default.(int)
+	// gradeDescIsActive is the schema descriptor for is_active field.
+	gradeDescIsActive := gradeFields[6].Descriptor()
+	// grade.DefaultIsActive holds the default value on creation for the is_active field.
+	grade.DefaultIsActive = gradeDescIsActive.Default.(bool)
+	// gradeDescCreatedAt is the schema descriptor for created_at field.
+	gradeDescCreatedAt := gradeFields[7].Descriptor()
+	// grade.DefaultCreatedAt holds the default value on creation for the created_at field.
+	grade.DefaultCreatedAt = gradeDescCreatedAt.Default.(func() time.Time)
+	// gradeDescUpdatedAt is the schema descriptor for updated_at field.
+	gradeDescUpdatedAt := gradeFields[8].Descriptor()
+	// grade.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	grade.DefaultUpdatedAt = gradeDescUpdatedAt.Default.(func() time.Time)
+	// grade.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	grade.UpdateDefaultUpdatedAt = gradeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// gradeDescID is the schema descriptor for id field.
+	gradeDescID := gradeFields[0].Descriptor()
+	// grade.DefaultID holds the default value on creation for the id field.
+	grade.DefaultID = gradeDescID.Default.(func() uuid.UUID)
 	lotFields := schema.Lot{}.Fields()
 	_ = lotFields
 	// lotDescLotNumber is the schema descriptor for lot_number field.
@@ -184,30 +370,38 @@ func init() {
 			return nil
 		}
 	}()
+	// lotDescPlcLotNumber is the schema descriptor for plc_lot_number field.
+	lotDescPlcLotNumber := lotFields[3].Descriptor()
+	// lot.PlcLotNumberValidator is a validator for the "plc_lot_number" field. It is called by the builders before save.
+	lot.PlcLotNumberValidator = lotDescPlcLotNumber.Validators[0].(func(string) error)
+	// lotDescOrderCode is the schema descriptor for order_code field.
+	lotDescOrderCode := lotFields[4].Descriptor()
+	// lot.OrderCodeValidator is a validator for the "order_code" field. It is called by the builders before save.
+	lot.OrderCodeValidator = lotDescOrderCode.Validators[0].(func(string) error)
 	// lotDescProductSpec is the schema descriptor for product_spec field.
-	lotDescProductSpec := lotFields[4].Descriptor()
+	lotDescProductSpec := lotFields[6].Descriptor()
 	// lot.ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
 	lot.ProductSpecValidator = lotDescProductSpec.Validators[0].(func(string) error)
 	// lotDescPlannedQuantity is the schema descriptor for planned_quantity field.
-	lotDescPlannedQuantity := lotFields[5].Descriptor()
+	lotDescPlannedQuantity := lotFields[7].Descriptor()
 	// lot.PlannedQuantityValidator is a validator for the "planned_quantity" field. It is called by the builders before save.
 	lot.PlannedQuantityValidator = lotDescPlannedQuantity.Validators[0].(func(int) error)
 	// lotDescActualQuantity is the schema descriptor for actual_quantity field.
-	lotDescActualQuantity := lotFields[6].Descriptor()
+	lotDescActualQuantity := lotFields[8].Descriptor()
 	// lot.DefaultActualQuantity holds the default value on creation for the actual_quantity field.
 	lot.DefaultActualQuantity = lotDescActualQuantity.Default.(int)
 	// lot.ActualQuantityValidator is a validator for the "actual_quantity" field. It is called by the builders before save.
 	lot.ActualQuantityValidator = lotDescActualQuantity.Validators[0].(func(int) error)
 	// lotDescIsLocked is the schema descriptor for is_locked field.
-	lotDescIsLocked := lotFields[10].Descriptor()
+	lotDescIsLocked := lotFields[12].Descriptor()
 	// lot.DefaultIsLocked holds the default value on creation for the is_locked field.
 	lot.DefaultIsLocked = lotDescIsLocked.Default.(bool)
 	// lotDescCreatedAt is the schema descriptor for created_at field.
-	lotDescCreatedAt := lotFields[11].Descriptor()
+	lotDescCreatedAt := lotFields[13].Descriptor()
 	// lot.DefaultCreatedAt holds the default value on creation for the created_at field.
 	lot.DefaultCreatedAt = lotDescCreatedAt.Default.(func() time.Time)
 	// lotDescUpdatedAt is the schema descriptor for updated_at field.
-	lotDescUpdatedAt := lotFields[12].Descriptor()
+	lotDescUpdatedAt := lotFields[14].Descriptor()
 	// lot.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	lot.DefaultUpdatedAt = lotDescUpdatedAt.Default.(func() time.Time)
 	// lot.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -216,98 +410,116 @@ func init() {
 	lotDescID := lotFields[0].Descriptor()
 	// lot.DefaultID holds the default value on creation for the id field.
 	lot.DefaultID = lotDescID.Default.(func() uuid.UUID)
-	orderFields := schema.Order{}.Fields()
-	_ = orderFields
-	// orderDescOrderNumber is the schema descriptor for order_number field.
-	orderDescOrderNumber := orderFields[1].Descriptor()
-	// order.OrderNumberValidator is a validator for the "order_number" field. It is called by the builders before save.
-	order.OrderNumberValidator = func() func(string) error {
-		validators := orderDescOrderNumber.Validators
+	moduleFields := schema.Module{}.Fields()
+	_ = moduleFields
+	// moduleDescModuleNumber is the schema descriptor for module_number field.
+	moduleDescModuleNumber := moduleFields[1].Descriptor()
+	// module.ModuleNumberValidator is a validator for the "module_number" field. It is called by the builders before save.
+	module.ModuleNumberValidator = func() func(string) error {
+		validators := moduleDescModuleNumber.Validators
 		fns := [...]func(string) error{
 			validators[0].(func(string) error),
 			validators[1].(func(string) error),
 		}
-		return func(order_number string) error {
+		return func(module_number string) error {
 			for _, fn := range fns {
-				if err := fn(order_number); err != nil {
+				if err := fn(module_number); err != nil {
 					return err
 				}
 			}
 			return nil
 		}
 	}()
-	// orderDescProductSpec is the schema descriptor for product_spec field.
-	orderDescProductSpec := orderFields[4].Descriptor()
-	// order.ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
-	order.ProductSpecValidator = orderDescProductSpec.Validators[0].(func(string) error)
-	// orderDescTargetQuantity is the schema descriptor for target_quantity field.
-	orderDescTargetQuantity := orderFields[5].Descriptor()
-	// order.TargetQuantityValidator is a validator for the "target_quantity" field. It is called by the builders before save.
-	order.TargetQuantityValidator = orderDescTargetQuantity.Validators[0].(func(int) error)
-	// orderDescActualQuantity is the schema descriptor for actual_quantity field.
-	orderDescActualQuantity := orderFields[6].Descriptor()
-	// order.DefaultActualQuantity holds the default value on creation for the actual_quantity field.
-	order.DefaultActualQuantity = orderDescActualQuantity.Default.(int)
-	// order.ActualQuantityValidator is a validator for the "actual_quantity" field. It is called by the builders before save.
-	order.ActualQuantityValidator = orderDescActualQuantity.Validators[0].(func(int) error)
-	// orderDescPriority is the schema descriptor for priority field.
-	orderDescPriority := orderFields[8].Descriptor()
-	// order.DefaultPriority holds the default value on creation for the priority field.
-	order.DefaultPriority = orderDescPriority.Default.(int)
-	// orderDescCreatedAt is the schema descriptor for created_at field.
-	orderDescCreatedAt := orderFields[11].Descriptor()
-	// order.DefaultCreatedAt holds the default value on creation for the created_at field.
-	order.DefaultCreatedAt = orderDescCreatedAt.Default.(func() time.Time)
-	// orderDescUpdatedAt is the schema descriptor for updated_at field.
-	orderDescUpdatedAt := orderFields[12].Descriptor()
-	// order.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	order.DefaultUpdatedAt = orderDescUpdatedAt.Default.(func() time.Time)
-	// order.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	order.UpdateDefaultUpdatedAt = orderDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// orderDescID is the schema descriptor for id field.
-	orderDescID := orderFields[0].Descriptor()
-	// order.DefaultID holds the default value on creation for the id field.
-	order.DefaultID = orderDescID.Default.(func() uuid.UUID)
+	// moduleDescRfid is the schema descriptor for rfid field.
+	moduleDescRfid := moduleFields[5].Descriptor()
+	// module.RfidValidator is a validator for the "rfid" field. It is called by the builders before save.
+	module.RfidValidator = moduleDescRfid.Validators[0].(func(string) error)
+	// moduleDescCurrentLocation is the schema descriptor for current_location field.
+	moduleDescCurrentLocation := moduleFields[6].Descriptor()
+	// module.CurrentLocationValidator is a validator for the "current_location" field. It is called by the builders before save.
+	module.CurrentLocationValidator = moduleDescCurrentLocation.Validators[0].(func(string) error)
+	// moduleDescCreatedAt is the schema descriptor for created_at field.
+	moduleDescCreatedAt := moduleFields[7].Descriptor()
+	// module.DefaultCreatedAt holds the default value on creation for the created_at field.
+	module.DefaultCreatedAt = moduleDescCreatedAt.Default.(func() time.Time)
+	// moduleDescUpdatedAt is the schema descriptor for updated_at field.
+	moduleDescUpdatedAt := moduleFields[8].Descriptor()
+	// module.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	module.DefaultUpdatedAt = moduleDescUpdatedAt.Default.(func() time.Time)
+	// module.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	module.UpdateDefaultUpdatedAt = moduleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// moduleDescID is the schema descriptor for id field.
+	moduleDescID := moduleFields[0].Descriptor()
+	// module.DefaultID holds the default value on creation for the id field.
+	module.DefaultID = moduleDescID.Default.(func() uuid.UUID)
 	palletFields := schema.Pallet{}.Fields()
 	_ = palletFields
-	// palletDescPalletNumber is the schema descriptor for pallet_number field.
-	palletDescPalletNumber := palletFields[1].Descriptor()
-	// pallet.PalletNumberValidator is a validator for the "pallet_number" field. It is called by the builders before save.
-	pallet.PalletNumberValidator = func() func(string) error {
-		validators := palletDescPalletNumber.Validators
+	// palletDescPalletCode is the schema descriptor for pallet_code field.
+	palletDescPalletCode := palletFields[1].Descriptor()
+	// pallet.PalletCodeValidator is a validator for the "pallet_code" field. It is called by the builders before save.
+	pallet.PalletCodeValidator = func() func(string) error {
+		validators := palletDescPalletCode.Validators
 		fns := [...]func(string) error{
 			validators[0].(func(string) error),
 			validators[1].(func(string) error),
 		}
-		return func(pallet_number string) error {
+		return func(pallet_code string) error {
 			for _, fn := range fns {
-				if err := fn(pallet_number); err != nil {
+				if err := fn(pallet_code); err != nil {
 					return err
 				}
 			}
 			return nil
 		}
 	}()
-	// palletDescBobbinCount is the schema descriptor for bobbin_count field.
-	palletDescBobbinCount := palletFields[3].Descriptor()
-	// pallet.DefaultBobbinCount holds the default value on creation for the bobbin_count field.
-	pallet.DefaultBobbinCount = palletDescBobbinCount.Default.(int)
-	// pallet.BobbinCountValidator is a validator for the "bobbin_count" field. It is called by the builders before save.
-	pallet.BobbinCountValidator = palletDescBobbinCount.Validators[0].(func(int) error)
-	// palletDescTotalWeight is the schema descriptor for total_weight field.
-	palletDescTotalWeight := palletFields[4].Descriptor()
-	// pallet.TotalWeightValidator is a validator for the "total_weight" field. It is called by the builders before save.
-	pallet.TotalWeightValidator = palletDescTotalWeight.Validators[0].(func(float64) error)
-	// palletDescLabelPrinted is the schema descriptor for label_printed field.
-	palletDescLabelPrinted := palletFields[6].Descriptor()
-	// pallet.DefaultLabelPrinted holds the default value on creation for the label_printed field.
-	pallet.DefaultLabelPrinted = palletDescLabelPrinted.Default.(bool)
+	// palletDescLevel is the schema descriptor for level field.
+	palletDescLevel := palletFields[3].Descriptor()
+	// pallet.DefaultLevel holds the default value on creation for the level field.
+	pallet.DefaultLevel = palletDescLevel.Default.(int)
+	// pallet.LevelValidator is a validator for the "level" field. It is called by the builders before save.
+	pallet.LevelValidator = func() func(int) error {
+		validators := palletDescLevel.Validators
+		fns := [...]func(int) error{
+			validators[0].(func(int) error),
+			validators[1].(func(int) error),
+		}
+		return func(level int) error {
+			for _, fn := range fns {
+				if err := fn(level); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// palletDescBobbinsCount is the schema descriptor for bobbins_count field.
+	palletDescBobbinsCount := palletFields[4].Descriptor()
+	// pallet.DefaultBobbinsCount holds the default value on creation for the bobbins_count field.
+	pallet.DefaultBobbinsCount = palletDescBobbinsCount.Default.(int)
+	// pallet.BobbinsCountValidator is a validator for the "bobbins_count" field. It is called by the builders before save.
+	pallet.BobbinsCountValidator = palletDescBobbinsCount.Validators[0].(func(int) error)
+	// palletDescNetWeight is the schema descriptor for net_weight field.
+	palletDescNetWeight := palletFields[5].Descriptor()
+	// pallet.NetWeightValidator is a validator for the "net_weight" field. It is called by the builders before save.
+	pallet.NetWeightValidator = palletDescNetWeight.Validators[0].(func(float64) error)
+	// palletDescGrossWeight is the schema descriptor for gross_weight field.
+	palletDescGrossWeight := palletFields[6].Descriptor()
+	// pallet.GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
+	pallet.GrossWeightValidator = palletDescGrossWeight.Validators[0].(func(float64) error)
+	// palletDescTareWeight is the schema descriptor for tare_weight field.
+	palletDescTareWeight := palletFields[7].Descriptor()
+	// pallet.TareWeightValidator is a validator for the "tare_weight" field. It is called by the builders before save.
+	pallet.TareWeightValidator = palletDescTareWeight.Validators[0].(func(float64) error)
+	// palletDescPrinted is the schema descriptor for printed field.
+	palletDescPrinted := palletFields[10].Descriptor()
+	// pallet.DefaultPrinted holds the default value on creation for the printed field.
+	pallet.DefaultPrinted = palletDescPrinted.Default.(bool)
 	// palletDescCreatedAt is the schema descriptor for created_at field.
-	palletDescCreatedAt := palletFields[9].Descriptor()
+	palletDescCreatedAt := palletFields[13].Descriptor()
 	// pallet.DefaultCreatedAt holds the default value on creation for the created_at field.
 	pallet.DefaultCreatedAt = palletDescCreatedAt.Default.(func() time.Time)
 	// palletDescUpdatedAt is the schema descriptor for updated_at field.
-	palletDescUpdatedAt := palletFields[10].Descriptor()
+	palletDescUpdatedAt := palletFields[14].Descriptor()
 	// pallet.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	pallet.DefaultUpdatedAt = palletDescUpdatedAt.Default.(func() time.Time)
 	// pallet.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -316,44 +528,6 @@ func init() {
 	palletDescID := palletFields[0].Descriptor()
 	// pallet.DefaultID holds the default value on creation for the id field.
 	pallet.DefaultID = palletDescID.Default.(func() uuid.UUID)
-	projectFields := schema.Project{}.Fields()
-	_ = projectFields
-	// projectDescProjectName is the schema descriptor for project_name field.
-	projectDescProjectName := projectFields[1].Descriptor()
-	// project.ProjectNameValidator is a validator for the "project_name" field. It is called by the builders before save.
-	project.ProjectNameValidator = func() func(string) error {
-		validators := projectDescProjectName.Validators
-		fns := [...]func(string) error{
-			validators[0].(func(string) error),
-			validators[1].(func(string) error),
-		}
-		return func(project_name string) error {
-			for _, fn := range fns {
-				if err := fn(project_name); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-	}()
-	// projectDescCustomerName is the schema descriptor for customer_name field.
-	projectDescCustomerName := projectFields[3].Descriptor()
-	// project.CustomerNameValidator is a validator for the "customer_name" field. It is called by the builders before save.
-	project.CustomerNameValidator = projectDescCustomerName.Validators[0].(func(string) error)
-	// projectDescCreatedAt is the schema descriptor for created_at field.
-	projectDescCreatedAt := projectFields[7].Descriptor()
-	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
-	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
-	// projectDescUpdatedAt is the schema descriptor for updated_at field.
-	projectDescUpdatedAt := projectFields[8].Descriptor()
-	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
-	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
-	project.UpdateDefaultUpdatedAt = projectDescUpdatedAt.UpdateDefault.(func() time.Time)
-	// projectDescID is the schema descriptor for id field.
-	projectDescID := projectFields[0].Descriptor()
-	// project.DefaultID holds the default value on creation for the id field.
-	project.DefaultID = projectDescID.Default.(func() uuid.UUID)
 	spinninglineFields := schema.SpinningLine{}.Fields()
 	_ = spinninglineFields
 	// spinninglineDescLineName is the schema descriptor for line_name field.
@@ -379,19 +553,19 @@ func init() {
 	// spinningline.LineNumberValidator is a validator for the "line_number" field. It is called by the builders before save.
 	spinningline.LineNumberValidator = spinninglineDescLineNumber.Validators[0].(func(string) error)
 	// spinninglineDescLocation is the schema descriptor for location field.
-	spinninglineDescLocation := spinninglineFields[3].Descriptor()
+	spinninglineDescLocation := spinninglineFields[4].Descriptor()
 	// spinningline.LocationValidator is a validator for the "location" field. It is called by the builders before save.
 	spinningline.LocationValidator = spinninglineDescLocation.Validators[0].(func(string) error)
 	// spinninglineDescCapacity is the schema descriptor for capacity field.
-	spinninglineDescCapacity := spinninglineFields[4].Descriptor()
+	spinninglineDescCapacity := spinninglineFields[5].Descriptor()
 	// spinningline.CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
 	spinningline.CapacityValidator = spinninglineDescCapacity.Validators[0].(func(int) error)
 	// spinninglineDescCreatedAt is the schema descriptor for created_at field.
-	spinninglineDescCreatedAt := spinninglineFields[7].Descriptor()
+	spinninglineDescCreatedAt := spinninglineFields[8].Descriptor()
 	// spinningline.DefaultCreatedAt holds the default value on creation for the created_at field.
 	spinningline.DefaultCreatedAt = spinninglineDescCreatedAt.Default.(func() time.Time)
 	// spinninglineDescUpdatedAt is the schema descriptor for updated_at field.
-	spinninglineDescUpdatedAt := spinninglineFields[8].Descriptor()
+	spinninglineDescUpdatedAt := spinninglineFields[9].Descriptor()
 	// spinningline.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	spinningline.DefaultUpdatedAt = spinninglineDescUpdatedAt.Default.(func() time.Time)
 	// spinningline.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

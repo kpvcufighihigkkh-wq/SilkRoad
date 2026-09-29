@@ -13,60 +13,62 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/project"
 )
 
-// OrderQuery is the builder for querying Order entities.
-type OrderQuery struct {
+// BarrelQuery is the builder for querying Barrel entities.
+type BarrelQuery struct {
 	config
 	ctx         *QueryContext
-	order       []order.OrderOption
+	order       []barrel.OrderOption
 	inters      []Interceptor
-	predicates  []predicate.Order
-	withProject *ProjectQuery
-	withLots    *LotQuery
+	predicates  []predicate.Barrel
+	withDoffing *DoffingQuery
+	withLot     *LotQuery
+	withBobbins *BobbinQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the OrderQuery builder.
-func (_q *OrderQuery) Where(ps ...predicate.Order) *OrderQuery {
+// Where adds a new predicate for the BarrelQuery builder.
+func (_q *BarrelQuery) Where(ps ...predicate.Barrel) *BarrelQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *OrderQuery) Limit(limit int) *OrderQuery {
+func (_q *BarrelQuery) Limit(limit int) *BarrelQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *OrderQuery) Offset(offset int) *OrderQuery {
+func (_q *BarrelQuery) Offset(offset int) *BarrelQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *OrderQuery) Unique(unique bool) *OrderQuery {
+func (_q *BarrelQuery) Unique(unique bool) *BarrelQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *OrderQuery) Order(o ...order.OrderOption) *OrderQuery {
+func (_q *BarrelQuery) Order(o ...barrel.OrderOption) *BarrelQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryProject chains the current query on the "project" edge.
-func (_q *OrderQuery) QueryProject() *ProjectQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
+// QueryDoffing chains the current query on the "doffing" edge.
+func (_q *BarrelQuery) QueryDoffing() *DoffingQuery {
+	query := (&DoffingClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -76,9 +78,9 @@ func (_q *OrderQuery) QueryProject() *ProjectQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(order.Table, order.FieldID, selector),
-			sqlgraph.To(project.Table, project.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, order.ProjectTable, order.ProjectColumn),
+			sqlgraph.From(barrel.Table, barrel.FieldID, selector),
+			sqlgraph.To(doffing.Table, doffing.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, barrel.DoffingTable, barrel.DoffingColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -86,8 +88,8 @@ func (_q *OrderQuery) QueryProject() *ProjectQuery {
 	return query
 }
 
-// QueryLots chains the current query on the "lots" edge.
-func (_q *OrderQuery) QueryLots() *LotQuery {
+// QueryLot chains the current query on the "lot" edge.
+func (_q *BarrelQuery) QueryLot() *LotQuery {
 	query := (&LotClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -98,9 +100,9 @@ func (_q *OrderQuery) QueryLots() *LotQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(order.Table, order.FieldID, selector),
+			sqlgraph.From(barrel.Table, barrel.FieldID, selector),
 			sqlgraph.To(lot.Table, lot.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, order.LotsTable, order.LotsColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, barrel.LotTable, barrel.LotColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -108,21 +110,43 @@ func (_q *OrderQuery) QueryLots() *LotQuery {
 	return query
 }
 
-// First returns the first Order entity from the query.
-// Returns a *NotFoundError when no Order was found.
-func (_q *OrderQuery) First(ctx context.Context) (*Order, error) {
+// QueryBobbins chains the current query on the "bobbins" edge.
+func (_q *BarrelQuery) QueryBobbins() *BobbinQuery {
+	query := (&BobbinClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(barrel.Table, barrel.FieldID, selector),
+			sqlgraph.To(bobbin.Table, bobbin.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, barrel.BobbinsTable, barrel.BobbinsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// First returns the first Barrel entity from the query.
+// Returns a *NotFoundError when no Barrel was found.
+func (_q *BarrelQuery) First(ctx context.Context) (*Barrel, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{order.Label}
+		return nil, &NotFoundError{barrel.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *OrderQuery) FirstX(ctx context.Context) *Order {
+func (_q *BarrelQuery) FirstX(ctx context.Context) *Barrel {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -130,22 +154,22 @@ func (_q *OrderQuery) FirstX(ctx context.Context) *Order {
 	return node
 }
 
-// FirstID returns the first Order ID from the query.
-// Returns a *NotFoundError when no Order ID was found.
-func (_q *OrderQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
+// FirstID returns the first Barrel ID from the query.
+// Returns a *NotFoundError when no Barrel ID was found.
+func (_q *BarrelQuery) FirstID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{order.Label}
+		err = &NotFoundError{barrel.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *OrderQuery) FirstIDX(ctx context.Context) uuid.UUID {
+func (_q *BarrelQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -153,10 +177,10 @@ func (_q *OrderQuery) FirstIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// Only returns a single Order entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one Order entity is found.
-// Returns a *NotFoundError when no Order entities are found.
-func (_q *OrderQuery) Only(ctx context.Context) (*Order, error) {
+// Only returns a single Barrel entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Barrel entity is found.
+// Returns a *NotFoundError when no Barrel entities are found.
+func (_q *BarrelQuery) Only(ctx context.Context) (*Barrel, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -165,14 +189,14 @@ func (_q *OrderQuery) Only(ctx context.Context) (*Order, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{order.Label}
+		return nil, &NotFoundError{barrel.Label}
 	default:
-		return nil, &NotSingularError{order.Label}
+		return nil, &NotSingularError{barrel.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *OrderQuery) OnlyX(ctx context.Context) *Order {
+func (_q *BarrelQuery) OnlyX(ctx context.Context) *Barrel {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -180,10 +204,10 @@ func (_q *OrderQuery) OnlyX(ctx context.Context) *Order {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Order ID in the query.
-// Returns a *NotSingularError when more than one Order ID is found.
+// OnlyID is like Only, but returns the only Barrel ID in the query.
+// Returns a *NotSingularError when more than one Barrel ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *OrderQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
+func (_q *BarrelQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	var ids []uuid.UUID
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -192,15 +216,15 @@ func (_q *OrderQuery) OnlyID(ctx context.Context) (id uuid.UUID, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{order.Label}
+		err = &NotFoundError{barrel.Label}
 	default:
-		err = &NotSingularError{order.Label}
+		err = &NotSingularError{barrel.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *OrderQuery) OnlyIDX(ctx context.Context) uuid.UUID {
+func (_q *BarrelQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -208,18 +232,18 @@ func (_q *OrderQuery) OnlyIDX(ctx context.Context) uuid.UUID {
 	return id
 }
 
-// All executes the query and returns a list of Orders.
-func (_q *OrderQuery) All(ctx context.Context) ([]*Order, error) {
+// All executes the query and returns a list of Barrels.
+func (_q *BarrelQuery) All(ctx context.Context) ([]*Barrel, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*Order, *OrderQuery]()
-	return withInterceptors[[]*Order](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Barrel, *BarrelQuery]()
+	return withInterceptors[[]*Barrel](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *OrderQuery) AllX(ctx context.Context) []*Order {
+func (_q *BarrelQuery) AllX(ctx context.Context) []*Barrel {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -227,20 +251,20 @@ func (_q *OrderQuery) AllX(ctx context.Context) []*Order {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Order IDs.
-func (_q *OrderQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
+// IDs executes the query and returns a list of Barrel IDs.
+func (_q *BarrelQuery) IDs(ctx context.Context) (ids []uuid.UUID, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(order.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(barrel.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *OrderQuery) IDsX(ctx context.Context) []uuid.UUID {
+func (_q *BarrelQuery) IDsX(ctx context.Context) []uuid.UUID {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -249,16 +273,16 @@ func (_q *OrderQuery) IDsX(ctx context.Context) []uuid.UUID {
 }
 
 // Count returns the count of the given query.
-func (_q *OrderQuery) Count(ctx context.Context) (int, error) {
+func (_q *BarrelQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*OrderQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*BarrelQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *OrderQuery) CountX(ctx context.Context) int {
+func (_q *BarrelQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -267,7 +291,7 @@ func (_q *OrderQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *OrderQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *BarrelQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -280,7 +304,7 @@ func (_q *OrderQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *OrderQuery) ExistX(ctx context.Context) bool {
+func (_q *BarrelQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -288,45 +312,57 @@ func (_q *OrderQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the OrderQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the BarrelQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *OrderQuery) Clone() *OrderQuery {
+func (_q *BarrelQuery) Clone() *BarrelQuery {
 	if _q == nil {
 		return nil
 	}
-	return &OrderQuery{
+	return &BarrelQuery{
 		config:      _q.config,
 		ctx:         _q.ctx.Clone(),
-		order:       append([]order.OrderOption{}, _q.order...),
+		order:       append([]barrel.OrderOption{}, _q.order...),
 		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.Order{}, _q.predicates...),
-		withProject: _q.withProject.Clone(),
-		withLots:    _q.withLots.Clone(),
+		predicates:  append([]predicate.Barrel{}, _q.predicates...),
+		withDoffing: _q.withDoffing.Clone(),
+		withLot:     _q.withLot.Clone(),
+		withBobbins: _q.withBobbins.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithProject tells the query-builder to eager-load the nodes that are connected to
-// the "project" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *OrderQuery) WithProject(opts ...func(*ProjectQuery)) *OrderQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
+// WithDoffing tells the query-builder to eager-load the nodes that are connected to
+// the "doffing" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *BarrelQuery) WithDoffing(opts ...func(*DoffingQuery)) *BarrelQuery {
+	query := (&DoffingClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withProject = query
+	_q.withDoffing = query
 	return _q
 }
 
-// WithLots tells the query-builder to eager-load the nodes that are connected to
-// the "lots" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *OrderQuery) WithLots(opts ...func(*LotQuery)) *OrderQuery {
+// WithLot tells the query-builder to eager-load the nodes that are connected to
+// the "lot" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *BarrelQuery) WithLot(opts ...func(*LotQuery)) *BarrelQuery {
 	query := (&LotClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withLots = query
+	_q.withLot = query
+	return _q
+}
+
+// WithBobbins tells the query-builder to eager-load the nodes that are connected to
+// the "bobbins" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *BarrelQuery) WithBobbins(opts ...func(*BobbinQuery)) *BarrelQuery {
+	query := (&BobbinClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withBobbins = query
 	return _q
 }
 
@@ -336,19 +372,19 @@ func (_q *OrderQuery) WithLots(opts ...func(*LotQuery)) *OrderQuery {
 // Example:
 //
 //	var v []struct {
-//		OrderNumber string `json:"order_number,omitempty"`
+//		BarrelNumber string `json:"barrel_number,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Order.Query().
-//		GroupBy(order.FieldOrderNumber).
+//	client.Barrel.Query().
+//		GroupBy(barrel.FieldBarrelNumber).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *OrderQuery) GroupBy(field string, fields ...string) *OrderGroupBy {
+func (_q *BarrelQuery) GroupBy(field string, fields ...string) *BarrelGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &OrderGroupBy{build: _q}
+	grbuild := &BarrelGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = order.Label
+	grbuild.label = barrel.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -359,26 +395,26 @@ func (_q *OrderQuery) GroupBy(field string, fields ...string) *OrderGroupBy {
 // Example:
 //
 //	var v []struct {
-//		OrderNumber string `json:"order_number,omitempty"`
+//		BarrelNumber string `json:"barrel_number,omitempty"`
 //	}
 //
-//	client.Order.Query().
-//		Select(order.FieldOrderNumber).
+//	client.Barrel.Query().
+//		Select(barrel.FieldBarrelNumber).
 //		Scan(ctx, &v)
-func (_q *OrderQuery) Select(fields ...string) *OrderSelect {
+func (_q *BarrelQuery) Select(fields ...string) *BarrelSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &OrderSelect{OrderQuery: _q}
-	sbuild.label = order.Label
+	sbuild := &BarrelSelect{BarrelQuery: _q}
+	sbuild.label = barrel.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a OrderSelect configured with the given aggregations.
-func (_q *OrderQuery) Aggregate(fns ...AggregateFunc) *OrderSelect {
+// Aggregate returns a BarrelSelect configured with the given aggregations.
+func (_q *BarrelQuery) Aggregate(fns ...AggregateFunc) *BarrelSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *OrderQuery) prepareQuery(ctx context.Context) error {
+func (_q *BarrelQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -390,7 +426,7 @@ func (_q *OrderQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !order.ValidColumn(f) {
+		if !barrel.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -404,20 +440,21 @@ func (_q *OrderQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *OrderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Order, error) {
+func (_q *BarrelQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Barrel, error) {
 	var (
-		nodes       = []*Order{}
+		nodes       = []*Barrel{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
-			_q.withProject != nil,
-			_q.withLots != nil,
+		loadedTypes = [3]bool{
+			_q.withDoffing != nil,
+			_q.withLot != nil,
+			_q.withBobbins != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*Order).scanValues(nil, columns)
+		return (*Barrel).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Order{config: _q.config}
+		node := &Barrel{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -431,27 +468,33 @@ func (_q *OrderQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Order,
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withProject; query != nil {
-		if err := _q.loadProject(ctx, query, nodes, nil,
-			func(n *Order, e *Project) { n.Edges.Project = e }); err != nil {
+	if query := _q.withDoffing; query != nil {
+		if err := _q.loadDoffing(ctx, query, nodes, nil,
+			func(n *Barrel, e *Doffing) { n.Edges.Doffing = e }); err != nil {
 			return nil, err
 		}
 	}
-	if query := _q.withLots; query != nil {
-		if err := _q.loadLots(ctx, query, nodes,
-			func(n *Order) { n.Edges.Lots = []*Lot{} },
-			func(n *Order, e *Lot) { n.Edges.Lots = append(n.Edges.Lots, e) }); err != nil {
+	if query := _q.withLot; query != nil {
+		if err := _q.loadLot(ctx, query, nodes, nil,
+			func(n *Barrel, e *Lot) { n.Edges.Lot = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withBobbins; query != nil {
+		if err := _q.loadBobbins(ctx, query, nodes,
+			func(n *Barrel) { n.Edges.Bobbins = []*Bobbin{} },
+			func(n *Barrel, e *Bobbin) { n.Edges.Bobbins = append(n.Edges.Bobbins, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *OrderQuery) loadProject(ctx context.Context, query *ProjectQuery, nodes []*Order, init func(*Order), assign func(*Order, *Project)) error {
+func (_q *BarrelQuery) loadDoffing(ctx context.Context, query *DoffingQuery, nodes []*Barrel, init func(*Barrel), assign func(*Barrel, *Doffing)) error {
 	ids := make([]uuid.UUID, 0, len(nodes))
-	nodeids := make(map[uuid.UUID][]*Order)
+	nodeids := make(map[uuid.UUID][]*Barrel)
 	for i := range nodes {
-		fk := nodes[i].ProjectID
+		fk := nodes[i].DoffingID
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
@@ -460,7 +503,7 @@ func (_q *OrderQuery) loadProject(ctx context.Context, query *ProjectQuery, node
 	if len(ids) == 0 {
 		return nil
 	}
-	query.Where(project.IDIn(ids...))
+	query.Where(doffing.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
@@ -468,7 +511,7 @@ func (_q *OrderQuery) loadProject(ctx context.Context, query *ProjectQuery, node
 	for _, n := range neighbors {
 		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "project_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "doffing_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -476,9 +519,38 @@ func (_q *OrderQuery) loadProject(ctx context.Context, query *ProjectQuery, node
 	}
 	return nil
 }
-func (_q *OrderQuery) loadLots(ctx context.Context, query *LotQuery, nodes []*Order, init func(*Order), assign func(*Order, *Lot)) error {
+func (_q *BarrelQuery) loadLot(ctx context.Context, query *LotQuery, nodes []*Barrel, init func(*Barrel), assign func(*Barrel, *Lot)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Barrel)
+	for i := range nodes {
+		fk := nodes[i].LotID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(lot.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "lot_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (_q *BarrelQuery) loadBobbins(ctx context.Context, query *BobbinQuery, nodes []*Barrel, init func(*Barrel), assign func(*Barrel, *Bobbin)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[uuid.UUID]*Order)
+	nodeids := make(map[uuid.UUID]*Barrel)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -487,27 +559,27 @@ func (_q *OrderQuery) loadLots(ctx context.Context, query *LotQuery, nodes []*Or
 		}
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(lot.FieldOrderID)
+		query.ctx.AppendFieldOnce(bobbin.FieldBarrelID)
 	}
-	query.Where(predicate.Lot(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(order.LotsColumn), fks...))
+	query.Where(predicate.Bobbin(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(barrel.BobbinsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.OrderID
+		fk := n.BarrelID
 		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "order_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "barrel_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
 	return nil
 }
 
-func (_q *OrderQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *BarrelQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -516,8 +588,8 @@ func (_q *OrderQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *OrderQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(order.Table, order.Columns, sqlgraph.NewFieldSpec(order.FieldID, field.TypeUUID))
+func (_q *BarrelQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(barrel.Table, barrel.Columns, sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -526,14 +598,17 @@ func (_q *OrderQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, order.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, barrel.FieldID)
 		for i := range fields {
-			if fields[i] != order.FieldID {
+			if fields[i] != barrel.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
-		if _q.withProject != nil {
-			_spec.Node.AddColumnOnce(order.FieldProjectID)
+		if _q.withDoffing != nil {
+			_spec.Node.AddColumnOnce(barrel.FieldDoffingID)
+		}
+		if _q.withLot != nil {
+			_spec.Node.AddColumnOnce(barrel.FieldLotID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -559,12 +634,12 @@ func (_q *OrderQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *OrderQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *BarrelQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(order.Table)
+	t1 := builder.Table(barrel.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = order.Columns
+		columns = barrel.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -591,28 +666,28 @@ func (_q *OrderQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// OrderGroupBy is the group-by builder for Order entities.
-type OrderGroupBy struct {
+// BarrelGroupBy is the group-by builder for Barrel entities.
+type BarrelGroupBy struct {
 	selector
-	build *OrderQuery
+	build *BarrelQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *OrderGroupBy) Aggregate(fns ...AggregateFunc) *OrderGroupBy {
+func (_g *BarrelGroupBy) Aggregate(fns ...AggregateFunc) *BarrelGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *OrderGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *BarrelGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*OrderQuery, *OrderGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*BarrelQuery, *BarrelGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *OrderGroupBy) sqlScan(ctx context.Context, root *OrderQuery, v any) error {
+func (_g *BarrelGroupBy) sqlScan(ctx context.Context, root *BarrelQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -639,28 +714,28 @@ func (_g *OrderGroupBy) sqlScan(ctx context.Context, root *OrderQuery, v any) er
 	return sql.ScanSlice(rows, v)
 }
 
-// OrderSelect is the builder for selecting fields of Order entities.
-type OrderSelect struct {
-	*OrderQuery
+// BarrelSelect is the builder for selecting fields of Barrel entities.
+type BarrelSelect struct {
+	*BarrelQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *OrderSelect) Aggregate(fns ...AggregateFunc) *OrderSelect {
+func (_s *BarrelSelect) Aggregate(fns ...AggregateFunc) *BarrelSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *OrderSelect) Scan(ctx context.Context, v any) error {
+func (_s *BarrelSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*OrderQuery, *OrderSelect](ctx, _s.OrderQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*BarrelQuery, *BarrelSelect](ctx, _s.BarrelQuery, _s, _s.inters, v)
 }
 
-func (_s *OrderSelect) sqlScan(ctx context.Context, root *OrderQuery, v any) error {
+func (_s *BarrelSelect) sqlScan(ctx context.Context, root *BarrelQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

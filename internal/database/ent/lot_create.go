@@ -11,9 +11,12 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 )
 
 // LotCreate is the builder for creating a Lot entity.
@@ -29,9 +32,45 @@ func (_c *LotCreate) SetLotNumber(v string) *LotCreate {
 	return _c
 }
 
-// SetOrderID sets the "order_id" field.
-func (_c *LotCreate) SetOrderID(v uuid.UUID) *LotCreate {
-	_c.mutation.SetOrderID(v)
+// SetEdgeID sets the "edge_id" field.
+func (_c *LotCreate) SetEdgeID(v uuid.UUID) *LotCreate {
+	_c.mutation.SetEdgeID(v)
+	return _c
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_c *LotCreate) SetNillableEdgeID(v *uuid.UUID) *LotCreate {
+	if v != nil {
+		_c.SetEdgeID(*v)
+	}
+	return _c
+}
+
+// SetPlcLotNumber sets the "plc_lot_number" field.
+func (_c *LotCreate) SetPlcLotNumber(v string) *LotCreate {
+	_c.mutation.SetPlcLotNumber(v)
+	return _c
+}
+
+// SetNillablePlcLotNumber sets the "plc_lot_number" field if the given value is not nil.
+func (_c *LotCreate) SetNillablePlcLotNumber(v *string) *LotCreate {
+	if v != nil {
+		_c.SetPlcLotNumber(*v)
+	}
+	return _c
+}
+
+// SetOrderCode sets the "order_code" field.
+func (_c *LotCreate) SetOrderCode(v string) *LotCreate {
+	_c.mutation.SetOrderCode(v)
+	return _c
+}
+
+// SetNillableOrderCode sets the "order_code" field if the given value is not nil.
+func (_c *LotCreate) SetNillableOrderCode(v *string) *LotCreate {
+	if v != nil {
+		_c.SetOrderCode(*v)
+	}
 	return _c
 }
 
@@ -173,9 +212,24 @@ func (_c *LotCreate) SetNillableID(v *uuid.UUID) *LotCreate {
 	return _c
 }
 
-// SetOrder sets the "order" edge to the Order entity.
-func (_c *LotCreate) SetOrder(v *Order) *LotCreate {
-	return _c.SetOrderID(v.ID)
+// SetEdge sets the "edge" edge to the Edge entity.
+func (_c *LotCreate) SetEdge(v *Edge) *LotCreate {
+	return _c.SetEdgeID(v.ID)
+}
+
+// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
+func (_c *LotCreate) AddBarrelIDs(ids ...uuid.UUID) *LotCreate {
+	_c.mutation.AddBarrelIDs(ids...)
+	return _c
+}
+
+// AddBarrels adds the "barrels" edges to the Barrel entity.
+func (_c *LotCreate) AddBarrels(v ...*Barrel) *LotCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddBarrelIDs(ids...)
 }
 
 // AddBobbinIDs adds the "bobbins" edge to the Bobbin entity by IDs.
@@ -191,6 +245,36 @@ func (_c *LotCreate) AddBobbins(v ...*Bobbin) *LotCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddBobbinIDs(ids...)
+}
+
+// AddDoffingIDs adds the "doffings" edge to the Doffing entity by IDs.
+func (_c *LotCreate) AddDoffingIDs(ids ...uuid.UUID) *LotCreate {
+	_c.mutation.AddDoffingIDs(ids...)
+	return _c
+}
+
+// AddDoffings adds the "doffings" edges to the Doffing entity.
+func (_c *LotCreate) AddDoffings(v ...*Doffing) *LotCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDoffingIDs(ids...)
+}
+
+// AddPalletIDs adds the "pallets" edge to the Pallet entity by IDs.
+func (_c *LotCreate) AddPalletIDs(ids ...uuid.UUID) *LotCreate {
+	_c.mutation.AddPalletIDs(ids...)
+	return _c
+}
+
+// AddPallets adds the "pallets" edges to the Pallet entity.
+func (_c *LotCreate) AddPallets(v ...*Pallet) *LotCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddPalletIDs(ids...)
 }
 
 // Mutation returns the LotMutation object of the builder.
@@ -264,8 +348,15 @@ func (_c *LotCreate) check() error {
 			return &ValidationError{Name: "lot_number", err: fmt.Errorf(`ent: validator failed for field "Lot.lot_number": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.OrderID(); !ok {
-		return &ValidationError{Name: "order_id", err: errors.New(`ent: missing required field "Lot.order_id"`)}
+	if v, ok := _c.mutation.PlcLotNumber(); ok {
+		if err := lot.PlcLotNumberValidator(v); err != nil {
+			return &ValidationError{Name: "plc_lot_number", err: fmt.Errorf(`ent: validator failed for field "Lot.plc_lot_number": %w`, err)}
+		}
+	}
+	if v, ok := _c.mutation.OrderCode(); ok {
+		if err := lot.OrderCodeValidator(v); err != nil {
+			return &ValidationError{Name: "order_code", err: fmt.Errorf(`ent: validator failed for field "Lot.order_code": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.ProductType(); !ok {
 		return &ValidationError{Name: "product_type", err: errors.New(`ent: missing required field "Lot.product_type"`)}
@@ -313,9 +404,6 @@ func (_c *LotCreate) check() error {
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Lot.updated_at"`)}
 	}
-	if len(_c.mutation.OrderIDs()) == 0 {
-		return &ValidationError{Name: "order", err: errors.New(`ent: missing required edge "Lot.order"`)}
-	}
 	return nil
 }
 
@@ -354,6 +442,14 @@ func (_c *LotCreate) createSpec() (*Lot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LotNumber(); ok {
 		_spec.SetField(lot.FieldLotNumber, field.TypeString, value)
 		_node.LotNumber = value
+	}
+	if value, ok := _c.mutation.PlcLotNumber(); ok {
+		_spec.SetField(lot.FieldPlcLotNumber, field.TypeString, value)
+		_node.PlcLotNumber = value
+	}
+	if value, ok := _c.mutation.OrderCode(); ok {
+		_spec.SetField(lot.FieldOrderCode, field.TypeString, value)
+		_node.OrderCode = value
 	}
 	if value, ok := _c.mutation.ProductType(); ok {
 		_spec.SetField(lot.FieldProductType, field.TypeEnum, value)
@@ -395,21 +491,37 @@ func (_c *LotCreate) createSpec() (*Lot, *sqlgraph.CreateSpec) {
 		_spec.SetField(lot.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
 	}
-	if nodes := _c.mutation.OrderIDs(); len(nodes) > 0 {
+	if nodes := _c.mutation.EdgeIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
 			Inverse: true,
-			Table:   lot.OrderTable,
-			Columns: []string{lot.OrderColumn},
+			Table:   lot.EdgeTable,
+			Columns: []string{lot.EdgeColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(order.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.OrderID = nodes[0]
+		_node.EdgeID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BarrelsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.BarrelsTable,
+			Columns: []string{lot.BarrelsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.BobbinsIDs(); len(nodes) > 0 {
@@ -421,6 +533,38 @@ func (_c *LotCreate) createSpec() (*Lot, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(bobbin.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DoffingsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.DoffingsTable,
+			Columns: []string{lot.DoffingsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.PalletsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   lot.PalletsTable,
+			Columns: []string{lot.PalletsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(pallet.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

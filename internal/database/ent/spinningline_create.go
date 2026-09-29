@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
 
@@ -37,6 +38,20 @@ func (_c *SpinningLineCreate) SetLineNumber(v string) *SpinningLineCreate {
 func (_c *SpinningLineCreate) SetNillableLineNumber(v *string) *SpinningLineCreate {
 	if v != nil {
 		_c.SetLineNumber(*v)
+	}
+	return _c
+}
+
+// SetEdgeID sets the "edge_id" field.
+func (_c *SpinningLineCreate) SetEdgeID(v uuid.UUID) *SpinningLineCreate {
+	_c.mutation.SetEdgeID(v)
+	return _c
+}
+
+// SetNillableEdgeID sets the "edge_id" field if the given value is not nil.
+func (_c *SpinningLineCreate) SetNillableEdgeID(v *uuid.UUID) *SpinningLineCreate {
+	if v != nil {
+		_c.SetEdgeID(*v)
 	}
 	return _c
 }
@@ -137,6 +152,11 @@ func (_c *SpinningLineCreate) SetNillableID(v *uuid.UUID) *SpinningLineCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// SetEdge sets the "edge" edge to the Edge entity.
+func (_c *SpinningLineCreate) SetEdge(v *Edge) *SpinningLineCreate {
+	return _c.SetEdgeID(v.ID)
 }
 
 // Mutation returns the SpinningLineMutation object of the builder.
@@ -297,6 +317,23 @@ func (_c *SpinningLineCreate) createSpec() (*SpinningLine, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(spinningline.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.EdgeIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   spinningline.EdgeTable,
+			Columns: []string{spinningline.EdgeColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(edge.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.EdgeID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

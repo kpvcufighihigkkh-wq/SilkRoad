@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
@@ -57,6 +58,53 @@ func (_u *BobbinUpdate) SetNillableLotID(v *uuid.UUID) *BobbinUpdate {
 	if v != nil {
 		_u.SetLotID(*v)
 	}
+	return _u
+}
+
+// SetBarrelID sets the "barrel_id" field.
+func (_u *BobbinUpdate) SetBarrelID(v uuid.UUID) *BobbinUpdate {
+	_u.mutation.SetBarrelID(v)
+	return _u
+}
+
+// SetNillableBarrelID sets the "barrel_id" field if the given value is not nil.
+func (_u *BobbinUpdate) SetNillableBarrelID(v *uuid.UUID) *BobbinUpdate {
+	if v != nil {
+		_u.SetBarrelID(*v)
+	}
+	return _u
+}
+
+// ClearBarrelID clears the value of the "barrel_id" field.
+func (_u *BobbinUpdate) ClearBarrelID() *BobbinUpdate {
+	_u.mutation.ClearBarrelID()
+	return _u
+}
+
+// SetBarrelPosition sets the "barrel_position" field.
+func (_u *BobbinUpdate) SetBarrelPosition(v int) *BobbinUpdate {
+	_u.mutation.ResetBarrelPosition()
+	_u.mutation.SetBarrelPosition(v)
+	return _u
+}
+
+// SetNillableBarrelPosition sets the "barrel_position" field if the given value is not nil.
+func (_u *BobbinUpdate) SetNillableBarrelPosition(v *int) *BobbinUpdate {
+	if v != nil {
+		_u.SetBarrelPosition(*v)
+	}
+	return _u
+}
+
+// AddBarrelPosition adds value to the "barrel_position" field.
+func (_u *BobbinUpdate) AddBarrelPosition(v int) *BobbinUpdate {
+	_u.mutation.AddBarrelPosition(v)
+	return _u
+}
+
+// ClearBarrelPosition clears the value of the "barrel_position" field.
+func (_u *BobbinUpdate) ClearBarrelPosition() *BobbinUpdate {
+	_u.mutation.ClearBarrelPosition()
 	return _u
 }
 
@@ -289,6 +337,11 @@ func (_u *BobbinUpdate) SetLot(v *Lot) *BobbinUpdate {
 	return _u.SetLotID(v.ID)
 }
 
+// SetBarrel sets the "barrel" edge to the Barrel entity.
+func (_u *BobbinUpdate) SetBarrel(v *Barrel) *BobbinUpdate {
+	return _u.SetBarrelID(v.ID)
+}
+
 // SetPallet sets the "pallet" edge to the Pallet entity.
 func (_u *BobbinUpdate) SetPallet(v *Pallet) *BobbinUpdate {
 	return _u.SetPalletID(v.ID)
@@ -307,6 +360,12 @@ func (_u *BobbinUpdate) Mutation() *BobbinMutation {
 // ClearLot clears the "lot" edge to the Lot entity.
 func (_u *BobbinUpdate) ClearLot() *BobbinUpdate {
 	_u.mutation.ClearLot()
+	return _u
+}
+
+// ClearBarrel clears the "barrel" edge to the Barrel entity.
+func (_u *BobbinUpdate) ClearBarrel() *BobbinUpdate {
+	_u.mutation.ClearBarrel()
 	return _u
 }
 
@@ -365,6 +424,11 @@ func (_u *BobbinUpdate) check() error {
 			return &ValidationError{Name: "bobbin_number", err: fmt.Errorf(`ent: validator failed for field "Bobbin.bobbin_number": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.BarrelPosition(); ok {
+		if err := bobbin.BarrelPositionValidator(v); err != nil {
+			return &ValidationError{Name: "barrel_position", err: fmt.Errorf(`ent: validator failed for field "Bobbin.barrel_position": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.SpinningPosition(); ok {
 		if err := bobbin.SpinningPositionValidator(v); err != nil {
 			return &ValidationError{Name: "spinning_position", err: fmt.Errorf(`ent: validator failed for field "Bobbin.spinning_position": %w`, err)}
@@ -415,6 +479,15 @@ func (_u *BobbinUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.BobbinNumber(); ok {
 		_spec.SetField(bobbin.FieldBobbinNumber, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.BarrelPosition(); ok {
+		_spec.SetField(bobbin.FieldBarrelPosition, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBarrelPosition(); ok {
+		_spec.AddField(bobbin.FieldBarrelPosition, field.TypeInt, value)
+	}
+	if _u.mutation.BarrelPositionCleared() {
+		_spec.ClearField(bobbin.FieldBarrelPosition, field.TypeInt)
 	}
 	if value, ok := _u.mutation.SpinningPosition(); ok {
 		_spec.SetField(bobbin.FieldSpinningPosition, field.TypeInt, value)
@@ -492,6 +565,35 @@ func (_u *BobbinUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(lot.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BarrelCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   bobbin.BarrelTable,
+			Columns: []string{bobbin.BarrelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BarrelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   bobbin.BarrelTable,
+			Columns: []string{bobbin.BarrelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -602,6 +704,53 @@ func (_u *BobbinUpdateOne) SetNillableLotID(v *uuid.UUID) *BobbinUpdateOne {
 	if v != nil {
 		_u.SetLotID(*v)
 	}
+	return _u
+}
+
+// SetBarrelID sets the "barrel_id" field.
+func (_u *BobbinUpdateOne) SetBarrelID(v uuid.UUID) *BobbinUpdateOne {
+	_u.mutation.SetBarrelID(v)
+	return _u
+}
+
+// SetNillableBarrelID sets the "barrel_id" field if the given value is not nil.
+func (_u *BobbinUpdateOne) SetNillableBarrelID(v *uuid.UUID) *BobbinUpdateOne {
+	if v != nil {
+		_u.SetBarrelID(*v)
+	}
+	return _u
+}
+
+// ClearBarrelID clears the value of the "barrel_id" field.
+func (_u *BobbinUpdateOne) ClearBarrelID() *BobbinUpdateOne {
+	_u.mutation.ClearBarrelID()
+	return _u
+}
+
+// SetBarrelPosition sets the "barrel_position" field.
+func (_u *BobbinUpdateOne) SetBarrelPosition(v int) *BobbinUpdateOne {
+	_u.mutation.ResetBarrelPosition()
+	_u.mutation.SetBarrelPosition(v)
+	return _u
+}
+
+// SetNillableBarrelPosition sets the "barrel_position" field if the given value is not nil.
+func (_u *BobbinUpdateOne) SetNillableBarrelPosition(v *int) *BobbinUpdateOne {
+	if v != nil {
+		_u.SetBarrelPosition(*v)
+	}
+	return _u
+}
+
+// AddBarrelPosition adds value to the "barrel_position" field.
+func (_u *BobbinUpdateOne) AddBarrelPosition(v int) *BobbinUpdateOne {
+	_u.mutation.AddBarrelPosition(v)
+	return _u
+}
+
+// ClearBarrelPosition clears the value of the "barrel_position" field.
+func (_u *BobbinUpdateOne) ClearBarrelPosition() *BobbinUpdateOne {
+	_u.mutation.ClearBarrelPosition()
 	return _u
 }
 
@@ -834,6 +983,11 @@ func (_u *BobbinUpdateOne) SetLot(v *Lot) *BobbinUpdateOne {
 	return _u.SetLotID(v.ID)
 }
 
+// SetBarrel sets the "barrel" edge to the Barrel entity.
+func (_u *BobbinUpdateOne) SetBarrel(v *Barrel) *BobbinUpdateOne {
+	return _u.SetBarrelID(v.ID)
+}
+
 // SetPallet sets the "pallet" edge to the Pallet entity.
 func (_u *BobbinUpdateOne) SetPallet(v *Pallet) *BobbinUpdateOne {
 	return _u.SetPalletID(v.ID)
@@ -852,6 +1006,12 @@ func (_u *BobbinUpdateOne) Mutation() *BobbinMutation {
 // ClearLot clears the "lot" edge to the Lot entity.
 func (_u *BobbinUpdateOne) ClearLot() *BobbinUpdateOne {
 	_u.mutation.ClearLot()
+	return _u
+}
+
+// ClearBarrel clears the "barrel" edge to the Barrel entity.
+func (_u *BobbinUpdateOne) ClearBarrel() *BobbinUpdateOne {
+	_u.mutation.ClearBarrel()
 	return _u
 }
 
@@ -923,6 +1083,11 @@ func (_u *BobbinUpdateOne) check() error {
 			return &ValidationError{Name: "bobbin_number", err: fmt.Errorf(`ent: validator failed for field "Bobbin.bobbin_number": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.BarrelPosition(); ok {
+		if err := bobbin.BarrelPositionValidator(v); err != nil {
+			return &ValidationError{Name: "barrel_position", err: fmt.Errorf(`ent: validator failed for field "Bobbin.barrel_position": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.SpinningPosition(); ok {
 		if err := bobbin.SpinningPositionValidator(v); err != nil {
 			return &ValidationError{Name: "spinning_position", err: fmt.Errorf(`ent: validator failed for field "Bobbin.spinning_position": %w`, err)}
@@ -990,6 +1155,15 @@ func (_u *BobbinUpdateOne) sqlSave(ctx context.Context) (_node *Bobbin, err erro
 	}
 	if value, ok := _u.mutation.BobbinNumber(); ok {
 		_spec.SetField(bobbin.FieldBobbinNumber, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.BarrelPosition(); ok {
+		_spec.SetField(bobbin.FieldBarrelPosition, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedBarrelPosition(); ok {
+		_spec.AddField(bobbin.FieldBarrelPosition, field.TypeInt, value)
+	}
+	if _u.mutation.BarrelPositionCleared() {
+		_spec.ClearField(bobbin.FieldBarrelPosition, field.TypeInt)
 	}
 	if value, ok := _u.mutation.SpinningPosition(); ok {
 		_spec.SetField(bobbin.FieldSpinningPosition, field.TypeInt, value)
@@ -1067,6 +1241,35 @@ func (_u *BobbinUpdateOne) sqlSave(ctx context.Context) (_node *Bobbin, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(lot.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.BarrelCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   bobbin.BarrelTable,
+			Columns: []string{bobbin.BarrelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.BarrelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   bobbin.BarrelTable,
+			Columns: []string{bobbin.BarrelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

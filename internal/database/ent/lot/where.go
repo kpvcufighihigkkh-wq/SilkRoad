@@ -61,9 +61,19 @@ func LotNumber(v string) predicate.Lot {
 	return predicate.Lot(sql.FieldEQ(FieldLotNumber, v))
 }
 
-// OrderID applies equality check predicate on the "order_id" field. It's identical to OrderIDEQ.
-func OrderID(v uuid.UUID) predicate.Lot {
-	return predicate.Lot(sql.FieldEQ(FieldOrderID, v))
+// EdgeID applies equality check predicate on the "edge_id" field. It's identical to EdgeIDEQ.
+func EdgeID(v uuid.UUID) predicate.Lot {
+	return predicate.Lot(sql.FieldEQ(FieldEdgeID, v))
+}
+
+// PlcLotNumber applies equality check predicate on the "plc_lot_number" field. It's identical to PlcLotNumberEQ.
+func PlcLotNumber(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldEQ(FieldPlcLotNumber, v))
+}
+
+// OrderCode applies equality check predicate on the "order_code" field. It's identical to OrderCodeEQ.
+func OrderCode(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldEQ(FieldOrderCode, v))
 }
 
 // ProductSpec applies equality check predicate on the "product_spec" field. It's identical to ProductSpecEQ.
@@ -171,24 +181,184 @@ func LotNumberContainsFold(v string) predicate.Lot {
 	return predicate.Lot(sql.FieldContainsFold(FieldLotNumber, v))
 }
 
-// OrderIDEQ applies the EQ predicate on the "order_id" field.
-func OrderIDEQ(v uuid.UUID) predicate.Lot {
-	return predicate.Lot(sql.FieldEQ(FieldOrderID, v))
+// EdgeIDEQ applies the EQ predicate on the "edge_id" field.
+func EdgeIDEQ(v uuid.UUID) predicate.Lot {
+	return predicate.Lot(sql.FieldEQ(FieldEdgeID, v))
 }
 
-// OrderIDNEQ applies the NEQ predicate on the "order_id" field.
-func OrderIDNEQ(v uuid.UUID) predicate.Lot {
-	return predicate.Lot(sql.FieldNEQ(FieldOrderID, v))
+// EdgeIDNEQ applies the NEQ predicate on the "edge_id" field.
+func EdgeIDNEQ(v uuid.UUID) predicate.Lot {
+	return predicate.Lot(sql.FieldNEQ(FieldEdgeID, v))
 }
 
-// OrderIDIn applies the In predicate on the "order_id" field.
-func OrderIDIn(vs ...uuid.UUID) predicate.Lot {
-	return predicate.Lot(sql.FieldIn(FieldOrderID, vs...))
+// EdgeIDIn applies the In predicate on the "edge_id" field.
+func EdgeIDIn(vs ...uuid.UUID) predicate.Lot {
+	return predicate.Lot(sql.FieldIn(FieldEdgeID, vs...))
 }
 
-// OrderIDNotIn applies the NotIn predicate on the "order_id" field.
-func OrderIDNotIn(vs ...uuid.UUID) predicate.Lot {
-	return predicate.Lot(sql.FieldNotIn(FieldOrderID, vs...))
+// EdgeIDNotIn applies the NotIn predicate on the "edge_id" field.
+func EdgeIDNotIn(vs ...uuid.UUID) predicate.Lot {
+	return predicate.Lot(sql.FieldNotIn(FieldEdgeID, vs...))
+}
+
+// EdgeIDIsNil applies the IsNil predicate on the "edge_id" field.
+func EdgeIDIsNil() predicate.Lot {
+	return predicate.Lot(sql.FieldIsNull(FieldEdgeID))
+}
+
+// EdgeIDNotNil applies the NotNil predicate on the "edge_id" field.
+func EdgeIDNotNil() predicate.Lot {
+	return predicate.Lot(sql.FieldNotNull(FieldEdgeID))
+}
+
+// PlcLotNumberEQ applies the EQ predicate on the "plc_lot_number" field.
+func PlcLotNumberEQ(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldEQ(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberNEQ applies the NEQ predicate on the "plc_lot_number" field.
+func PlcLotNumberNEQ(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldNEQ(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberIn applies the In predicate on the "plc_lot_number" field.
+func PlcLotNumberIn(vs ...string) predicate.Lot {
+	return predicate.Lot(sql.FieldIn(FieldPlcLotNumber, vs...))
+}
+
+// PlcLotNumberNotIn applies the NotIn predicate on the "plc_lot_number" field.
+func PlcLotNumberNotIn(vs ...string) predicate.Lot {
+	return predicate.Lot(sql.FieldNotIn(FieldPlcLotNumber, vs...))
+}
+
+// PlcLotNumberGT applies the GT predicate on the "plc_lot_number" field.
+func PlcLotNumberGT(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldGT(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberGTE applies the GTE predicate on the "plc_lot_number" field.
+func PlcLotNumberGTE(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldGTE(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberLT applies the LT predicate on the "plc_lot_number" field.
+func PlcLotNumberLT(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldLT(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberLTE applies the LTE predicate on the "plc_lot_number" field.
+func PlcLotNumberLTE(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldLTE(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberContains applies the Contains predicate on the "plc_lot_number" field.
+func PlcLotNumberContains(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldContains(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberHasPrefix applies the HasPrefix predicate on the "plc_lot_number" field.
+func PlcLotNumberHasPrefix(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldHasPrefix(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberHasSuffix applies the HasSuffix predicate on the "plc_lot_number" field.
+func PlcLotNumberHasSuffix(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldHasSuffix(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberIsNil applies the IsNil predicate on the "plc_lot_number" field.
+func PlcLotNumberIsNil() predicate.Lot {
+	return predicate.Lot(sql.FieldIsNull(FieldPlcLotNumber))
+}
+
+// PlcLotNumberNotNil applies the NotNil predicate on the "plc_lot_number" field.
+func PlcLotNumberNotNil() predicate.Lot {
+	return predicate.Lot(sql.FieldNotNull(FieldPlcLotNumber))
+}
+
+// PlcLotNumberEqualFold applies the EqualFold predicate on the "plc_lot_number" field.
+func PlcLotNumberEqualFold(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldEqualFold(FieldPlcLotNumber, v))
+}
+
+// PlcLotNumberContainsFold applies the ContainsFold predicate on the "plc_lot_number" field.
+func PlcLotNumberContainsFold(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldContainsFold(FieldPlcLotNumber, v))
+}
+
+// OrderCodeEQ applies the EQ predicate on the "order_code" field.
+func OrderCodeEQ(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldEQ(FieldOrderCode, v))
+}
+
+// OrderCodeNEQ applies the NEQ predicate on the "order_code" field.
+func OrderCodeNEQ(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldNEQ(FieldOrderCode, v))
+}
+
+// OrderCodeIn applies the In predicate on the "order_code" field.
+func OrderCodeIn(vs ...string) predicate.Lot {
+	return predicate.Lot(sql.FieldIn(FieldOrderCode, vs...))
+}
+
+// OrderCodeNotIn applies the NotIn predicate on the "order_code" field.
+func OrderCodeNotIn(vs ...string) predicate.Lot {
+	return predicate.Lot(sql.FieldNotIn(FieldOrderCode, vs...))
+}
+
+// OrderCodeGT applies the GT predicate on the "order_code" field.
+func OrderCodeGT(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldGT(FieldOrderCode, v))
+}
+
+// OrderCodeGTE applies the GTE predicate on the "order_code" field.
+func OrderCodeGTE(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldGTE(FieldOrderCode, v))
+}
+
+// OrderCodeLT applies the LT predicate on the "order_code" field.
+func OrderCodeLT(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldLT(FieldOrderCode, v))
+}
+
+// OrderCodeLTE applies the LTE predicate on the "order_code" field.
+func OrderCodeLTE(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldLTE(FieldOrderCode, v))
+}
+
+// OrderCodeContains applies the Contains predicate on the "order_code" field.
+func OrderCodeContains(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldContains(FieldOrderCode, v))
+}
+
+// OrderCodeHasPrefix applies the HasPrefix predicate on the "order_code" field.
+func OrderCodeHasPrefix(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldHasPrefix(FieldOrderCode, v))
+}
+
+// OrderCodeHasSuffix applies the HasSuffix predicate on the "order_code" field.
+func OrderCodeHasSuffix(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldHasSuffix(FieldOrderCode, v))
+}
+
+// OrderCodeIsNil applies the IsNil predicate on the "order_code" field.
+func OrderCodeIsNil() predicate.Lot {
+	return predicate.Lot(sql.FieldIsNull(FieldOrderCode))
+}
+
+// OrderCodeNotNil applies the NotNil predicate on the "order_code" field.
+func OrderCodeNotNil() predicate.Lot {
+	return predicate.Lot(sql.FieldNotNull(FieldOrderCode))
+}
+
+// OrderCodeEqualFold applies the EqualFold predicate on the "order_code" field.
+func OrderCodeEqualFold(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldEqualFold(FieldOrderCode, v))
+}
+
+// OrderCodeContainsFold applies the ContainsFold predicate on the "order_code" field.
+func OrderCodeContainsFold(v string) predicate.Lot {
+	return predicate.Lot(sql.FieldContainsFold(FieldOrderCode, v))
 }
 
 // ProductTypeEQ applies the EQ predicate on the "product_type" field.
@@ -576,21 +746,44 @@ func UpdatedAtLTE(v time.Time) predicate.Lot {
 	return predicate.Lot(sql.FieldLTE(FieldUpdatedAt, v))
 }
 
-// HasOrder applies the HasEdge predicate on the "order" edge.
-func HasOrder() predicate.Lot {
+// HasEdge applies the HasEdge predicate on the "edge" edge.
+func HasEdge() predicate.Lot {
 	return predicate.Lot(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, OrderTable, OrderColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, EdgeTable, EdgeColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasOrderWith applies the HasEdge predicate on the "order" edge with a given conditions (other predicates).
-func HasOrderWith(preds ...predicate.Order) predicate.Lot {
+// HasEdgeWith applies the HasEdge predicate on the "edge" edge with a given conditions (other predicates).
+func HasEdgeWith(preds ...predicate.Edge) predicate.Lot {
 	return predicate.Lot(func(s *sql.Selector) {
-		step := newOrderStep()
+		step := newEdgeStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasBarrels applies the HasEdge predicate on the "barrels" edge.
+func HasBarrels() predicate.Lot {
+	return predicate.Lot(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, BarrelsTable, BarrelsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasBarrelsWith applies the HasEdge predicate on the "barrels" edge with a given conditions (other predicates).
+func HasBarrelsWith(preds ...predicate.Barrel) predicate.Lot {
+	return predicate.Lot(func(s *sql.Selector) {
+		step := newBarrelsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)
@@ -614,6 +807,52 @@ func HasBobbins() predicate.Lot {
 func HasBobbinsWith(preds ...predicate.Bobbin) predicate.Lot {
 	return predicate.Lot(func(s *sql.Selector) {
 		step := newBobbinsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDoffings applies the HasEdge predicate on the "doffings" edge.
+func HasDoffings() predicate.Lot {
+	return predicate.Lot(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DoffingsTable, DoffingsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDoffingsWith applies the HasEdge predicate on the "doffings" edge with a given conditions (other predicates).
+func HasDoffingsWith(preds ...predicate.Doffing) predicate.Lot {
+	return predicate.Lot(func(s *sql.Selector) {
+		step := newDoffingsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasPallets applies the HasEdge predicate on the "pallets" edge.
+func HasPallets() predicate.Lot {
+	return predicate.Lot(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PalletsTable, PalletsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPalletsWith applies the HasEdge predicate on the "pallets" edge with a given conditions (other predicates).
+func HasPalletsWith(preds ...predicate.Pallet) predicate.Lot {
+	return predicate.Lot(func(s *sql.Selector) {
+		step := newPalletsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

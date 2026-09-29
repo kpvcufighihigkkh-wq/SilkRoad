@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
@@ -33,6 +34,34 @@ func (_c *BobbinCreate) SetBobbinNumber(v string) *BobbinCreate {
 // SetLotID sets the "lot_id" field.
 func (_c *BobbinCreate) SetLotID(v uuid.UUID) *BobbinCreate {
 	_c.mutation.SetLotID(v)
+	return _c
+}
+
+// SetBarrelID sets the "barrel_id" field.
+func (_c *BobbinCreate) SetBarrelID(v uuid.UUID) *BobbinCreate {
+	_c.mutation.SetBarrelID(v)
+	return _c
+}
+
+// SetNillableBarrelID sets the "barrel_id" field if the given value is not nil.
+func (_c *BobbinCreate) SetNillableBarrelID(v *uuid.UUID) *BobbinCreate {
+	if v != nil {
+		_c.SetBarrelID(*v)
+	}
+	return _c
+}
+
+// SetBarrelPosition sets the "barrel_position" field.
+func (_c *BobbinCreate) SetBarrelPosition(v int) *BobbinCreate {
+	_c.mutation.SetBarrelPosition(v)
+	return _c
+}
+
+// SetNillableBarrelPosition sets the "barrel_position" field if the given value is not nil.
+func (_c *BobbinCreate) SetNillableBarrelPosition(v *int) *BobbinCreate {
+	if v != nil {
+		_c.SetBarrelPosition(*v)
+	}
 	return _c
 }
 
@@ -213,6 +242,11 @@ func (_c *BobbinCreate) SetLot(v *Lot) *BobbinCreate {
 	return _c.SetLotID(v.ID)
 }
 
+// SetBarrel sets the "barrel" edge to the Barrel entity.
+func (_c *BobbinCreate) SetBarrel(v *Barrel) *BobbinCreate {
+	return _c.SetBarrelID(v.ID)
+}
+
 // SetPallet sets the "pallet" edge to the Pallet entity.
 func (_c *BobbinCreate) SetPallet(v *Pallet) *BobbinCreate {
 	return _c.SetPalletID(v.ID)
@@ -292,6 +326,11 @@ func (_c *BobbinCreate) check() error {
 	}
 	if _, ok := _c.mutation.LotID(); !ok {
 		return &ValidationError{Name: "lot_id", err: errors.New(`ent: missing required field "Bobbin.lot_id"`)}
+	}
+	if v, ok := _c.mutation.BarrelPosition(); ok {
+		if err := bobbin.BarrelPositionValidator(v); err != nil {
+			return &ValidationError{Name: "barrel_position", err: fmt.Errorf(`ent: validator failed for field "Bobbin.barrel_position": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.SpinningPosition(); !ok {
 		return &ValidationError{Name: "spinning_position", err: errors.New(`ent: missing required field "Bobbin.spinning_position"`)}
@@ -386,6 +425,10 @@ func (_c *BobbinCreate) createSpec() (*Bobbin, *sqlgraph.CreateSpec) {
 		_spec.SetField(bobbin.FieldBobbinNumber, field.TypeString, value)
 		_node.BobbinNumber = value
 	}
+	if value, ok := _c.mutation.BarrelPosition(); ok {
+		_spec.SetField(bobbin.FieldBarrelPosition, field.TypeInt, value)
+		_node.BarrelPosition = value
+	}
 	if value, ok := _c.mutation.SpinningPosition(); ok {
 		_spec.SetField(bobbin.FieldSpinningPosition, field.TypeInt, value)
 		_node.SpinningPosition = value
@@ -445,6 +488,23 @@ func (_c *BobbinCreate) createSpec() (*Bobbin, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.LotID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.BarrelIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   bobbin.BarrelTable,
+			Columns: []string{bobbin.BarrelColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.BarrelID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.PalletIDs(); len(nodes) > 0 {

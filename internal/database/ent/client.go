@@ -16,13 +16,15 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/grade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/order"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/project"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 )
@@ -32,20 +34,24 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Barrel is the client for interacting with the Barrel builders.
+	Barrel *BarrelClient
 	// Bobbin is the client for interacting with the Bobbin builders.
 	Bobbin *BobbinClient
 	// Carton is the client for interacting with the Carton builders.
 	Carton *CartonClient
 	// Doffing is the client for interacting with the Doffing builders.
 	Doffing *DoffingClient
+	// Edge is the client for interacting with the Edge builders.
+	Edge *EdgeClient
+	// Grade is the client for interacting with the Grade builders.
+	Grade *GradeClient
 	// Lot is the client for interacting with the Lot builders.
 	Lot *LotClient
-	// Order is the client for interacting with the Order builders.
-	Order *OrderClient
+	// Module is the client for interacting with the Module builders.
+	Module *ModuleClient
 	// Pallet is the client for interacting with the Pallet builders.
 	Pallet *PalletClient
-	// Project is the client for interacting with the Project builders.
-	Project *ProjectClient
 	// SpinningLine is the client for interacting with the SpinningLine builders.
 	SpinningLine *SpinningLineClient
 	// User is the client for interacting with the User builders.
@@ -61,13 +67,15 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Barrel = NewBarrelClient(c.config)
 	c.Bobbin = NewBobbinClient(c.config)
 	c.Carton = NewCartonClient(c.config)
 	c.Doffing = NewDoffingClient(c.config)
+	c.Edge = NewEdgeClient(c.config)
+	c.Grade = NewGradeClient(c.config)
 	c.Lot = NewLotClient(c.config)
-	c.Order = NewOrderClient(c.config)
+	c.Module = NewModuleClient(c.config)
 	c.Pallet = NewPalletClient(c.config)
-	c.Project = NewProjectClient(c.config)
 	c.SpinningLine = NewSpinningLineClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -162,13 +170,15 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:          ctx,
 		config:       cfg,
+		Barrel:       NewBarrelClient(cfg),
 		Bobbin:       NewBobbinClient(cfg),
 		Carton:       NewCartonClient(cfg),
 		Doffing:      NewDoffingClient(cfg),
+		Edge:         NewEdgeClient(cfg),
+		Grade:        NewGradeClient(cfg),
 		Lot:          NewLotClient(cfg),
-		Order:        NewOrderClient(cfg),
+		Module:       NewModuleClient(cfg),
 		Pallet:       NewPalletClient(cfg),
-		Project:      NewProjectClient(cfg),
 		SpinningLine: NewSpinningLineClient(cfg),
 		User:         NewUserClient(cfg),
 	}, nil
@@ -190,13 +200,15 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:          ctx,
 		config:       cfg,
+		Barrel:       NewBarrelClient(cfg),
 		Bobbin:       NewBobbinClient(cfg),
 		Carton:       NewCartonClient(cfg),
 		Doffing:      NewDoffingClient(cfg),
+		Edge:         NewEdgeClient(cfg),
+		Grade:        NewGradeClient(cfg),
 		Lot:          NewLotClient(cfg),
-		Order:        NewOrderClient(cfg),
+		Module:       NewModuleClient(cfg),
 		Pallet:       NewPalletClient(cfg),
-		Project:      NewProjectClient(cfg),
 		SpinningLine: NewSpinningLineClient(cfg),
 		User:         NewUserClient(cfg),
 	}, nil
@@ -205,7 +217,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Bobbin.
+//		Barrel.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -228,8 +240,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Bobbin, c.Carton, c.Doffing, c.Lot, c.Order, c.Pallet, c.Project,
-		c.SpinningLine, c.User,
+		c.Barrel, c.Bobbin, c.Carton, c.Doffing, c.Edge, c.Grade, c.Lot, c.Module,
+		c.Pallet, c.SpinningLine, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -239,8 +251,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Bobbin, c.Carton, c.Doffing, c.Lot, c.Order, c.Pallet, c.Project,
-		c.SpinningLine, c.User,
+		c.Barrel, c.Bobbin, c.Carton, c.Doffing, c.Edge, c.Grade, c.Lot, c.Module,
+		c.Pallet, c.SpinningLine, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -249,26 +261,211 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *BarrelMutation:
+		return c.Barrel.mutate(ctx, m)
 	case *BobbinMutation:
 		return c.Bobbin.mutate(ctx, m)
 	case *CartonMutation:
 		return c.Carton.mutate(ctx, m)
 	case *DoffingMutation:
 		return c.Doffing.mutate(ctx, m)
+	case *EdgeMutation:
+		return c.Edge.mutate(ctx, m)
+	case *GradeMutation:
+		return c.Grade.mutate(ctx, m)
 	case *LotMutation:
 		return c.Lot.mutate(ctx, m)
-	case *OrderMutation:
-		return c.Order.mutate(ctx, m)
+	case *ModuleMutation:
+		return c.Module.mutate(ctx, m)
 	case *PalletMutation:
 		return c.Pallet.mutate(ctx, m)
-	case *ProjectMutation:
-		return c.Project.mutate(ctx, m)
 	case *SpinningLineMutation:
 		return c.SpinningLine.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// BarrelClient is a client for the Barrel schema.
+type BarrelClient struct {
+	config
+}
+
+// NewBarrelClient returns a client for the Barrel from the given config.
+func NewBarrelClient(c config) *BarrelClient {
+	return &BarrelClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `barrel.Hooks(f(g(h())))`.
+func (c *BarrelClient) Use(hooks ...Hook) {
+	c.hooks.Barrel = append(c.hooks.Barrel, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `barrel.Intercept(f(g(h())))`.
+func (c *BarrelClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Barrel = append(c.inters.Barrel, interceptors...)
+}
+
+// Create returns a builder for creating a Barrel entity.
+func (c *BarrelClient) Create() *BarrelCreate {
+	mutation := newBarrelMutation(c.config, OpCreate)
+	return &BarrelCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Barrel entities.
+func (c *BarrelClient) CreateBulk(builders ...*BarrelCreate) *BarrelCreateBulk {
+	return &BarrelCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BarrelClient) MapCreateBulk(slice any, setFunc func(*BarrelCreate, int)) *BarrelCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BarrelCreateBulk{err: fmt.Errorf("calling to BarrelClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BarrelCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &BarrelCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Barrel.
+func (c *BarrelClient) Update() *BarrelUpdate {
+	mutation := newBarrelMutation(c.config, OpUpdate)
+	return &BarrelUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BarrelClient) UpdateOne(_m *Barrel) *BarrelUpdateOne {
+	mutation := newBarrelMutation(c.config, OpUpdateOne, withBarrel(_m))
+	return &BarrelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BarrelClient) UpdateOneID(id uuid.UUID) *BarrelUpdateOne {
+	mutation := newBarrelMutation(c.config, OpUpdateOne, withBarrelID(id))
+	return &BarrelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Barrel.
+func (c *BarrelClient) Delete() *BarrelDelete {
+	mutation := newBarrelMutation(c.config, OpDelete)
+	return &BarrelDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *BarrelClient) DeleteOne(_m *Barrel) *BarrelDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *BarrelClient) DeleteOneID(id uuid.UUID) *BarrelDeleteOne {
+	builder := c.Delete().Where(barrel.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BarrelDeleteOne{builder}
+}
+
+// Query returns a query builder for Barrel.
+func (c *BarrelClient) Query() *BarrelQuery {
+	return &BarrelQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeBarrel},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Barrel entity by its id.
+func (c *BarrelClient) Get(ctx context.Context, id uuid.UUID) (*Barrel, error) {
+	return c.Query().Where(barrel.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BarrelClient) GetX(ctx context.Context, id uuid.UUID) *Barrel {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryDoffing queries the doffing edge of a Barrel.
+func (c *BarrelClient) QueryDoffing(_m *Barrel) *DoffingQuery {
+	query := (&DoffingClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(barrel.Table, barrel.FieldID, id),
+			sqlgraph.To(doffing.Table, doffing.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, barrel.DoffingTable, barrel.DoffingColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryLot queries the lot edge of a Barrel.
+func (c *BarrelClient) QueryLot(_m *Barrel) *LotQuery {
+	query := (&LotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(barrel.Table, barrel.FieldID, id),
+			sqlgraph.To(lot.Table, lot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, barrel.LotTable, barrel.LotColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBobbins queries the bobbins edge of a Barrel.
+func (c *BarrelClient) QueryBobbins(_m *Barrel) *BobbinQuery {
+	query := (&BobbinClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(barrel.Table, barrel.FieldID, id),
+			sqlgraph.To(bobbin.Table, bobbin.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, barrel.BobbinsTable, barrel.BobbinsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *BarrelClient) Hooks() []Hook {
+	return c.hooks.Barrel
+}
+
+// Interceptors returns the client interceptors.
+func (c *BarrelClient) Interceptors() []Interceptor {
+	return c.inters.Barrel
+}
+
+func (c *BarrelClient) mutate(ctx context.Context, m *BarrelMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BarrelCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BarrelUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BarrelUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BarrelDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Barrel mutation op: %q", m.Op())
 	}
 }
 
@@ -389,6 +586,22 @@ func (c *BobbinClient) QueryLot(_m *Bobbin) *LotQuery {
 			sqlgraph.From(bobbin.Table, bobbin.FieldID, id),
 			sqlgraph.To(lot.Table, lot.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, bobbin.LotTable, bobbin.LotColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBarrel queries the barrel edge of a Bobbin.
+func (c *BobbinClient) QueryBarrel(_m *Bobbin) *BarrelQuery {
+	query := (&BarrelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(bobbin.Table, bobbin.FieldID, id),
+			sqlgraph.To(barrel.Table, barrel.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, bobbin.BarrelTable, bobbin.BarrelColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -710,6 +923,38 @@ func (c *DoffingClient) GetX(ctx context.Context, id uuid.UUID) *Doffing {
 	return obj
 }
 
+// QueryLot queries the lot edge of a Doffing.
+func (c *DoffingClient) QueryLot(_m *Doffing) *LotQuery {
+	query := (&LotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(doffing.Table, doffing.FieldID, id),
+			sqlgraph.To(lot.Table, lot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, doffing.LotTable, doffing.LotColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBarrels queries the barrels edge of a Doffing.
+func (c *DoffingClient) QueryBarrels(_m *Doffing) *BarrelQuery {
+	query := (&BarrelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(doffing.Table, doffing.FieldID, id),
+			sqlgraph.To(barrel.Table, barrel.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, doffing.BarrelsTable, doffing.BarrelsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *DoffingClient) Hooks() []Hook {
 	return c.hooks.Doffing
@@ -732,6 +977,304 @@ func (c *DoffingClient) mutate(ctx context.Context, m *DoffingMutation) (Value, 
 		return (&DoffingDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Doffing mutation op: %q", m.Op())
+	}
+}
+
+// EdgeClient is a client for the Edge schema.
+type EdgeClient struct {
+	config
+}
+
+// NewEdgeClient returns a client for the Edge from the given config.
+func NewEdgeClient(c config) *EdgeClient {
+	return &EdgeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `edge.Hooks(f(g(h())))`.
+func (c *EdgeClient) Use(hooks ...Hook) {
+	c.hooks.Edge = append(c.hooks.Edge, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `edge.Intercept(f(g(h())))`.
+func (c *EdgeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Edge = append(c.inters.Edge, interceptors...)
+}
+
+// Create returns a builder for creating a Edge entity.
+func (c *EdgeClient) Create() *EdgeCreate {
+	mutation := newEdgeMutation(c.config, OpCreate)
+	return &EdgeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Edge entities.
+func (c *EdgeClient) CreateBulk(builders ...*EdgeCreate) *EdgeCreateBulk {
+	return &EdgeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EdgeClient) MapCreateBulk(slice any, setFunc func(*EdgeCreate, int)) *EdgeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EdgeCreateBulk{err: fmt.Errorf("calling to EdgeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EdgeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EdgeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Edge.
+func (c *EdgeClient) Update() *EdgeUpdate {
+	mutation := newEdgeMutation(c.config, OpUpdate)
+	return &EdgeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EdgeClient) UpdateOne(_m *Edge) *EdgeUpdateOne {
+	mutation := newEdgeMutation(c.config, OpUpdateOne, withEdge(_m))
+	return &EdgeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EdgeClient) UpdateOneID(id uuid.UUID) *EdgeUpdateOne {
+	mutation := newEdgeMutation(c.config, OpUpdateOne, withEdgeID(id))
+	return &EdgeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Edge.
+func (c *EdgeClient) Delete() *EdgeDelete {
+	mutation := newEdgeMutation(c.config, OpDelete)
+	return &EdgeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EdgeClient) DeleteOne(_m *Edge) *EdgeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EdgeClient) DeleteOneID(id uuid.UUID) *EdgeDeleteOne {
+	builder := c.Delete().Where(edge.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EdgeDeleteOne{builder}
+}
+
+// Query returns a query builder for Edge.
+func (c *EdgeClient) Query() *EdgeQuery {
+	return &EdgeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEdge},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Edge entity by its id.
+func (c *EdgeClient) Get(ctx context.Context, id uuid.UUID) (*Edge, error) {
+	return c.Query().Where(edge.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EdgeClient) GetX(ctx context.Context, id uuid.UUID) *Edge {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySpinningLines queries the spinning_lines edge of a Edge.
+func (c *EdgeClient) QuerySpinningLines(_m *Edge) *SpinningLineQuery {
+	query := (&SpinningLineClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(edge.Table, edge.FieldID, id),
+			sqlgraph.To(spinningline.Table, spinningline.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, edge.SpinningLinesTable, edge.SpinningLinesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryLots queries the lots edge of a Edge.
+func (c *EdgeClient) QueryLots(_m *Edge) *LotQuery {
+	query := (&LotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(edge.Table, edge.FieldID, id),
+			sqlgraph.To(lot.Table, lot.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, edge.LotsTable, edge.LotsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EdgeClient) Hooks() []Hook {
+	return c.hooks.Edge
+}
+
+// Interceptors returns the client interceptors.
+func (c *EdgeClient) Interceptors() []Interceptor {
+	return c.inters.Edge
+}
+
+func (c *EdgeClient) mutate(ctx context.Context, m *EdgeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EdgeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EdgeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EdgeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EdgeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Edge mutation op: %q", m.Op())
+	}
+}
+
+// GradeClient is a client for the Grade schema.
+type GradeClient struct {
+	config
+}
+
+// NewGradeClient returns a client for the Grade from the given config.
+func NewGradeClient(c config) *GradeClient {
+	return &GradeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `grade.Hooks(f(g(h())))`.
+func (c *GradeClient) Use(hooks ...Hook) {
+	c.hooks.Grade = append(c.hooks.Grade, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `grade.Intercept(f(g(h())))`.
+func (c *GradeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Grade = append(c.inters.Grade, interceptors...)
+}
+
+// Create returns a builder for creating a Grade entity.
+func (c *GradeClient) Create() *GradeCreate {
+	mutation := newGradeMutation(c.config, OpCreate)
+	return &GradeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Grade entities.
+func (c *GradeClient) CreateBulk(builders ...*GradeCreate) *GradeCreateBulk {
+	return &GradeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GradeClient) MapCreateBulk(slice any, setFunc func(*GradeCreate, int)) *GradeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GradeCreateBulk{err: fmt.Errorf("calling to GradeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GradeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GradeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Grade.
+func (c *GradeClient) Update() *GradeUpdate {
+	mutation := newGradeMutation(c.config, OpUpdate)
+	return &GradeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GradeClient) UpdateOne(_m *Grade) *GradeUpdateOne {
+	mutation := newGradeMutation(c.config, OpUpdateOne, withGrade(_m))
+	return &GradeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *GradeClient) UpdateOneID(id uuid.UUID) *GradeUpdateOne {
+	mutation := newGradeMutation(c.config, OpUpdateOne, withGradeID(id))
+	return &GradeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Grade.
+func (c *GradeClient) Delete() *GradeDelete {
+	mutation := newGradeMutation(c.config, OpDelete)
+	return &GradeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *GradeClient) DeleteOne(_m *Grade) *GradeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *GradeClient) DeleteOneID(id uuid.UUID) *GradeDeleteOne {
+	builder := c.Delete().Where(grade.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &GradeDeleteOne{builder}
+}
+
+// Query returns a query builder for Grade.
+func (c *GradeClient) Query() *GradeQuery {
+	return &GradeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGrade},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Grade entity by its id.
+func (c *GradeClient) Get(ctx context.Context, id uuid.UUID) (*Grade, error) {
+	return c.Query().Where(grade.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *GradeClient) GetX(ctx context.Context, id uuid.UUID) *Grade {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *GradeClient) Hooks() []Hook {
+	return c.hooks.Grade
+}
+
+// Interceptors returns the client interceptors.
+func (c *GradeClient) Interceptors() []Interceptor {
+	return c.inters.Grade
+}
+
+func (c *GradeClient) mutate(ctx context.Context, m *GradeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GradeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GradeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GradeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GradeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Grade mutation op: %q", m.Op())
 	}
 }
 
@@ -843,15 +1386,31 @@ func (c *LotClient) GetX(ctx context.Context, id uuid.UUID) *Lot {
 	return obj
 }
 
-// QueryOrder queries the order edge of a Lot.
-func (c *LotClient) QueryOrder(_m *Lot) *OrderQuery {
-	query := (&OrderClient{config: c.config}).Query()
+// QueryEdge queries the edge edge of a Lot.
+func (c *LotClient) QueryEdge(_m *Lot) *EdgeQuery {
+	query := (&EdgeClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(lot.Table, lot.FieldID, id),
-			sqlgraph.To(order.Table, order.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, lot.OrderTable, lot.OrderColumn),
+			sqlgraph.To(edge.Table, edge.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, lot.EdgeTable, lot.EdgeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryBarrels queries the barrels edge of a Lot.
+func (c *LotClient) QueryBarrels(_m *Lot) *BarrelQuery {
+	query := (&BarrelClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(lot.Table, lot.FieldID, id),
+			sqlgraph.To(barrel.Table, barrel.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, lot.BarrelsTable, lot.BarrelsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -868,6 +1427,38 @@ func (c *LotClient) QueryBobbins(_m *Lot) *BobbinQuery {
 			sqlgraph.From(lot.Table, lot.FieldID, id),
 			sqlgraph.To(bobbin.Table, bobbin.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, lot.BobbinsTable, lot.BobbinsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDoffings queries the doffings edge of a Lot.
+func (c *LotClient) QueryDoffings(_m *Lot) *DoffingQuery {
+	query := (&DoffingClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(lot.Table, lot.FieldID, id),
+			sqlgraph.To(doffing.Table, doffing.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, lot.DoffingsTable, lot.DoffingsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryPallets queries the pallets edge of a Lot.
+func (c *LotClient) QueryPallets(_m *Lot) *PalletQuery {
+	query := (&PalletClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(lot.Table, lot.FieldID, id),
+			sqlgraph.To(pallet.Table, pallet.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, lot.PalletsTable, lot.PalletsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -900,107 +1491,107 @@ func (c *LotClient) mutate(ctx context.Context, m *LotMutation) (Value, error) {
 	}
 }
 
-// OrderClient is a client for the Order schema.
-type OrderClient struct {
+// ModuleClient is a client for the Module schema.
+type ModuleClient struct {
 	config
 }
 
-// NewOrderClient returns a client for the Order from the given config.
-func NewOrderClient(c config) *OrderClient {
-	return &OrderClient{config: c}
+// NewModuleClient returns a client for the Module from the given config.
+func NewModuleClient(c config) *ModuleClient {
+	return &ModuleClient{config: c}
 }
 
 // Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `order.Hooks(f(g(h())))`.
-func (c *OrderClient) Use(hooks ...Hook) {
-	c.hooks.Order = append(c.hooks.Order, hooks...)
+// A call to `Use(f, g, h)` equals to `module.Hooks(f(g(h())))`.
+func (c *ModuleClient) Use(hooks ...Hook) {
+	c.hooks.Module = append(c.hooks.Module, hooks...)
 }
 
 // Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `order.Intercept(f(g(h())))`.
-func (c *OrderClient) Intercept(interceptors ...Interceptor) {
-	c.inters.Order = append(c.inters.Order, interceptors...)
+// A call to `Intercept(f, g, h)` equals to `module.Intercept(f(g(h())))`.
+func (c *ModuleClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Module = append(c.inters.Module, interceptors...)
 }
 
-// Create returns a builder for creating a Order entity.
-func (c *OrderClient) Create() *OrderCreate {
-	mutation := newOrderMutation(c.config, OpCreate)
-	return &OrderCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Create returns a builder for creating a Module entity.
+func (c *ModuleClient) Create() *ModuleCreate {
+	mutation := newModuleMutation(c.config, OpCreate)
+	return &ModuleCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// CreateBulk returns a builder for creating a bulk of Order entities.
-func (c *OrderClient) CreateBulk(builders ...*OrderCreate) *OrderCreateBulk {
-	return &OrderCreateBulk{config: c.config, builders: builders}
+// CreateBulk returns a builder for creating a bulk of Module entities.
+func (c *ModuleClient) CreateBulk(builders ...*ModuleCreate) *ModuleCreateBulk {
+	return &ModuleCreateBulk{config: c.config, builders: builders}
 }
 
 // MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
 // a builder and applies setFunc on it.
-func (c *OrderClient) MapCreateBulk(slice any, setFunc func(*OrderCreate, int)) *OrderCreateBulk {
+func (c *ModuleClient) MapCreateBulk(slice any, setFunc func(*ModuleCreate, int)) *ModuleCreateBulk {
 	rv := reflect.ValueOf(slice)
 	if rv.Kind() != reflect.Slice {
-		return &OrderCreateBulk{err: fmt.Errorf("calling to OrderClient.MapCreateBulk with wrong type %T, need slice", slice)}
+		return &ModuleCreateBulk{err: fmt.Errorf("calling to ModuleClient.MapCreateBulk with wrong type %T, need slice", slice)}
 	}
-	builders := make([]*OrderCreate, rv.Len())
+	builders := make([]*ModuleCreate, rv.Len())
 	for i := 0; i < rv.Len(); i++ {
 		builders[i] = c.Create()
 		setFunc(builders[i], i)
 	}
-	return &OrderCreateBulk{config: c.config, builders: builders}
+	return &ModuleCreateBulk{config: c.config, builders: builders}
 }
 
-// Update returns an update builder for Order.
-func (c *OrderClient) Update() *OrderUpdate {
-	mutation := newOrderMutation(c.config, OpUpdate)
-	return &OrderUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Update returns an update builder for Module.
+func (c *ModuleClient) Update() *ModuleUpdate {
+	mutation := newModuleMutation(c.config, OpUpdate)
+	return &ModuleUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *OrderClient) UpdateOne(_m *Order) *OrderUpdateOne {
-	mutation := newOrderMutation(c.config, OpUpdateOne, withOrder(_m))
-	return &OrderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *ModuleClient) UpdateOne(_m *Module) *ModuleUpdateOne {
+	mutation := newModuleMutation(c.config, OpUpdateOne, withModule(_m))
+	return &ModuleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *OrderClient) UpdateOneID(id uuid.UUID) *OrderUpdateOne {
-	mutation := newOrderMutation(c.config, OpUpdateOne, withOrderID(id))
-	return &OrderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *ModuleClient) UpdateOneID(id uuid.UUID) *ModuleUpdateOne {
+	mutation := newModuleMutation(c.config, OpUpdateOne, withModuleID(id))
+	return &ModuleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// Delete returns a delete builder for Order.
-func (c *OrderClient) Delete() *OrderDelete {
-	mutation := newOrderMutation(c.config, OpDelete)
-	return &OrderDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Delete returns a delete builder for Module.
+func (c *ModuleClient) Delete() *ModuleDelete {
+	mutation := newModuleMutation(c.config, OpDelete)
+	return &ModuleDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *OrderClient) DeleteOne(_m *Order) *OrderDeleteOne {
+func (c *ModuleClient) DeleteOne(_m *Module) *ModuleDeleteOne {
 	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *OrderClient) DeleteOneID(id uuid.UUID) *OrderDeleteOne {
-	builder := c.Delete().Where(order.ID(id))
+func (c *ModuleClient) DeleteOneID(id uuid.UUID) *ModuleDeleteOne {
+	builder := c.Delete().Where(module.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
-	return &OrderDeleteOne{builder}
+	return &ModuleDeleteOne{builder}
 }
 
-// Query returns a query builder for Order.
-func (c *OrderClient) Query() *OrderQuery {
-	return &OrderQuery{
+// Query returns a query builder for Module.
+func (c *ModuleClient) Query() *ModuleQuery {
+	return &ModuleQuery{
 		config: c.config,
-		ctx:    &QueryContext{Type: TypeOrder},
+		ctx:    &QueryContext{Type: TypeModule},
 		inters: c.Interceptors(),
 	}
 }
 
-// Get returns a Order entity by its id.
-func (c *OrderClient) Get(ctx context.Context, id uuid.UUID) (*Order, error) {
-	return c.Query().Where(order.ID(id)).Only(ctx)
+// Get returns a Module entity by its id.
+func (c *ModuleClient) Get(ctx context.Context, id uuid.UUID) (*Module, error) {
+	return c.Query().Where(module.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *OrderClient) GetX(ctx context.Context, id uuid.UUID) *Order {
+func (c *ModuleClient) GetX(ctx context.Context, id uuid.UUID) *Module {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -1008,60 +1599,28 @@ func (c *OrderClient) GetX(ctx context.Context, id uuid.UUID) *Order {
 	return obj
 }
 
-// QueryProject queries the project edge of a Order.
-func (c *OrderClient) QueryProject(_m *Order) *ProjectQuery {
-	query := (&ProjectClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(order.Table, order.FieldID, id),
-			sqlgraph.To(project.Table, project.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, order.ProjectTable, order.ProjectColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryLots queries the lots edge of a Order.
-func (c *OrderClient) QueryLots(_m *Order) *LotQuery {
-	query := (&LotClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(order.Table, order.FieldID, id),
-			sqlgraph.To(lot.Table, lot.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, order.LotsTable, order.LotsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
-func (c *OrderClient) Hooks() []Hook {
-	return c.hooks.Order
+func (c *ModuleClient) Hooks() []Hook {
+	return c.hooks.Module
 }
 
 // Interceptors returns the client interceptors.
-func (c *OrderClient) Interceptors() []Interceptor {
-	return c.inters.Order
+func (c *ModuleClient) Interceptors() []Interceptor {
+	return c.inters.Module
 }
 
-func (c *OrderClient) mutate(ctx context.Context, m *OrderMutation) (Value, error) {
+func (c *ModuleClient) mutate(ctx context.Context, m *ModuleMutation) (Value, error) {
 	switch m.Op() {
 	case OpCreate:
-		return (&OrderCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&ModuleCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdate:
-		return (&OrderUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&ModuleUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdateOne:
-		return (&OrderUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&ModuleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpDelete, OpDeleteOne:
-		return (&OrderDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+		return (&ModuleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
-		return nil, fmt.Errorf("ent: unknown Order mutation op: %q", m.Op())
+		return nil, fmt.Errorf("ent: unknown Module mutation op: %q", m.Op())
 	}
 }
 
@@ -1173,6 +1732,22 @@ func (c *PalletClient) GetX(ctx context.Context, id uuid.UUID) *Pallet {
 	return obj
 }
 
+// QueryLot queries the lot edge of a Pallet.
+func (c *PalletClient) QueryLot(_m *Pallet) *LotQuery {
+	query := (&LotClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(pallet.Table, pallet.FieldID, id),
+			sqlgraph.To(lot.Table, lot.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, pallet.LotTable, pallet.LotColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryBobbins queries the bobbins edge of a Pallet.
 func (c *PalletClient) QueryBobbins(_m *Pallet) *BobbinQuery {
 	query := (&BobbinClient{config: c.config}).Query()
@@ -1211,155 +1786,6 @@ func (c *PalletClient) mutate(ctx context.Context, m *PalletMutation) (Value, er
 		return (&PalletDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Pallet mutation op: %q", m.Op())
-	}
-}
-
-// ProjectClient is a client for the Project schema.
-type ProjectClient struct {
-	config
-}
-
-// NewProjectClient returns a client for the Project from the given config.
-func NewProjectClient(c config) *ProjectClient {
-	return &ProjectClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `project.Hooks(f(g(h())))`.
-func (c *ProjectClient) Use(hooks ...Hook) {
-	c.hooks.Project = append(c.hooks.Project, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `project.Intercept(f(g(h())))`.
-func (c *ProjectClient) Intercept(interceptors ...Interceptor) {
-	c.inters.Project = append(c.inters.Project, interceptors...)
-}
-
-// Create returns a builder for creating a Project entity.
-func (c *ProjectClient) Create() *ProjectCreate {
-	mutation := newProjectMutation(c.config, OpCreate)
-	return &ProjectCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of Project entities.
-func (c *ProjectClient) CreateBulk(builders ...*ProjectCreate) *ProjectCreateBulk {
-	return &ProjectCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *ProjectClient) MapCreateBulk(slice any, setFunc func(*ProjectCreate, int)) *ProjectCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &ProjectCreateBulk{err: fmt.Errorf("calling to ProjectClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*ProjectCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &ProjectCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for Project.
-func (c *ProjectClient) Update() *ProjectUpdate {
-	mutation := newProjectMutation(c.config, OpUpdate)
-	return &ProjectUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *ProjectClient) UpdateOne(_m *Project) *ProjectUpdateOne {
-	mutation := newProjectMutation(c.config, OpUpdateOne, withProject(_m))
-	return &ProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *ProjectClient) UpdateOneID(id uuid.UUID) *ProjectUpdateOne {
-	mutation := newProjectMutation(c.config, OpUpdateOne, withProjectID(id))
-	return &ProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for Project.
-func (c *ProjectClient) Delete() *ProjectDelete {
-	mutation := newProjectMutation(c.config, OpDelete)
-	return &ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *ProjectClient) DeleteOne(_m *Project) *ProjectDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *ProjectClient) DeleteOneID(id uuid.UUID) *ProjectDeleteOne {
-	builder := c.Delete().Where(project.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &ProjectDeleteOne{builder}
-}
-
-// Query returns a query builder for Project.
-func (c *ProjectClient) Query() *ProjectQuery {
-	return &ProjectQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeProject},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a Project entity by its id.
-func (c *ProjectClient) Get(ctx context.Context, id uuid.UUID) (*Project, error) {
-	return c.Query().Where(project.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *ProjectClient) GetX(ctx context.Context, id uuid.UUID) *Project {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryOrders queries the orders edge of a Project.
-func (c *ProjectClient) QueryOrders(_m *Project) *OrderQuery {
-	query := (&OrderClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(project.Table, project.FieldID, id),
-			sqlgraph.To(order.Table, order.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, project.OrdersTable, project.OrdersColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *ProjectClient) Hooks() []Hook {
-	return c.hooks.Project
-}
-
-// Interceptors returns the client interceptors.
-func (c *ProjectClient) Interceptors() []Interceptor {
-	return c.inters.Project
-}
-
-func (c *ProjectClient) mutate(ctx context.Context, m *ProjectMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&ProjectCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&ProjectUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&ProjectUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown Project mutation op: %q", m.Op())
 	}
 }
 
@@ -1469,6 +1895,22 @@ func (c *SpinningLineClient) GetX(ctx context.Context, id uuid.UUID) *SpinningLi
 		panic(err)
 	}
 	return obj
+}
+
+// QueryEdge queries the edge edge of a SpinningLine.
+func (c *SpinningLineClient) QueryEdge(_m *SpinningLine) *EdgeQuery {
+	query := (&EdgeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(spinningline.Table, spinningline.FieldID, id),
+			sqlgraph.To(edge.Table, edge.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, spinningline.EdgeTable, spinningline.EdgeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.
@@ -1632,11 +2074,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Bobbin, Carton, Doffing, Lot, Order, Pallet, Project, SpinningLine,
+		Barrel, Bobbin, Carton, Doffing, Edge, Grade, Lot, Module, Pallet, SpinningLine,
 		User []ent.Hook
 	}
 	inters struct {
-		Bobbin, Carton, Doffing, Lot, Order, Pallet, Project, SpinningLine,
+		Barrel, Bobbin, Carton, Doffing, Edge, Grade, Lot, Module, Pallet, SpinningLine,
 		User []ent.Interceptor
 	}
 )
