@@ -586,9 +586,19 @@ git rm api/center/v1/order.go
 
 - [ ] **Step 5: 验证编译**
 
+Run: `go build ./api/... && go vet ./api/...`
+
+预期：无输出（成功）。这一步验证你实际改动的代码。
+
+再运行 brief 中的完整命令：
+
 Run: `go build ./cmd/center-server/ ./api/... ./internal/server/`
 
-预期：无输出（成功）。
+预期：**仍会报错，但错误必须全部位于 `internal/sync/center/`（Task 3 的职责范围）**。`internal/server/center.go:16` 导入了 `internal/sync/center`，因此该包的错误会传递到 `internal/server` 与 `cmd/center-server`。
+
+判定标准：错误行中不得出现你改动的三个文件（`api/center/v1/lot.go`、`internal/server/center.go`、`cmd/center-server/main.go`）。若出现，说明你的改动引入了问题，必须修复。Task 3 完成后此命令才会完全干净。
+
+**（本步骤的验收标准已修正 —— 原稿写"预期：无输出（成功）"是不可达的，因为 `internal/server` 传递依赖尚未修复的 `internal/sync/center`。）**
 
 - [ ] **Step 6: 提交**
 
