@@ -72,23 +72,23 @@ func (h *LotHandler) GetLot(c *gin.Context) {
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param page_size query int false "每页数量" default(20)
-// @Param order_id query string false "订单ID"
+// @Param edge_id query string false "边端设备ID"
 // @Param status query string false "状态"
 // @Success 200 {object} api.Response{data=api.PageResponse{list=[]service.LotResponse}}
 // @Router /v1/lots [get]
 func (h *LotHandler) ListLots(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
-	orderID := c.Query("order_id")
+	edgeID := c.Query("edge_id")
 	status := c.Query("status")
 
-	lots, total, err := h.lotService.ListLots(c.Request.Context(), page, pageSize, orderID, status)
+	lots, total, err := h.lotService.ListLots(c.Request.Context(), page, pageSize, edgeID, status)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, api.PageSuccess(lots, total, page, pageSize))
+	c.JSON(http.StatusOK, api.PageSuccess(lots, page, pageSize, total))
 }
 
 // UpdateLotStatus godoc

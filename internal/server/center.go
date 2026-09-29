@@ -103,18 +103,6 @@ func (s *CenterServer) registerRoutes() {
 	authorized := v1.Group("")
 	authorized.Use(s.jwtMiddleware())
 	{
-		// 订单管理
-		orderService := service.NewOrderService(s.client)
-		orderHandler := centerv1.NewOrderHandler(orderService)
-
-		orders := authorized.Group("/orders")
-		{
-			orders.POST("", orderHandler.CreateOrder)
-			orders.GET("", orderHandler.ListOrders)
-			orders.GET("/:id", orderHandler.GetOrder)
-			orders.DELETE("/:id", orderHandler.DeleteOrder)
-		}
-
 		// 批次管理
 		lotService := service.NewLotService(s.client)
 		lotHandler := centerv1.NewLotHandler(lotService)

@@ -19,7 +19,7 @@ func main() {
 	log.Println("🚀 Starting IGH Center Server...")
 
 	// 连接数据库
-	dsn := getEnv("DATABASE_URL", "postgres://igh:igh@localhost:5432/igh?sslmode=disable")
+	dsn := getEnv("DATABASE_URL", "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable")
 	client, err := ent.Open(dialect.Postgres, dsn)
 	if err != nil {
 		log.Fatalf("❌ Failed connecting to database: %v", err)
@@ -52,7 +52,7 @@ func main() {
 	log.Println("📖 API endpoints:")
 	log.Println("   - Health: http://localhost:8080/health")
 	log.Println("   - Login:  POST http://localhost:8080/v1/login")
-	log.Println("   - Orders: http://localhost:8080/v1/orders")
+	log.Println("   - Lots:   http://localhost:8080/v1/lots")
 
 	// 等待中断信号
 	quit := make(chan os.Signal, 1)
