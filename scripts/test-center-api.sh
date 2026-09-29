@@ -62,37 +62,13 @@ else
     exit 1
 fi
 
-# 4. 创建订单
-echo -e "\n${YELLOW}[TEST 4]${NC} 创建订单"
-ORDER_RESPONSE=$(curl -s -X POST "$BASE_URL/v1/orders" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"order_number\": \"ORD-TEST-$(date +%s)\",
-    \"project_id\": \"$PROJECT_ID\",
-    \"product_type\": \"FDY\",
-    \"product_spec\": \"150D/48F\",
-    \"order_quantity\": 1000
-  }")
-
-if echo "$ORDER_RESPONSE" | grep -q "\"code\":0"; then
-    echo -e "${GREEN}✓ 通过${NC}"
-    ORDER_ID=$(echo "$ORDER_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-    echo "订单ID: $ORDER_ID"
-else
-    echo -e "${RED}✗ 失败${NC}"
-    echo "$ORDER_RESPONSE"
-    exit 1
-fi
-
-# 5. 创建批次
-echo -e "\n${YELLOW}[TEST 5]${NC} 创建批次"
+# 4. 创建批次
+echo -e "\n${YELLOW}[TEST 4]${NC} 创建批次"
 LOT_RESPONSE=$(curl -s -X POST "$BASE_URL/v1/lots" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d "{
     \"lot_number\": \"LOT-TEST-$(date +%s)\",
-    \"order_id\": \"$ORDER_ID\",
     \"planned_quantity\": 100
   }")
 
@@ -106,8 +82,8 @@ else
     exit 1
 fi
 
-# 6. 创建丝锭
-echo -e "\n${YELLOW}[TEST 6]${NC} 创建丝锭"
+# 5. 创建丝锭
+echo -e "\n${YELLOW}[TEST 5]${NC} 创建丝锭"
 BOBBIN_RESPONSE=$(curl -s -X POST "$BASE_URL/v1/bobbins" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
@@ -131,21 +107,8 @@ else
     exit 1
 fi
 
-# 7. 查询订单列表
-echo -e "\n${YELLOW}[TEST 7]${NC} 查询订单列表"
-ORDERS_LIST=$(curl -s "$BASE_URL/v1/orders?page=1&page_size=10" \
-  -H "Authorization: Bearer $TOKEN")
-
-if echo "$ORDERS_LIST" | grep -q "\"code\":0"; then
-    echo -e "${GREEN}✓ 通过${NC}"
-else
-    echo -e "${RED}✗ 失败${NC}"
-    echo "$ORDERS_LIST"
-    exit 1
-fi
-
-# 8. 查询丝锭列表
-echo -e "\n${YELLOW}[TEST 8]${NC} 查询丝锭列表"
+# 6. 查询丝锭列表
+echo -e "\n${YELLOW}[TEST 6]${NC} 查询丝锭列表"
 BOBBINS_LIST=$(curl -s "$BASE_URL/v1/bobbins?page=1&page_size=10" \
   -H "Authorization: Bearer $TOKEN")
 
@@ -157,8 +120,8 @@ else
     exit 1
 fi
 
-# 9. 获取当前用户信息
-echo -e "\n${YELLOW}[TEST 9]${NC} 获取用户信息"
+# 7. 获取当前用户信息
+echo -e "\n${YELLOW}[TEST 7]${NC} 获取用户信息"
 USER_INFO=$(curl -s "$BASE_URL/v1/users/me" \
   -H "Authorization: Bearer $TOKEN")
 
@@ -176,6 +139,5 @@ echo "=========================================="
 echo ""
 echo "创建的测试数据："
 echo "  项目ID: $PROJECT_ID"
-echo "  订单ID: $ORDER_ID"
 echo "  批次ID: $LOT_ID"
 echo "  丝锭ID: $BOBBIN_ID"

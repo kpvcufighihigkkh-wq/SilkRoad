@@ -8,13 +8,11 @@ import (
 	"os"
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
-	"github.com/yourusername/igh-silkroad/internal/database/ent_edge"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
-	"github.com/google/uuid"
 )
 
 func main() {
@@ -43,7 +41,7 @@ func testCenter() {
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://igh:igh@localhost:5432/igh?sslmode=disable"
+		dsn = "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
 	}
 
 	client, err := ent.Open(dialect.Postgres, dsn)
@@ -59,53 +57,6 @@ func testCenter() {
 		log.Fatalf("❌ Failed creating schema: %v", err)
 	}
 	log.Println("✅ Database connection OK")
-
-	// 测试 CRUD - Project
-	log.Println("\n📝 Testing Project CRUD...")
-
-	// Create
-	project, err := client.Project.Create().
-		SetProjectNumber("PRJ-TEST-001").
-		SetProjectName("Test Project").
-		SetProductType("FDY").
-		SetProductSpec("150D/48F").
-		SetStatus("in_progress").
-		Save(ctx)
-	if err != nil {
-		log.Fatalf("❌ Failed creating project: %v", err)
-	}
-	log.Printf("✅ Created project: %s (ID: %s)", project.ProjectName, project.ID)
-
-	// Read
-	found, err := client.Project.Get(ctx, project.ID)
-	if err != nil {
-		log.Fatalf("❌ Failed reading project: %v", err)
-	}
-	log.Printf("✅ Read project: %s", found.ProjectName)
-
-	// Update
-	updated, err := client.Project.UpdateOne(project).
-		SetProjectName("Updated Project").
-		Save(ctx)
-	if err != nil {
-		log.Fatalf("❌ Failed updating project: %v", err)
-	}
-	log.Printf("✅ Updated project name: %s", updated.ProjectName)
-
-	// Query
-	count, err := client.Project.Query().
-		Where().
-		Count(ctx)
-	if err != nil {
-		log.Fatalf("❌ Failed counting projects: %v", err)
-	}
-	log.Printf("✅ Total projects: %d", count)
-
-	// Delete
-	if err := client.Project.DeleteOne(project).Exec(ctx); err != nil {
-		log.Fatalf("❌ Failed deleting project: %v", err)
-	}
-	log.Println("✅ Deleted project")
 
 	log.Println("\n🎉 All center database tests passed!")
 }
@@ -123,9 +74,9 @@ func testEdge() {
 
 	// 使用ent的SQL包装器
 	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := ent_edge.NewClient(ent_edge.Driver(drv))
+	client := ent.NewClient(ent.Driver(drv))
 	defer client.Close()
-	defer os.Remove("test_edge.db")  // 清理测试文件
+	defer os.Remove("test_edge.db") // 清理测试文件
 
 	ctx := context.Background()
 
@@ -140,9 +91,7 @@ func testEdge() {
 
 	// Create
 	lot, err := client.Lot.Create().
-		SetID(uuid.New()).
 		SetLotNumber("LOT-TEST-001").
-		SetOrderID(uuid.New()).
 		SetProductType("FDY").
 		SetProductSpec("150D/48F").
 		SetPlannedQuantity(100).
@@ -163,7 +112,6 @@ func testEdge() {
 	// Update
 	updated, err := client.Lot.UpdateOne(lot).
 		SetActualQuantity(50).
-		SetSynced(false).
 		Save(ctx)
 	if err != nil {
 		log.Fatalf("❌ Failed updating lot: %v", err)
@@ -182,7 +130,6 @@ func testEdge() {
 	// Test Bobbin relationship
 	log.Println("\n📝 Testing Bobbin with relationship...")
 	bobbin, err := client.Bobbin.Create().
-		SetID(uuid.New()).
 		SetBobbinNumber("BOB-TEST-001").
 		SetLotID(lot.ID).
 		SetSpinningPosition(1).
@@ -203,20 +150,6 @@ func testEdge() {
 		log.Fatalf("❌ Failed querying bobbins: %v", err)
 	}
 	log.Printf("✅ Total bobbins for lot: %d", len(bobbins))
-
-	// Test SyncLog
-	log.Println("\n📝 Testing SyncLog...")
-	syncLog, err := client.SyncLog.Create().
-		SetID(uuid.New()).
-		SetEntityType("bobbin").
-		SetEntityID(bobbin.ID).
-		SetOperation("create").
-		SetStatus("pending").
-		Save(ctx)
-	if err != nil {
-		log.Fatalf("❌ Failed creating sync log: %v", err)
-	}
-	log.Printf("✅ Created sync log for entity: %s", syncLog.EntityID)
 
 	// Delete (先删除子实体bobbin，再删除父实体lot)
 	if err := client.Bobbin.DeleteOne(bobbin).Exec(ctx); err != nil {

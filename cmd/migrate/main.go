@@ -48,7 +48,7 @@ func main() {
 	switch target {
 	case "center":
 		if dsn == "" {
-			dsn = "postgres://igh:igh@localhost:5432/igh?sslmode=disable"
+			dsn = "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
 		}
 		migrateCenter(dsn)
 	case "edge":

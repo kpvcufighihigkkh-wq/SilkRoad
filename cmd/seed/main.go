@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 
 	"entgo.io/ent/dialect"
@@ -16,7 +20,7 @@ func main() {
 	// 连接数据库
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://igh:igh@localhost:5432/igh?sslmode=disable"
+		dsn = "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
 	}
 
 	client, err := ent.Open(dialect.Postgres, dsn)
@@ -39,9 +43,9 @@ func main() {
 		log.Fatalf("failed seeding users: %v", err)
 	}
 
-	// 创建示例项目
-	if err := seedProjects(ctx, client); err != nil {
-		log.Fatalf("failed seeding projects: %v", err)
+	// 创建核心业务数据
+	if err := seedCoreData(ctx, client); err != nil {
+		log.Fatalf("failed seeding core data: %v", err)
 	}
 
 	log.Println("✅ Database seeded successfully!")
@@ -111,36 +115,73 @@ func seedUsers(ctx context.Context, client *ent.Client) error {
 	return nil
 }
 
-func seedProjects(ctx context.Context, client *ent.Client) error {
-	log.Println("📋 Creating sample project...")
+// seedCoreData 创建核心业务测试数据
+func seedCoreData(ctx context.Context, client *ent.Client) error {
+	log.Println("🌱 Seeding core data...")
 
-	project, err := client.Project.Create().
-		SetProjectName("Demo Project").
-		SetCustomerName("Demo Customer").
-		SetStatus("active").
+	// 边端设备
+	edge, err := client.Edge.Create().
+		SetEdgeCode("edge-001").
+		SetEdgeName("一号边端").
+		SetIPAddress("192.168.1.101").
+		SetStatus(edge.StatusOnline).
 		Save(ctx)
-
 	if err != nil {
-		return err
+		return fmt.Errorf("create edge: %w", err)
+	}
+	log.Printf("  ✓ Created edge: %s (ID: %s)", edge.EdgeCode, edge.ID)
+
+	// 纺丝线体
+	line, err := client.SpinningLine.Create().
+		SetLineName("A线").
+		SetLineNumber("LINE-A").
+		SetEdgeID(edge.ID).
+		SetLocation("一车间").
+		SetCapacity(48).
+		SetStatus(spinningline.StatusRunning).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("create spinning line: %w", err)
+	}
+	log.Printf("  ✓ Created spinning line: %s (ID: %s)", line.LineName, line.ID)
+
+	// 等级基础数据
+	for _, g := range []struct {
+		code string
+		name string
+	}{
+		{"A", "优等品"},
+		{"B", "一等品"},
+		{"C", "合格品"},
+		{"D", "等外品"},
+	} {
+		created, err := client.Grade.Create().
+			SetGradeType("final").
+			SetGradeCode(g.code).
+			SetGradeName(g.name).
+			SetSortOrder(0).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("create grade %s: %w", g.code, err)
+		}
+		log.Printf("  ✓ Created grade: %s", created.GradeCode)
 	}
 
-	log.Printf("  ✓ Created project: %s (ID: %s)", project.ProjectName, project.ID)
-
-	// 创建示例订单
-	order, err := client.Order.Create().
-		SetOrderNumber("ORD-2024-001").
-		SetProjectID(project.ID).
-		SetProductType("FDY").
+	// 批次
+	lot, err := client.Lot.Create().
+		SetLotNumber("FDY-2026-001-01").
+		SetEdgeID(edge.ID).
+		SetPlcLotNumber("PLC-2026-001").
+		SetProductType(lot.ProductTypeFDY).
 		SetProductSpec("150D/48F").
-		SetTargetQuantity(1000).
-		SetStatus("pending").
+		SetPlannedQuantity(4800).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
 		Save(ctx)
-
 	if err != nil {
-		return err
+		return fmt.Errorf("create lot: %w", err)
 	}
-
-	log.Printf("  ✓ Created order: %s", order.OrderNumber)
+	log.Printf("  ✓ Created lot: %s (ID: %s)", lot.LotNumber, lot.ID)
 
 	return nil
 }
