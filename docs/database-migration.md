@@ -164,6 +164,11 @@ DSN: postgres://igh:****@localhost:5432/igh?sslmode=disable
 - 🔧 `pallets` - 重命名字段，添加level、palletizer_id
 - 🔧 `doffings` - 添加Lot和Barrel关联
 - 🔧 `spinning_lines` - 添加edge_id关联
+- 🔧 `barrels` - 删除doffing_id（改为归属Lot）
+- 🔧 `modules`/`pallets`/`cartons` - 添加edge_id字段（来源边端设备）
+- 🔧 七个Edge端实体(Lot/Barrel/Bobbin/Doffing/Module/Pallet/Carton) - 添加同步字段(sync_status/synced_at/sync_retry_count)
+
+> **注意：** `modules`/`pallets`/`cartons` 新增的 `edge_id` 是普通带索引的 UUID 字段，**没有外键约束**；而 `lots`/`spinning_lines` 上同名的 `edge_id` 是外键（指向 `edges`）。针对这几张表写关联查询时需注意此差异。
 
 ### 数据流
 ```
@@ -256,6 +261,14 @@ schema.WithDropColumn(true)  // 删除不再使用的列
 - `a5fc312` - 增强数据库迁移工具
 - `dd616dc` - 修复迁移工具编译错误
 - `aec81e7` - 修复Edge数据库迁移
+
+### 后端重构 Phase 0-1（`refactor/PLN-17-backend-service-api`）
+
+- `8ac4e03` - 修复Center同步层的Order/Project残留与幂等检查
+- `50c9545` - 删除ent_edge死代码并修复工具命令
+- `4858f9f` - Barrel归属Lot，解除与Doffing的强制关联
+- `88856e5` - 为七个Edge端实体添加同步元数据字段
+- `ca7f440` - Module/Pallet/Carton 添加来源边端设备字段
 
 ## 注意事项
 

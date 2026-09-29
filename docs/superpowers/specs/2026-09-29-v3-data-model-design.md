@@ -134,7 +134,6 @@ CREATE TABLE work_bobbins (
 type Barrel struct {
   ID           uuid.UUID
   BarrelNumber string    // 桶编号
-  DoffingID    uuid.UUID // 落纱ID
   LotID        uuid.UUID // 批号ID
   Capacity     int       // 容量 (通常9个锭位)
   Status       string    // active, full, sorted, packed
@@ -143,7 +142,7 @@ type Barrel struct {
 }
 ```
 
-**关系**: `Lot 1-N Doffing 1-N Barrel`
+**关系**: `Lot 1-N Barrel`（Barrel 归属 Lot；Doffing 是独立的落纱操作记录，不再与 Barrel 关联）
 
 #### 3.1.4 Bobbin (丝饼) - 最终产品
 
@@ -350,7 +349,6 @@ type Edge struct {
 erDiagram
     Edge ||--o{ Lot : "产生"
     Lot ||--o{ Doffing : "包含"
-    Doffing ||--o{ Barrel : "生成"
     Barrel ||--o{ Bobbin : "装载"
     Lot ||--o{ Pallet : "打包为"
     Pallet }o--o{ Bobbin : "包含"
