@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
@@ -22,20 +24,30 @@ func NewLotService(client *ent.Client) *LotService {
 
 // CreateLotRequest 创建批次请求
 type CreateLotRequest struct {
-	LotNumber       string `json:"lot_number" binding:"required"`
-	OrderID         string `json:"order_id" binding:"required"`
-	ProductType     string `json:"product_type" binding:"required"`
-	ProductSpec     string `json:"product_spec" binding:"required"`
+	LotNumber       string `json:"lot_number" binding:"required,max=50"`
+	EdgeID          string `json:"edge_id" binding:"omitempty,uuid"`
+	PLCLotNumber    string `json:"plc_lot_number" binding:"omitempty,max=50"`
+	OrderCode       string `json:"order_code" binding:"omitempty,max=50"`
+	ProductType     string `json:"product_type" binding:"required,oneof=FDY POY DTY"`
+	ProductSpec     string `json:"product_spec" binding:"omitempty,max=100"`
 	PlannedQuantity int    `json:"planned_quantity" binding:"required,min=1"`
+}
+
+// UpdateLotRequest 更新批次请求
+type UpdateLotRequest struct {
+	ProductSpec     *string `json:"product_spec" binding:"omitempty,max=100"`
+	PlannedQuantity *int    `json:"planned_quantity" binding:"omitempty,min=1"`
 }
 
 // LotResponse 批次响应
 type LotResponse struct {
 	ID              string  `json:"id"`
 	LotNumber       string  `json:"lot_number"`
-	OrderID         string  `json:"order_id"`
+	EdgeID          string  `json:"edge_id,omitempty"`
+	PLCLotNumber    string  `json:"plc_lot_number,omitempty"`
+	OrderCode       string  `json:"order_code,omitempty"`
 	ProductType     string  `json:"product_type"`
-	ProductSpec     string  `json:"product_spec"`
+	ProductSpec     string  `json:"product_spec,omitempty"`
 	Status          string  `json:"status"`
 	PlannedQuantity int     `json:"planned_quantity"`
 	ActualQuantity  int     `json:"actual_quantity"`
@@ -48,26 +60,37 @@ type LotResponse struct {
 
 // CreateLot 创建批次
 func (s *LotService) CreateLot(ctx context.Context, req *CreateLotRequest) (*LotResponse, error) {
-	orderID, err := uuid.Parse(req.OrderID)
-	if err != nil {
-		return nil, err
-	}
-
-	lot, err := s.client.Lot.Create().
+	builder := s.client.Lot.Create().
 		SetLotNumber(req.LotNumber).
-		SetOrderID(orderID).
 		SetProductType(lot.ProductType(req.ProductType)).
-		SetProductSpec(req.ProductSpec).
 		SetPlannedQuantity(req.PlannedQuantity).
 		SetActualQuantity(0).
-		SetStatus(lot.Status("in_progress")).
-		Save(ctx)
+		SetStatus(lot.Status("in_progress"))
 
+	if req.EdgeID != "" {
+		edgeID, err := uuid.Parse(req.EdgeID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid edge_id: %w", err)
+		}
+		builder.SetEdgeID(edgeID)
+	}
+
+	if req.PLCLotNumber != "" {
+		builder.SetPlcLotNumber(req.PLCLotNumber)
+	}
+	if req.OrderCode != "" {
+		builder.SetOrderCode(req.OrderCode)
+	}
+	if req.ProductSpec != "" {
+		builder.SetProductSpec(req.ProductSpec)
+	}
+
+	created, err := builder.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.toLotResponse(lot), nil
+	return s.toLotResponse(created), nil
 }
 
 // GetLot 获取批次详情
@@ -86,41 +109,38 @@ func (s *LotService) GetLot(ctx context.Context, id string) (*LotResponse, error
 }
 
 // ListLots 查询批次列表
-func (s *LotService) ListLots(ctx context.Context, page, pageSize int, orderID, status string) ([]*LotResponse, int, error) {
+func (s *LotService) ListLots(ctx context.Context, page, pageSize int, edgeID, status string) ([]*LotResponse, int, error) {
 	query := s.client.Lot.Query()
 
-	// 过滤条件
-	if orderID != "" {
-		id, err := uuid.Parse(orderID)
-		if err == nil {
-			query = query.Where(lot.OrderIDEQ(id))
+	if edgeID != "" {
+		id, err := uuid.Parse(edgeID)
+		if err != nil {
+			return nil, 0, fmt.Errorf("invalid edge_id: %w", err)
 		}
+		query = query.Where(lot.EdgeIDEQ(id))
 	}
 
 	if status != "" {
 		query = query.Where(lot.StatusEQ(lot.Status(status)))
 	}
 
-	// 查询总数
 	total, err := query.Count(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 分页查询
 	lots, err := query.
 		Offset((page - 1) * pageSize).
 		Limit(pageSize).
-		Order(ent.Desc("created_at")).
+		Order(ent.Desc(lot.FieldCreatedAt)).
 		All(ctx)
-
 	if err != nil {
 		return nil, 0, err
 	}
 
-	var result []*LotResponse
-	for _, lot := range lots {
-		result = append(result, s.toLotResponse(lot))
+	result := make([]*LotResponse, 0, len(lots))
+	for _, l := range lots {
+		result = append(result, s.toLotResponse(l))
 	}
 
 	return result, total, nil
@@ -149,33 +169,36 @@ func (s *LotService) DeleteLot(ctx context.Context, id string) error {
 }
 
 // toLotResponse 转换为响应格式
-func (s *LotService) toLotResponse(lot *ent.Lot) *LotResponse {
+func (s *LotService) toLotResponse(l *ent.Lot) *LotResponse {
 	var progress float64
-	if lot.PlannedQuantity > 0 {
-		progress = float64(lot.ActualQuantity) / float64(lot.PlannedQuantity) * 100
+	if l.PlannedQuantity > 0 {
+		progress = float64(l.ActualQuantity) / float64(l.PlannedQuantity) * 100
 	}
 
 	resp := &LotResponse{
-		ID:              lot.ID.String(),
-		LotNumber:       lot.LotNumber,
-		OrderID:         lot.OrderID.String(),
-		ProductType:     string(lot.ProductType),
-		ProductSpec:     lot.ProductSpec,
-		Status:          string(lot.Status),
-		PlannedQuantity: lot.PlannedQuantity,
-		ActualQuantity:  lot.ActualQuantity,
+		ID:              l.ID.String(),
+		LotNumber:       l.LotNumber,
+		PLCLotNumber:    l.PlcLotNumber,
+		OrderCode:       l.OrderCode,
+		ProductType:     string(l.ProductType),
+		ProductSpec:     l.ProductSpec,
+		Status:          string(l.Status),
+		PlannedQuantity: l.PlannedQuantity,
+		ActualQuantity:  l.ActualQuantity,
 		Progress:        progress,
-		CreatedAt:       lot.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:       lot.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		CreatedAt:       l.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       l.UpdatedAt.Format(time.RFC3339),
 	}
 
-	if !lot.StartTime.IsZero() {
-		str := lot.StartTime.Format("2006-01-02T15:04:05Z07:00")
+	if l.EdgeID != uuid.Nil {
+		resp.EdgeID = l.EdgeID.String()
+	}
+	if !l.StartTime.IsZero() {
+		str := l.StartTime.Format(time.RFC3339)
 		resp.StartTime = &str
 	}
-
-	if !lot.EndTime.IsZero() {
-		str := lot.EndTime.Format("2006-01-02T15:04:05Z07:00")
+	if !l.EndTime.IsZero() {
+		str := l.EndTime.Format(time.RFC3339)
 		resp.EndTime = &str
 	}
 
