@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  edge-server:
+    build:
+      context: ../..
+      dockerfile: deployments/edge/Dockerfile
+    container_name: igh-edge-server
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - EDGE_ID=${EDGE_ID:-edge-001}
+      - DATABASE_PATH=/data/edge.db
+      - PORT=8081
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - CENTER_URL=${CENTER_URL:-http://center:8080}
+    volumes:
+      - edge-data:/data
+      - ./logs:/app/logs
+    networks:
+      - igh-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  edge-data:
+    driver: local
+
+networks:
+  igh-network:
+    driver: bridge
