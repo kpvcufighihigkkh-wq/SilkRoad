@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/grade"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
 
@@ -47,8 +48,8 @@ func (p *BaseDataProvider) getTableData(ctx context.Context, table string) ([]ma
 	switch table {
 	case "spinning_lines":
 		return p.getSpinningLines(ctx)
-	case "projects":
-		return p.getProjects(ctx)
+	case "grades":
+		return p.getGrades(ctx)
 	default:
 		return nil, nil
 	}
@@ -92,41 +93,27 @@ func (p *BaseDataProvider) getSpinningLines(ctx context.Context) ([]map[string]i
 	return result, nil
 }
 
-// getProjects 获取项目信息
-func (p *BaseDataProvider) getProjects(ctx context.Context) ([]map[string]interface{}, error) {
-	projects, err := p.client.Project.Query().
-		Where().
+// getGrades 获取等级基础数据
+func (p *BaseDataProvider) getGrades(ctx context.Context) ([]map[string]interface{}, error) {
+	grades, err := p.client.Grade.Query().
+		Where(grade.IsActiveEQ(true)).
+		Order(ent.Asc(grade.FieldSortOrder)).
 		All(ctx)
-
 	if err != nil {
 		return nil, err
 	}
 
-	var result []map[string]interface{}
-	for _, proj := range projects {
-		data := map[string]interface{}{
-			"id":           proj.ID.String(),
-			"project_name": proj.ProjectName,
-			"status":       proj.Status,
-			"created_at":   proj.CreatedAt,
-			"updated_at":   proj.UpdatedAt,
-		}
-
-		// 可选字段
-		if proj.Description != "" {
-			data["description"] = proj.Description
-		}
-		if proj.CustomerName != "" {
-			data["customer_name"] = proj.CustomerName
-		}
-		if !proj.StartDate.IsZero() {
-			data["start_date"] = proj.StartDate
-		}
-		if !proj.EndDate.IsZero() {
-			data["end_date"] = proj.EndDate
-		}
-
-		result = append(result, data)
+	result := make([]map[string]interface{}, 0, len(grades))
+	for _, g := range grades {
+		result = append(result, map[string]interface{}{
+			"id":          g.ID.String(),
+			"grade_type":  string(g.GradeType),
+			"grade_code":  g.GradeCode,
+			"grade_name":  g.GradeName,
+			"description": g.Description,
+			"sort_order":  g.SortOrder,
+			"is_active":   g.IsActive,
+		})
 	}
 
 	return result, nil

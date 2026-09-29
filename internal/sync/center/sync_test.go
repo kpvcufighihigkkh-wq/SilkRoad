@@ -2,28 +2,35 @@ package center_test
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/sync/center"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
-	"github.com/google/uuid"
 
 	"entgo.io/ent/dialect"
-	_ "github.com/lib/pq"
+	entsql "entgo.io/ent/dialect/sql"
+	_ "modernc.org/sqlite"
 )
 
 func setupTestClient(t *testing.T) *ent.Client {
-	// 使用测试PostgreSQL数据库
-	dsn := "postgres://igh:igh@localhost:5432/igh_test?sslmode=disable"
-	client, err := ent.Open(dialect.Postgres, dsn)
+	// 使用内存SQLite，每个测试独立数据库名，避免相互污染且不触碰开发库
+	db, err := sql.Open("sqlite", "file:synccentertest?mode=memory&cache=shared&_fk=1")
 	if err != nil {
-		t.Skip("PostgreSQL not available, skipping test")
+		t.Fatalf("failed opening sqlite: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("failed enabling foreign keys: %v", err)
 	}
 
-	// 创建schema
-	ctx := context.Background()
-	if err := client.Schema.Create(ctx); err != nil {
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, db)))
+	t.Cleanup(func() { client.Close() })
+
+	if err := client.Schema.Create(context.Background()); err != nil {
 		t.Fatalf("failed creating schema: %v", err)
 	}
 
@@ -35,35 +42,6 @@ func TestUploadHandler_HandleUpload(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-
-	// 先创建依赖的Project
-	project, err := client.Project.Create().
-		SetProjectNumber("PROJ-TEST-001").
-		SetProjectName("Test Project").
-		SetProductType("FDY").
-		SetProductSpec("150D/48F").
-		SetStatus("in_progress").
-		SetPlannedQuantity(5000).
-		Save(ctx)
-
-	if err != nil {
-		t.Fatalf("failed creating test project: %v", err)
-	}
-
-	// 创建依赖的Order
-	order, err := client.Order.Create().
-		SetOrderNumber("ORD-TEST-001").
-		SetProjectID(project.ID).
-		SetCustomerName("Test Customer").
-		SetProductType("FDY").
-		SetProductSpec("150D/48F").
-		SetOrderQuantity(1000).
-		SetStatus("pending").
-		Save(ctx)
-
-	if err != nil {
-		t.Fatalf("failed creating test order: %v", err)
-	}
 
 	handler := center.NewUploadHandler(client)
 
@@ -79,7 +57,7 @@ func TestUploadHandler_HandleUpload(t *testing.T) {
 				Data: map[string]interface{}{
 					"id":               lotID.String(),
 					"lot_number":       "LOT-UPLOAD-001",
-					"order_id":         order.ID.String(),
+					"plc_lot_number":   "PLC-UPLOAD-001",
 					"product_type":     "FDY",
 					"product_spec":     "150D/48F",
 					"planned_quantity": 100,
@@ -127,8 +105,8 @@ func TestBaseDataProvider_HandlePullRequest(t *testing.T) {
 	_, err := client.SpinningLine.Create().
 		SetLineNumber("L001").
 		SetLineName("Line 1").
-		SetPositionCount(48).
-		SetStatus("active").
+		SetCapacity(48).
+		SetStatus("running").
 		Save(ctx)
 
 	if err != nil {

@@ -84,32 +84,48 @@ func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry
 	data := entry.Data
 
 	// 检查是否已存在（幂等性）
-	id, _ := uuid.Parse(getString(data, "id"))
-	exists, err := h.client.Lot.Query().Where().Count(ctx)
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	exists, err := h.client.Lot.Query().Where(lot.IDEQ(id)).Exist(ctx)
 	if err != nil {
 		return err
 	}
-	if exists > 0 {
+	if exists {
 		log.Printf("⚠️  Lot %s already exists, skipping", id)
 		return nil
 	}
 
-	orderID, _ := uuid.Parse(getString(data, "order_id"))
+	edgeID, err := uuid.Parse(getString(data, "edge_id"))
+	if err != nil {
+		edgeID = uuid.Nil
+	}
 
-	// 创建记录
-	_, err = h.client.Lot.Create().
+	builder := h.client.Lot.Create().
 		SetID(id).
 		SetLotNumber(getString(data, "lot_number")).
-		SetOrderID(orderID).
 		SetProductType(lot.ProductType(getString(data, "product_type"))).
-		SetProductSpec(getString(data, "product_spec")).
 		SetPlannedQuantity(getInt(data, "planned_quantity")).
 		SetActualQuantity(getInt(data, "actual_quantity")).
 		SetStatus(lot.Status(getString(data, "status"))).
 		SetNillableStartTime(getTimePtr(data, "start_time")).
-		SetNillableEndTime(getTimePtr(data, "end_time")).
-		Save(ctx)
+		SetNillableEndTime(getTimePtr(data, "end_time"))
 
+	if edgeID != uuid.Nil {
+		builder.SetEdgeID(edgeID)
+	}
+	if v := getString(data, "plc_lot_number"); v != "" {
+		builder.SetPlcLotNumber(v)
+	}
+	if v := getString(data, "order_code"); v != "" {
+		builder.SetOrderCode(v)
+	}
+	if v := getString(data, "product_spec"); v != "" {
+		builder.SetProductSpec(v)
+	}
+
+	_, err = builder.Save(ctx)
 	if err != nil {
 		return fmt.Errorf("create lot: %w", err)
 	}
@@ -122,15 +138,21 @@ func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry
 func (h *UploadHandler) createBobbin(ctx context.Context, entry *models.UploadEntry) error {
 	data := entry.Data
 
-	id, _ := uuid.Parse(getString(data, "id"))
-	lotID, _ := uuid.Parse(getString(data, "lot_id"))
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	lotID, err := uuid.Parse(getString(data, "lot_id"))
+	if err != nil {
+		return fmt.Errorf("invalid lot_id %q: %w", getString(data, "lot_id"), err)
+	}
 
-	// 检查是否已存在
-	exists, err := h.client.Bobbin.Query().Where().Count(ctx)
+	// 检查是否已存在（幂等性）
+	exists, err := h.client.Bobbin.Query().Where(bobbin.IDEQ(id)).Exist(ctx)
 	if err != nil {
 		return err
 	}
-	if exists > 0 {
+	if exists {
 		log.Printf("⚠️  Bobbin %s already exists, skipping", id)
 		return nil
 	}
