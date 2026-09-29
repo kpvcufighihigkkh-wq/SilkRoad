@@ -195,6 +195,48 @@ func (_c *BobbinCreate) SetNillableCompletedAt(v *time.Time) *BobbinCreate {
 	return _c
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_c *BobbinCreate) SetSyncStatus(v bobbin.SyncStatus) *BobbinCreate {
+	_c.mutation.SetSyncStatus(v)
+	return _c
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_c *BobbinCreate) SetNillableSyncStatus(v *bobbin.SyncStatus) *BobbinCreate {
+	if v != nil {
+		_c.SetSyncStatus(*v)
+	}
+	return _c
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_c *BobbinCreate) SetSyncedAt(v time.Time) *BobbinCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *BobbinCreate) SetNillableSyncedAt(v *time.Time) *BobbinCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_c *BobbinCreate) SetSyncRetryCount(v int) *BobbinCreate {
+	_c.mutation.SetSyncRetryCount(v)
+	return _c
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_c *BobbinCreate) SetNillableSyncRetryCount(v *int) *BobbinCreate {
+	if v != nil {
+		_c.SetSyncRetryCount(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *BobbinCreate) SetCreatedAt(v time.Time) *BobbinCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -300,6 +342,14 @@ func (_c *BobbinCreate) defaults() {
 		v := bobbin.DefaultLabelPrinted
 		_c.mutation.SetLabelPrinted(v)
 	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		v := bobbin.DefaultSyncStatus
+		_c.mutation.SetSyncStatus(v)
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		v := bobbin.DefaultSyncRetryCount
+		_c.mutation.SetSyncRetryCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := bobbin.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -376,6 +426,22 @@ func (_c *BobbinCreate) check() error {
 	}
 	if _, ok := _c.mutation.LabelPrinted(); !ok {
 		return &ValidationError{Name: "label_printed", err: errors.New(`ent: missing required field "Bobbin.label_printed"`)}
+	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Bobbin.sync_status"`)}
+	}
+	if v, ok := _c.mutation.SyncStatus(); ok {
+		if err := bobbin.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Bobbin.sync_status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "Bobbin.sync_retry_count"`)}
+	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := bobbin.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Bobbin.sync_retry_count": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Bobbin.created_at"`)}
@@ -464,6 +530,18 @@ func (_c *BobbinCreate) createSpec() (*Bobbin, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CompletedAt(); ok {
 		_spec.SetField(bobbin.FieldCompletedAt, field.TypeTime, value)
 		_node.CompletedAt = value
+	}
+	if value, ok := _c.mutation.SyncStatus(); ok {
+		_spec.SetField(bobbin.FieldSyncStatus, field.TypeEnum, value)
+		_node.SyncStatus = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(bobbin.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = value
+	}
+	if value, ok := _c.mutation.SyncRetryCount(); ok {
+		_spec.SetField(bobbin.FieldSyncRetryCount, field.TypeInt, value)
+		_node.SyncRetryCount = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(bobbin.FieldCreatedAt, field.TypeTime, value)

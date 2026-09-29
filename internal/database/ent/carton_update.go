@@ -180,6 +180,61 @@ func (_u *CartonUpdate) ClearPackedAt() *CartonUpdate {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *CartonUpdate) SetSyncStatus(v carton.SyncStatus) *CartonUpdate {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *CartonUpdate) SetNillableSyncStatus(v *carton.SyncStatus) *CartonUpdate {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *CartonUpdate) SetSyncedAt(v time.Time) *CartonUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *CartonUpdate) SetNillableSyncedAt(v *time.Time) *CartonUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *CartonUpdate) ClearSyncedAt() *CartonUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *CartonUpdate) SetSyncRetryCount(v int) *CartonUpdate {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *CartonUpdate) SetNillableSyncRetryCount(v *int) *CartonUpdate {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *CartonUpdate) AddSyncRetryCount(v int) *CartonUpdate {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *CartonUpdate) SetUpdatedAt(v time.Time) *CartonUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -285,6 +340,16 @@ func (_u *CartonUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Carton.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := carton.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Carton.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := carton.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Carton.sync_retry_count": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -341,6 +406,21 @@ func (_u *CartonUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.PackedAtCleared() {
 		_spec.ClearField(carton.FieldPackedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(carton.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(carton.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(carton.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(carton.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(carton.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(carton.FieldUpdatedAt, field.TypeTime, value)
@@ -560,6 +640,61 @@ func (_u *CartonUpdateOne) ClearPackedAt() *CartonUpdateOne {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *CartonUpdateOne) SetSyncStatus(v carton.SyncStatus) *CartonUpdateOne {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *CartonUpdateOne) SetNillableSyncStatus(v *carton.SyncStatus) *CartonUpdateOne {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *CartonUpdateOne) SetSyncedAt(v time.Time) *CartonUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *CartonUpdateOne) SetNillableSyncedAt(v *time.Time) *CartonUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *CartonUpdateOne) ClearSyncedAt() *CartonUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *CartonUpdateOne) SetSyncRetryCount(v int) *CartonUpdateOne {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *CartonUpdateOne) SetNillableSyncRetryCount(v *int) *CartonUpdateOne {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *CartonUpdateOne) AddSyncRetryCount(v int) *CartonUpdateOne {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *CartonUpdateOne) SetUpdatedAt(v time.Time) *CartonUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -678,6 +813,16 @@ func (_u *CartonUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Carton.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := carton.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Carton.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := carton.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Carton.sync_retry_count": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -751,6 +896,21 @@ func (_u *CartonUpdateOne) sqlSave(ctx context.Context) (_node *Carton, err erro
 	}
 	if _u.mutation.PackedAtCleared() {
 		_spec.ClearField(carton.FieldPackedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(carton.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(carton.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(carton.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(carton.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(carton.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(carton.FieldUpdatedAt, field.TypeTime, value)

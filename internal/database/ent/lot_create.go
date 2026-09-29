@@ -170,6 +170,48 @@ func (_c *LotCreate) SetNillableIsLocked(v *bool) *LotCreate {
 	return _c
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_c *LotCreate) SetSyncStatus(v lot.SyncStatus) *LotCreate {
+	_c.mutation.SetSyncStatus(v)
+	return _c
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_c *LotCreate) SetNillableSyncStatus(v *lot.SyncStatus) *LotCreate {
+	if v != nil {
+		_c.SetSyncStatus(*v)
+	}
+	return _c
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_c *LotCreate) SetSyncedAt(v time.Time) *LotCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *LotCreate) SetNillableSyncedAt(v *time.Time) *LotCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_c *LotCreate) SetSyncRetryCount(v int) *LotCreate {
+	_c.mutation.SetSyncRetryCount(v)
+	return _c
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_c *LotCreate) SetNillableSyncRetryCount(v *int) *LotCreate {
+	if v != nil {
+		_c.SetSyncRetryCount(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *LotCreate) SetCreatedAt(v time.Time) *LotCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -324,6 +366,14 @@ func (_c *LotCreate) defaults() {
 		v := lot.DefaultIsLocked
 		_c.mutation.SetIsLocked(v)
 	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		v := lot.DefaultSyncStatus
+		_c.mutation.SetSyncStatus(v)
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		v := lot.DefaultSyncRetryCount
+		_c.mutation.SetSyncRetryCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := lot.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -397,6 +447,22 @@ func (_c *LotCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsLocked(); !ok {
 		return &ValidationError{Name: "is_locked", err: errors.New(`ent: missing required field "Lot.is_locked"`)}
+	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Lot.sync_status"`)}
+	}
+	if v, ok := _c.mutation.SyncStatus(); ok {
+		if err := lot.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Lot.sync_status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "Lot.sync_retry_count"`)}
+	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := lot.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Lot.sync_retry_count": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Lot.created_at"`)}
@@ -482,6 +548,18 @@ func (_c *LotCreate) createSpec() (*Lot, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.IsLocked(); ok {
 		_spec.SetField(lot.FieldIsLocked, field.TypeBool, value)
 		_node.IsLocked = value
+	}
+	if value, ok := _c.mutation.SyncStatus(); ok {
+		_spec.SetField(lot.FieldSyncStatus, field.TypeEnum, value)
+		_node.SyncStatus = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(lot.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = value
+	}
+	if value, ok := _c.mutation.SyncRetryCount(); ok {
+		_spec.SetField(lot.FieldSyncRetryCount, field.TypeInt, value)
+		_node.SyncRetryCount = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(lot.FieldCreatedAt, field.TypeTime, value)

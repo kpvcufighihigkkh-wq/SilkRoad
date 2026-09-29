@@ -101,6 +101,21 @@ func (Bobbin) Fields() []ent.Field {
 			Optional().
 			Comment("落筒时间"),
 
+		// 同步元数据（Edge → Center）
+		field.Enum("sync_status").
+			Values("pending", "synced", "failed").
+			Default("pending").
+			Comment("同步状态"),
+
+		field.Time("synced_at").
+			Optional().
+			Comment("同步时间"),
+
+		field.Int("sync_retry_count").
+			Default(0).
+			NonNegative().
+			Comment("同步重试次数"),
+
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable().
@@ -172,6 +187,9 @@ func (Bobbin) Indexes() []ent.Index {
 
 		// 复合索引：批次+位号（快速查询某批次某位号的丝锭）
 		index.Fields("lot_id", "spinning_position"),
+
+		// 同步状态索引（Edge端扫描待同步记录）
+		index.Fields("sync_status"),
 
 		// 复合索引：批次+状态
 		index.Fields("lot_id", "status"),

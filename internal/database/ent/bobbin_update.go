@@ -326,6 +326,61 @@ func (_u *BobbinUpdate) ClearCompletedAt() *BobbinUpdate {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *BobbinUpdate) SetSyncStatus(v bobbin.SyncStatus) *BobbinUpdate {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *BobbinUpdate) SetNillableSyncStatus(v *bobbin.SyncStatus) *BobbinUpdate {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *BobbinUpdate) SetSyncedAt(v time.Time) *BobbinUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *BobbinUpdate) SetNillableSyncedAt(v *time.Time) *BobbinUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *BobbinUpdate) ClearSyncedAt() *BobbinUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *BobbinUpdate) SetSyncRetryCount(v int) *BobbinUpdate {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *BobbinUpdate) SetNillableSyncRetryCount(v *int) *BobbinUpdate {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *BobbinUpdate) AddSyncRetryCount(v int) *BobbinUpdate {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *BobbinUpdate) SetUpdatedAt(v time.Time) *BobbinUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -459,6 +514,16 @@ func (_u *BobbinUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Bobbin.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := bobbin.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Bobbin.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := bobbin.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Bobbin.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Bobbin.lot"`)
 	}
@@ -539,6 +604,21 @@ func (_u *BobbinUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CompletedAtCleared() {
 		_spec.ClearField(bobbin.FieldCompletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(bobbin.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(bobbin.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(bobbin.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(bobbin.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(bobbin.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(bobbin.FieldUpdatedAt, field.TypeTime, value)
@@ -972,6 +1052,61 @@ func (_u *BobbinUpdateOne) ClearCompletedAt() *BobbinUpdateOne {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *BobbinUpdateOne) SetSyncStatus(v bobbin.SyncStatus) *BobbinUpdateOne {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *BobbinUpdateOne) SetNillableSyncStatus(v *bobbin.SyncStatus) *BobbinUpdateOne {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *BobbinUpdateOne) SetSyncedAt(v time.Time) *BobbinUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *BobbinUpdateOne) SetNillableSyncedAt(v *time.Time) *BobbinUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *BobbinUpdateOne) ClearSyncedAt() *BobbinUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *BobbinUpdateOne) SetSyncRetryCount(v int) *BobbinUpdateOne {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *BobbinUpdateOne) SetNillableSyncRetryCount(v *int) *BobbinUpdateOne {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *BobbinUpdateOne) AddSyncRetryCount(v int) *BobbinUpdateOne {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *BobbinUpdateOne) SetUpdatedAt(v time.Time) *BobbinUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1118,6 +1253,16 @@ func (_u *BobbinUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Bobbin.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := bobbin.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Bobbin.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := bobbin.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Bobbin.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Bobbin.lot"`)
 	}
@@ -1215,6 +1360,21 @@ func (_u *BobbinUpdateOne) sqlSave(ctx context.Context) (_node *Bobbin, err erro
 	}
 	if _u.mutation.CompletedAtCleared() {
 		_spec.ClearField(bobbin.FieldCompletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(bobbin.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(bobbin.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(bobbin.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(bobbin.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(bobbin.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(bobbin.FieldUpdatedAt, field.TypeTime, value)

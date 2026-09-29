@@ -38,6 +38,12 @@ const (
 	FieldDoffingTime = "doffing_time"
 	// FieldConfirmedAt holds the string denoting the confirmed_at field in the database.
 	FieldConfirmedAt = "confirmed_at"
+	// FieldSyncStatus holds the string denoting the sync_status field in the database.
+	FieldSyncStatus = "sync_status"
+	// FieldSyncedAt holds the string denoting the synced_at field in the database.
+	FieldSyncedAt = "synced_at"
+	// FieldSyncRetryCount holds the string denoting the sync_retry_count field in the database.
+	FieldSyncRetryCount = "sync_retry_count"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -69,6 +75,9 @@ var Columns = []string{
 	FieldCancelReason,
 	FieldDoffingTime,
 	FieldConfirmedAt,
+	FieldSyncStatus,
+	FieldSyncedAt,
+	FieldSyncRetryCount,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -94,6 +103,10 @@ var (
 	GradeValidator func(string) error
 	// DefaultDoffingTime holds the default value on creation for the "doffing_time" field.
 	DefaultDoffingTime func() time.Time
+	// DefaultSyncRetryCount holds the default value on creation for the "sync_retry_count" field.
+	DefaultSyncRetryCount int
+	// SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
+	SyncRetryCountValidator func(int) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -128,6 +141,33 @@ func StatusValidator(s Status) error {
 		return nil
 	default:
 		return fmt.Errorf("doffing: invalid enum value for status field: %q", s)
+	}
+}
+
+// SyncStatus defines the type for the "sync_status" enum field.
+type SyncStatus string
+
+// SyncStatusPending is the default value of the SyncStatus enum.
+const DefaultSyncStatus = SyncStatusPending
+
+// SyncStatus values.
+const (
+	SyncStatusPending SyncStatus = "pending"
+	SyncStatusSynced  SyncStatus = "synced"
+	SyncStatusFailed  SyncStatus = "failed"
+)
+
+func (ss SyncStatus) String() string {
+	return string(ss)
+}
+
+// SyncStatusValidator is a validator for the "sync_status" field enum values. It is called by the builders before save.
+func SyncStatusValidator(ss SyncStatus) error {
+	switch ss {
+	case SyncStatusPending, SyncStatusSynced, SyncStatusFailed:
+		return nil
+	default:
+		return fmt.Errorf("doffing: invalid enum value for sync_status field: %q", ss)
 	}
 }
 
@@ -192,6 +232,21 @@ func ByDoffingTime(opts ...sql.OrderTermOption) OrderOption {
 // ByConfirmedAt orders the results by the confirmed_at field.
 func ByConfirmedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldConfirmedAt, opts...).ToFunc()
+}
+
+// BySyncStatus orders the results by the sync_status field.
+func BySyncStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSyncStatus, opts...).ToFunc()
+}
+
+// BySyncedAt orders the results by the synced_at field.
+func BySyncedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSyncedAt, opts...).ToFunc()
+}
+
+// BySyncRetryCount orders the results by the sync_retry_count field.
+func BySyncRetryCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSyncRetryCount, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

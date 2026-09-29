@@ -89,6 +89,21 @@ func (Lot) Fields() []ent.Field {
 			Comment("是否锁定（锁定后不可修改）"),
 
 		// 元数据
+		// 同步元数据（Edge → Center）
+		field.Enum("sync_status").
+			Values("pending", "synced", "failed").
+			Default("pending").
+			Comment("同步状态"),
+
+		field.Time("synced_at").
+			Optional().
+			Comment("同步时间"),
+
+		field.Int("sync_retry_count").
+			Default(0).
+			NonNegative().
+			Comment("同步重试次数"),
+
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable().
@@ -139,6 +154,9 @@ func (Lot) Indexes() []ent.Index {
 				// 只索引非completed状态（PostgreSQL部分索引）
 				// WHERE status != 'completed'
 			),
+
+		// 同步状态索引（Edge端扫描待同步记录）
+		index.Fields("sync_status"),
 
 		// 创建时间倒序索引
 		index.Fields("created_at"),

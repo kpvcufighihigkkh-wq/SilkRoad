@@ -58,6 +58,21 @@ func (Barrel) Fields() []ent.Field {
 			Optional().
 			Comment("装满时间"),
 
+		// 同步元数据（Edge → Center）
+		field.Enum("sync_status").
+			Values("pending", "synced", "failed").
+			Default("pending").
+			Comment("同步状态"),
+
+		field.Time("synced_at").
+			Optional().
+			Comment("同步时间"),
+
+		field.Int("sync_retry_count").
+			Default(0).
+			NonNegative().
+			Comment("同步重试次数"),
+
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable().
@@ -93,6 +108,9 @@ func (Barrel) Indexes() []ent.Index {
 
 		// 状态索引
 		index.Fields("status"),
+
+		// 同步状态索引（Edge端扫描待同步记录）
+		index.Fields("sync_status"),
 
 		// 创建时间倒序索引
 		index.Fields("created_at"),

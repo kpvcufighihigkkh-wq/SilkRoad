@@ -51,27 +51,31 @@ const (
 // BarrelMutation represents an operation that mutates the Barrel nodes in the graph.
 type BarrelMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *uuid.UUID
-	barrel_number    *string
-	capacity         *int
-	addcapacity      *int
-	current_count    *int
-	addcurrent_count *int
-	status           *barrel.Status
-	filled_at        *time.Time
-	created_at       *time.Time
-	updated_at       *time.Time
-	clearedFields    map[string]struct{}
-	lot              *uuid.UUID
-	clearedlot       bool
-	bobbins          map[uuid.UUID]struct{}
-	removedbobbins   map[uuid.UUID]struct{}
-	clearedbobbins   bool
-	done             bool
-	oldValue         func(context.Context) (*Barrel, error)
-	predicates       []predicate.Barrel
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	barrel_number       *string
+	capacity            *int
+	addcapacity         *int
+	current_count       *int
+	addcurrent_count    *int
+	status              *barrel.Status
+	filled_at           *time.Time
+	sync_status         *barrel.SyncStatus
+	synced_at           *time.Time
+	sync_retry_count    *int
+	addsync_retry_count *int
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	lot                 *uuid.UUID
+	clearedlot          bool
+	bobbins             map[uuid.UUID]struct{}
+	removedbobbins      map[uuid.UUID]struct{}
+	clearedbobbins      bool
+	done                bool
+	oldValue            func(context.Context) (*Barrel, error)
+	predicates          []predicate.Barrel
 }
 
 var _ ent.Mutation = (*BarrelMutation)(nil)
@@ -447,6 +451,147 @@ func (m *BarrelMutation) ResetFilledAt() {
 	delete(m.clearedFields, barrel.FieldFilledAt)
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *BarrelMutation) SetSyncStatus(bs barrel.SyncStatus) {
+	m.sync_status = &bs
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *BarrelMutation) SyncStatus() (r barrel.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Barrel entity.
+// If the Barrel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BarrelMutation) OldSyncStatus(ctx context.Context) (v barrel.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *BarrelMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *BarrelMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *BarrelMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Barrel entity.
+// If the Barrel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BarrelMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *BarrelMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[barrel.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *BarrelMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[barrel.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *BarrelMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, barrel.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *BarrelMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *BarrelMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Barrel entity.
+// If the Barrel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BarrelMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *BarrelMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *BarrelMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *BarrelMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *BarrelMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -634,7 +779,7 @@ func (m *BarrelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BarrelMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 11)
 	if m.barrel_number != nil {
 		fields = append(fields, barrel.FieldBarrelNumber)
 	}
@@ -652,6 +797,15 @@ func (m *BarrelMutation) Fields() []string {
 	}
 	if m.filled_at != nil {
 		fields = append(fields, barrel.FieldFilledAt)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, barrel.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, barrel.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, barrel.FieldSyncRetryCount)
 	}
 	if m.created_at != nil {
 		fields = append(fields, barrel.FieldCreatedAt)
@@ -679,6 +833,12 @@ func (m *BarrelMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case barrel.FieldFilledAt:
 		return m.FilledAt()
+	case barrel.FieldSyncStatus:
+		return m.SyncStatus()
+	case barrel.FieldSyncedAt:
+		return m.SyncedAt()
+	case barrel.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case barrel.FieldCreatedAt:
 		return m.CreatedAt()
 	case barrel.FieldUpdatedAt:
@@ -704,6 +864,12 @@ func (m *BarrelMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldStatus(ctx)
 	case barrel.FieldFilledAt:
 		return m.OldFilledAt(ctx)
+	case barrel.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case barrel.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case barrel.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case barrel.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case barrel.FieldUpdatedAt:
@@ -759,6 +925,27 @@ func (m *BarrelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetFilledAt(v)
 		return nil
+	case barrel.FieldSyncStatus:
+		v, ok := value.(barrel.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case barrel.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case barrel.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case barrel.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -787,6 +974,9 @@ func (m *BarrelMutation) AddedFields() []string {
 	if m.addcurrent_count != nil {
 		fields = append(fields, barrel.FieldCurrentCount)
 	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, barrel.FieldSyncRetryCount)
+	}
 	return fields
 }
 
@@ -799,6 +989,8 @@ func (m *BarrelMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedCapacity()
 	case barrel.FieldCurrentCount:
 		return m.AddedCurrentCount()
+	case barrel.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
 	}
 	return nil, false
 }
@@ -822,6 +1014,13 @@ func (m *BarrelMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddCurrentCount(v)
 		return nil
+	case barrel.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Barrel numeric field %s", name)
 }
@@ -832,6 +1031,9 @@ func (m *BarrelMutation) ClearedFields() []string {
 	var fields []string
 	if m.FieldCleared(barrel.FieldFilledAt) {
 		fields = append(fields, barrel.FieldFilledAt)
+	}
+	if m.FieldCleared(barrel.FieldSyncedAt) {
+		fields = append(fields, barrel.FieldSyncedAt)
 	}
 	return fields
 }
@@ -849,6 +1051,9 @@ func (m *BarrelMutation) ClearField(name string) error {
 	switch name {
 	case barrel.FieldFilledAt:
 		m.ClearFilledAt()
+		return nil
+	case barrel.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Barrel nullable field %s", name)
@@ -875,6 +1080,15 @@ func (m *BarrelMutation) ResetField(name string) error {
 		return nil
 	case barrel.FieldFilledAt:
 		m.ResetFilledAt()
+		return nil
+	case barrel.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case barrel.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case barrel.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case barrel.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -1010,6 +1224,10 @@ type BobbinMutation struct {
 	label_printed        *bool
 	printed_at           *time.Time
 	completed_at         *time.Time
+	sync_status          *bobbin.SyncStatus
+	synced_at            *time.Time
+	sync_retry_count     *int
+	addsync_retry_count  *int
 	created_at           *time.Time
 	updated_at           *time.Time
 	clearedFields        map[string]struct{}
@@ -1876,6 +2094,147 @@ func (m *BobbinMutation) ResetCompletedAt() {
 	delete(m.clearedFields, bobbin.FieldCompletedAt)
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *BobbinMutation) SetSyncStatus(bs bobbin.SyncStatus) {
+	m.sync_status = &bs
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *BobbinMutation) SyncStatus() (r bobbin.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Bobbin entity.
+// If the Bobbin object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinMutation) OldSyncStatus(ctx context.Context) (v bobbin.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *BobbinMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *BobbinMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *BobbinMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Bobbin entity.
+// If the Bobbin object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *BobbinMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[bobbin.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *BobbinMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[bobbin.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *BobbinMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, bobbin.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *BobbinMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *BobbinMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Bobbin entity.
+// If the Bobbin object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *BobbinMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *BobbinMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *BobbinMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *BobbinMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -2090,7 +2449,7 @@ func (m *BobbinMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BobbinMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 20)
 	if m.bobbin_number != nil {
 		fields = append(fields, bobbin.FieldBobbinNumber)
 	}
@@ -2136,6 +2495,15 @@ func (m *BobbinMutation) Fields() []string {
 	if m.completed_at != nil {
 		fields = append(fields, bobbin.FieldCompletedAt)
 	}
+	if m.sync_status != nil {
+		fields = append(fields, bobbin.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, bobbin.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, bobbin.FieldSyncRetryCount)
+	}
 	if m.created_at != nil {
 		fields = append(fields, bobbin.FieldCreatedAt)
 	}
@@ -2180,6 +2548,12 @@ func (m *BobbinMutation) Field(name string) (ent.Value, bool) {
 		return m.PrintedAt()
 	case bobbin.FieldCompletedAt:
 		return m.CompletedAt()
+	case bobbin.FieldSyncStatus:
+		return m.SyncStatus()
+	case bobbin.FieldSyncedAt:
+		return m.SyncedAt()
+	case bobbin.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case bobbin.FieldCreatedAt:
 		return m.CreatedAt()
 	case bobbin.FieldUpdatedAt:
@@ -2223,6 +2597,12 @@ func (m *BobbinMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldPrintedAt(ctx)
 	case bobbin.FieldCompletedAt:
 		return m.OldCompletedAt(ctx)
+	case bobbin.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case bobbin.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case bobbin.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case bobbin.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case bobbin.FieldUpdatedAt:
@@ -2341,6 +2721,27 @@ func (m *BobbinMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCompletedAt(v)
 		return nil
+	case bobbin.FieldSyncStatus:
+		v, ok := value.(bobbin.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case bobbin.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case bobbin.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case bobbin.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -2378,6 +2779,9 @@ func (m *BobbinMutation) AddedFields() []string {
 	if m.addtare_weight != nil {
 		fields = append(fields, bobbin.FieldTareWeight)
 	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, bobbin.FieldSyncRetryCount)
+	}
 	return fields
 }
 
@@ -2396,6 +2800,8 @@ func (m *BobbinMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedNetWeight()
 	case bobbin.FieldTareWeight:
 		return m.AddedTareWeight()
+	case bobbin.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
 	}
 	return nil, false
 }
@@ -2440,6 +2846,13 @@ func (m *BobbinMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddTareWeight(v)
 		return nil
+	case bobbin.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Bobbin numeric field %s", name)
 }
@@ -2471,6 +2884,9 @@ func (m *BobbinMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(bobbin.FieldCompletedAt) {
 		fields = append(fields, bobbin.FieldCompletedAt)
+	}
+	if m.FieldCleared(bobbin.FieldSyncedAt) {
+		fields = append(fields, bobbin.FieldSyncedAt)
 	}
 	return fields
 }
@@ -2509,6 +2925,9 @@ func (m *BobbinMutation) ClearField(name string) error {
 		return nil
 	case bobbin.FieldCompletedAt:
 		m.ClearCompletedAt()
+		return nil
+	case bobbin.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Bobbin nullable field %s", name)
@@ -2562,6 +2981,15 @@ func (m *BobbinMutation) ResetField(name string) error {
 		return nil
 	case bobbin.FieldCompletedAt:
 		m.ResetCompletedAt()
+		return nil
+	case bobbin.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case bobbin.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case bobbin.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case bobbin.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -2704,28 +3132,32 @@ func (m *BobbinMutation) ResetEdge(name string) error {
 // CartonMutation represents an operation that mutates the Carton nodes in the graph.
 type CartonMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *uuid.UUID
-	carton_number   *string
-	lot_id          *uuid.UUID
-	bobbin_count    *int
-	addbobbin_count *int
-	total_weight    *float64
-	addtotal_weight *float64
-	status          *carton.Status
-	label_printed   *bool
-	printed_at      *time.Time
-	packed_at       *time.Time
-	created_at      *time.Time
-	updated_at      *time.Time
-	clearedFields   map[string]struct{}
-	bobbins         map[uuid.UUID]struct{}
-	removedbobbins  map[uuid.UUID]struct{}
-	clearedbobbins  bool
-	done            bool
-	oldValue        func(context.Context) (*Carton, error)
-	predicates      []predicate.Carton
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	carton_number       *string
+	lot_id              *uuid.UUID
+	bobbin_count        *int
+	addbobbin_count     *int
+	total_weight        *float64
+	addtotal_weight     *float64
+	status              *carton.Status
+	label_printed       *bool
+	printed_at          *time.Time
+	packed_at           *time.Time
+	sync_status         *carton.SyncStatus
+	synced_at           *time.Time
+	sync_retry_count    *int
+	addsync_retry_count *int
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	bobbins             map[uuid.UUID]struct{}
+	removedbobbins      map[uuid.UUID]struct{}
+	clearedbobbins      bool
+	done                bool
+	oldValue            func(context.Context) (*Carton, error)
+	predicates          []predicate.Carton
 }
 
 var _ ent.Mutation = (*CartonMutation)(nil)
@@ -3213,6 +3645,147 @@ func (m *CartonMutation) ResetPackedAt() {
 	delete(m.clearedFields, carton.FieldPackedAt)
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *CartonMutation) SetSyncStatus(cs carton.SyncStatus) {
+	m.sync_status = &cs
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *CartonMutation) SyncStatus() (r carton.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Carton entity.
+// If the Carton object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CartonMutation) OldSyncStatus(ctx context.Context) (v carton.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *CartonMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *CartonMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *CartonMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Carton entity.
+// If the Carton object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CartonMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *CartonMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[carton.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *CartonMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[carton.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *CartonMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, carton.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *CartonMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *CartonMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Carton entity.
+// If the Carton object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CartonMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *CartonMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *CartonMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *CartonMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *CartonMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -3373,7 +3946,7 @@ func (m *CartonMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CartonMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 13)
 	if m.carton_number != nil {
 		fields = append(fields, carton.FieldCartonNumber)
 	}
@@ -3397,6 +3970,15 @@ func (m *CartonMutation) Fields() []string {
 	}
 	if m.packed_at != nil {
 		fields = append(fields, carton.FieldPackedAt)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, carton.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, carton.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, carton.FieldSyncRetryCount)
 	}
 	if m.created_at != nil {
 		fields = append(fields, carton.FieldCreatedAt)
@@ -3428,6 +4010,12 @@ func (m *CartonMutation) Field(name string) (ent.Value, bool) {
 		return m.PrintedAt()
 	case carton.FieldPackedAt:
 		return m.PackedAt()
+	case carton.FieldSyncStatus:
+		return m.SyncStatus()
+	case carton.FieldSyncedAt:
+		return m.SyncedAt()
+	case carton.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case carton.FieldCreatedAt:
 		return m.CreatedAt()
 	case carton.FieldUpdatedAt:
@@ -3457,6 +4045,12 @@ func (m *CartonMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldPrintedAt(ctx)
 	case carton.FieldPackedAt:
 		return m.OldPackedAt(ctx)
+	case carton.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case carton.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case carton.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case carton.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case carton.FieldUpdatedAt:
@@ -3526,6 +4120,27 @@ func (m *CartonMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPackedAt(v)
 		return nil
+	case carton.FieldSyncStatus:
+		v, ok := value.(carton.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case carton.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case carton.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case carton.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -3554,6 +4169,9 @@ func (m *CartonMutation) AddedFields() []string {
 	if m.addtotal_weight != nil {
 		fields = append(fields, carton.FieldTotalWeight)
 	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, carton.FieldSyncRetryCount)
+	}
 	return fields
 }
 
@@ -3566,6 +4184,8 @@ func (m *CartonMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedBobbinCount()
 	case carton.FieldTotalWeight:
 		return m.AddedTotalWeight()
+	case carton.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
 	}
 	return nil, false
 }
@@ -3589,6 +4209,13 @@ func (m *CartonMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddTotalWeight(v)
 		return nil
+	case carton.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Carton numeric field %s", name)
 }
@@ -3608,6 +4235,9 @@ func (m *CartonMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(carton.FieldPackedAt) {
 		fields = append(fields, carton.FieldPackedAt)
+	}
+	if m.FieldCleared(carton.FieldSyncedAt) {
+		fields = append(fields, carton.FieldSyncedAt)
 	}
 	return fields
 }
@@ -3634,6 +4264,9 @@ func (m *CartonMutation) ClearField(name string) error {
 		return nil
 	case carton.FieldPackedAt:
 		m.ClearPackedAt()
+		return nil
+	case carton.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Carton nullable field %s", name)
@@ -3666,6 +4299,15 @@ func (m *CartonMutation) ResetField(name string) error {
 		return nil
 	case carton.FieldPackedAt:
 		m.ResetPackedAt()
+		return nil
+	case carton.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case carton.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case carton.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case carton.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -3779,6 +4421,10 @@ type DoffingMutation struct {
 	cancel_reason        *string
 	doffing_time         *time.Time
 	confirmed_at         *time.Time
+	sync_status          *doffing.SyncStatus
+	synced_at            *time.Time
+	sync_retry_count     *int
+	addsync_retry_count  *int
 	created_at           *time.Time
 	updated_at           *time.Time
 	clearedFields        map[string]struct{}
@@ -4408,6 +5054,147 @@ func (m *DoffingMutation) ResetConfirmedAt() {
 	delete(m.clearedFields, doffing.FieldConfirmedAt)
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *DoffingMutation) SetSyncStatus(ds doffing.SyncStatus) {
+	m.sync_status = &ds
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *DoffingMutation) SyncStatus() (r doffing.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldSyncStatus(ctx context.Context) (v doffing.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *DoffingMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *DoffingMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *DoffingMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *DoffingMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[doffing.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *DoffingMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[doffing.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *DoffingMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, doffing.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *DoffingMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *DoffingMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Doffing entity.
+// If the Doffing object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DoffingMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *DoffingMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *DoffingMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *DoffingMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *DoffingMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -4541,7 +5328,7 @@ func (m *DoffingMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DoffingMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 16)
 	if m.spinning_line_id != nil {
 		fields = append(fields, doffing.FieldSpinningLineID)
 	}
@@ -4574,6 +5361,15 @@ func (m *DoffingMutation) Fields() []string {
 	}
 	if m.confirmed_at != nil {
 		fields = append(fields, doffing.FieldConfirmedAt)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, doffing.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, doffing.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, doffing.FieldSyncRetryCount)
 	}
 	if m.created_at != nil {
 		fields = append(fields, doffing.FieldCreatedAt)
@@ -4611,6 +5407,12 @@ func (m *DoffingMutation) Field(name string) (ent.Value, bool) {
 		return m.DoffingTime()
 	case doffing.FieldConfirmedAt:
 		return m.ConfirmedAt()
+	case doffing.FieldSyncStatus:
+		return m.SyncStatus()
+	case doffing.FieldSyncedAt:
+		return m.SyncedAt()
+	case doffing.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case doffing.FieldCreatedAt:
 		return m.CreatedAt()
 	case doffing.FieldUpdatedAt:
@@ -4646,6 +5448,12 @@ func (m *DoffingMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldDoffingTime(ctx)
 	case doffing.FieldConfirmedAt:
 		return m.OldConfirmedAt(ctx)
+	case doffing.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case doffing.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case doffing.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case doffing.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case doffing.FieldUpdatedAt:
@@ -4736,6 +5544,27 @@ func (m *DoffingMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetConfirmedAt(v)
 		return nil
+	case doffing.FieldSyncStatus:
+		v, ok := value.(doffing.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case doffing.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case doffing.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case doffing.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -4764,6 +5593,9 @@ func (m *DoffingMutation) AddedFields() []string {
 	if m.addactual_weight != nil {
 		fields = append(fields, doffing.FieldActualWeight)
 	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, doffing.FieldSyncRetryCount)
+	}
 	return fields
 }
 
@@ -4776,6 +5608,8 @@ func (m *DoffingMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedSpinningPosition()
 	case doffing.FieldActualWeight:
 		return m.AddedActualWeight()
+	case doffing.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
 	}
 	return nil, false
 }
@@ -4798,6 +5632,13 @@ func (m *DoffingMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddActualWeight(v)
+		return nil
+	case doffing.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Doffing numeric field %s", name)
@@ -4824,6 +5665,9 @@ func (m *DoffingMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(doffing.FieldConfirmedAt) {
 		fields = append(fields, doffing.FieldConfirmedAt)
+	}
+	if m.FieldCleared(doffing.FieldSyncedAt) {
+		fields = append(fields, doffing.FieldSyncedAt)
 	}
 	return fields
 }
@@ -4856,6 +5700,9 @@ func (m *DoffingMutation) ClearField(name string) error {
 		return nil
 	case doffing.FieldConfirmedAt:
 		m.ClearConfirmedAt()
+		return nil
+	case doffing.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Doffing nullable field %s", name)
@@ -4897,6 +5744,15 @@ func (m *DoffingMutation) ResetField(name string) error {
 		return nil
 	case doffing.FieldConfirmedAt:
 		m.ResetConfirmedAt()
+		return nil
+	case doffing.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case doffing.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case doffing.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case doffing.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -6861,6 +7717,10 @@ type LotMutation struct {
 	start_time          *time.Time
 	end_time            *time.Time
 	is_locked           *bool
+	sync_status         *lot.SyncStatus
+	synced_at           *time.Time
+	sync_retry_count    *int
+	addsync_retry_count *int
 	created_at          *time.Time
 	updated_at          *time.Time
 	clearedFields       map[string]struct{}
@@ -7537,6 +8397,147 @@ func (m *LotMutation) ResetIsLocked() {
 	m.is_locked = nil
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *LotMutation) SetSyncStatus(ls lot.SyncStatus) {
+	m.sync_status = &ls
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *LotMutation) SyncStatus() (r lot.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Lot entity.
+// If the Lot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LotMutation) OldSyncStatus(ctx context.Context) (v lot.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *LotMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *LotMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *LotMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Lot entity.
+// If the Lot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LotMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *LotMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[lot.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *LotMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[lot.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *LotMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, lot.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *LotMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *LotMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Lot entity.
+// If the Lot object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LotMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *LotMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *LotMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *LotMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *LotMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -7886,7 +8887,7 @@ func (m *LotMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *LotMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 17)
 	if m.lot_number != nil {
 		fields = append(fields, lot.FieldLotNumber)
 	}
@@ -7922,6 +8923,15 @@ func (m *LotMutation) Fields() []string {
 	}
 	if m.is_locked != nil {
 		fields = append(fields, lot.FieldIsLocked)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, lot.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, lot.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, lot.FieldSyncRetryCount)
 	}
 	if m.created_at != nil {
 		fields = append(fields, lot.FieldCreatedAt)
@@ -7961,6 +8971,12 @@ func (m *LotMutation) Field(name string) (ent.Value, bool) {
 		return m.EndTime()
 	case lot.FieldIsLocked:
 		return m.IsLocked()
+	case lot.FieldSyncStatus:
+		return m.SyncStatus()
+	case lot.FieldSyncedAt:
+		return m.SyncedAt()
+	case lot.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case lot.FieldCreatedAt:
 		return m.CreatedAt()
 	case lot.FieldUpdatedAt:
@@ -7998,6 +9014,12 @@ func (m *LotMutation) OldField(ctx context.Context, name string) (ent.Value, err
 		return m.OldEndTime(ctx)
 	case lot.FieldIsLocked:
 		return m.OldIsLocked(ctx)
+	case lot.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case lot.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case lot.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case lot.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case lot.FieldUpdatedAt:
@@ -8095,6 +9117,27 @@ func (m *LotMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetIsLocked(v)
 		return nil
+	case lot.FieldSyncStatus:
+		v, ok := value.(lot.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case lot.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case lot.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case lot.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -8123,6 +9166,9 @@ func (m *LotMutation) AddedFields() []string {
 	if m.addactual_quantity != nil {
 		fields = append(fields, lot.FieldActualQuantity)
 	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, lot.FieldSyncRetryCount)
+	}
 	return fields
 }
 
@@ -8135,6 +9181,8 @@ func (m *LotMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedPlannedQuantity()
 	case lot.FieldActualQuantity:
 		return m.AddedActualQuantity()
+	case lot.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
 	}
 	return nil, false
 }
@@ -8157,6 +9205,13 @@ func (m *LotMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddActualQuantity(v)
+		return nil
+	case lot.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Lot numeric field %s", name)
@@ -8183,6 +9238,9 @@ func (m *LotMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(lot.FieldEndTime) {
 		fields = append(fields, lot.FieldEndTime)
+	}
+	if m.FieldCleared(lot.FieldSyncedAt) {
+		fields = append(fields, lot.FieldSyncedAt)
 	}
 	return fields
 }
@@ -8215,6 +9273,9 @@ func (m *LotMutation) ClearField(name string) error {
 		return nil
 	case lot.FieldEndTime:
 		m.ClearEndTime()
+		return nil
+	case lot.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Lot nullable field %s", name)
@@ -8259,6 +9320,15 @@ func (m *LotMutation) ResetField(name string) error {
 		return nil
 	case lot.FieldIsLocked:
 		m.ResetIsLocked()
+		return nil
+	case lot.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case lot.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case lot.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case lot.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -8453,21 +9523,25 @@ func (m *LotMutation) ResetEdge(name string) error {
 // ModuleMutation represents an operation that mutates the Module nodes in the graph.
 type ModuleMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *uuid.UUID
-	module_number    *string
-	barrel1_id       *uuid.UUID
-	barrel2_id       *uuid.UUID
-	status           *module.Status
-	rfid             *string
-	current_location *string
-	created_at       *time.Time
-	updated_at       *time.Time
-	clearedFields    map[string]struct{}
-	done             bool
-	oldValue         func(context.Context) (*Module, error)
-	predicates       []predicate.Module
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	module_number       *string
+	barrel1_id          *uuid.UUID
+	barrel2_id          *uuid.UUID
+	status              *module.Status
+	rfid                *string
+	current_location    *string
+	sync_status         *module.SyncStatus
+	synced_at           *time.Time
+	sync_retry_count    *int
+	addsync_retry_count *int
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*Module, error)
+	predicates          []predicate.Module
 }
 
 var _ ent.Mutation = (*ModuleMutation)(nil)
@@ -8842,6 +9916,147 @@ func (m *ModuleMutation) ResetCurrentLocation() {
 	delete(m.clearedFields, module.FieldCurrentLocation)
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *ModuleMutation) SetSyncStatus(ms module.SyncStatus) {
+	m.sync_status = &ms
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *ModuleMutation) SyncStatus() (r module.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Module entity.
+// If the Module object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleMutation) OldSyncStatus(ctx context.Context) (v module.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *ModuleMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *ModuleMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *ModuleMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Module entity.
+// If the Module object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *ModuleMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[module.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *ModuleMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[module.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *ModuleMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, module.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *ModuleMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *ModuleMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Module entity.
+// If the Module object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *ModuleMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *ModuleMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *ModuleMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ModuleMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -8948,7 +10163,7 @@ func (m *ModuleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ModuleMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 11)
 	if m.module_number != nil {
 		fields = append(fields, module.FieldModuleNumber)
 	}
@@ -8966,6 +10181,15 @@ func (m *ModuleMutation) Fields() []string {
 	}
 	if m.current_location != nil {
 		fields = append(fields, module.FieldCurrentLocation)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, module.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, module.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, module.FieldSyncRetryCount)
 	}
 	if m.created_at != nil {
 		fields = append(fields, module.FieldCreatedAt)
@@ -8993,6 +10217,12 @@ func (m *ModuleMutation) Field(name string) (ent.Value, bool) {
 		return m.Rfid()
 	case module.FieldCurrentLocation:
 		return m.CurrentLocation()
+	case module.FieldSyncStatus:
+		return m.SyncStatus()
+	case module.FieldSyncedAt:
+		return m.SyncedAt()
+	case module.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case module.FieldCreatedAt:
 		return m.CreatedAt()
 	case module.FieldUpdatedAt:
@@ -9018,6 +10248,12 @@ func (m *ModuleMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldRfid(ctx)
 	case module.FieldCurrentLocation:
 		return m.OldCurrentLocation(ctx)
+	case module.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case module.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case module.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case module.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case module.FieldUpdatedAt:
@@ -9073,6 +10309,27 @@ func (m *ModuleMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCurrentLocation(v)
 		return nil
+	case module.FieldSyncStatus:
+		v, ok := value.(module.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case module.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case module.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case module.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -9094,13 +10351,21 @@ func (m *ModuleMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ModuleMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addsync_retry_count != nil {
+		fields = append(fields, module.FieldSyncRetryCount)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ModuleMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case module.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
+	}
 	return nil, false
 }
 
@@ -9109,6 +10374,13 @@ func (m *ModuleMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ModuleMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case module.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Module numeric field %s", name)
 }
@@ -9128,6 +10400,9 @@ func (m *ModuleMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(module.FieldCurrentLocation) {
 		fields = append(fields, module.FieldCurrentLocation)
+	}
+	if m.FieldCleared(module.FieldSyncedAt) {
+		fields = append(fields, module.FieldSyncedAt)
 	}
 	return fields
 }
@@ -9155,6 +10430,9 @@ func (m *ModuleMutation) ClearField(name string) error {
 	case module.FieldCurrentLocation:
 		m.ClearCurrentLocation()
 		return nil
+	case module.FieldSyncedAt:
+		m.ClearSyncedAt()
+		return nil
 	}
 	return fmt.Errorf("unknown Module nullable field %s", name)
 }
@@ -9180,6 +10458,15 @@ func (m *ModuleMutation) ResetField(name string) error {
 		return nil
 	case module.FieldCurrentLocation:
 		m.ResetCurrentLocation()
+		return nil
+	case module.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case module.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case module.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case module.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -9242,36 +10529,40 @@ func (m *ModuleMutation) ResetEdge(name string) error {
 // PalletMutation represents an operation that mutates the Pallet nodes in the graph.
 type PalletMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *uuid.UUID
-	pallet_code      *string
-	level            *int
-	addlevel         *int
-	bobbins_count    *int
-	addbobbins_count *int
-	net_weight       *float64
-	addnet_weight    *float64
-	gross_weight     *float64
-	addgross_weight  *float64
-	tare_weight      *float64
-	addtare_weight   *float64
-	status           *pallet.Status
-	palletizer_id    *uuid.UUID
-	printed          *bool
-	printed_at       *time.Time
-	completed_at     *time.Time
-	created_at       *time.Time
-	updated_at       *time.Time
-	clearedFields    map[string]struct{}
-	lot              *uuid.UUID
-	clearedlot       bool
-	bobbins          map[uuid.UUID]struct{}
-	removedbobbins   map[uuid.UUID]struct{}
-	clearedbobbins   bool
-	done             bool
-	oldValue         func(context.Context) (*Pallet, error)
-	predicates       []predicate.Pallet
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	pallet_code         *string
+	level               *int
+	addlevel            *int
+	bobbins_count       *int
+	addbobbins_count    *int
+	net_weight          *float64
+	addnet_weight       *float64
+	gross_weight        *float64
+	addgross_weight     *float64
+	tare_weight         *float64
+	addtare_weight      *float64
+	status              *pallet.Status
+	palletizer_id       *uuid.UUID
+	printed             *bool
+	printed_at          *time.Time
+	completed_at        *time.Time
+	sync_status         *pallet.SyncStatus
+	synced_at           *time.Time
+	sync_retry_count    *int
+	addsync_retry_count *int
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	lot                 *uuid.UUID
+	clearedlot          bool
+	bobbins             map[uuid.UUID]struct{}
+	removedbobbins      map[uuid.UUID]struct{}
+	clearedbobbins      bool
+	done                bool
+	oldValue            func(context.Context) (*Pallet, error)
+	predicates          []predicate.Pallet
 }
 
 var _ ent.Mutation = (*PalletMutation)(nil)
@@ -9991,6 +11282,147 @@ func (m *PalletMutation) ResetCompletedAt() {
 	delete(m.clearedFields, pallet.FieldCompletedAt)
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (m *PalletMutation) SetSyncStatus(ps pallet.SyncStatus) {
+	m.sync_status = &ps
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *PalletMutation) SyncStatus() (r pallet.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the Pallet entity.
+// If the Pallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PalletMutation) OldSyncStatus(ctx context.Context) (v pallet.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *PalletMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *PalletMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *PalletMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Pallet entity.
+// If the Pallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PalletMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *PalletMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[pallet.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *PalletMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[pallet.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *PalletMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, pallet.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *PalletMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *PalletMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the Pallet entity.
+// If the Pallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PalletMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *PalletMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *PalletMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *PalletMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *PalletMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -10178,7 +11610,7 @@ func (m *PalletMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PalletMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 17)
 	if m.pallet_code != nil {
 		fields = append(fields, pallet.FieldPalletCode)
 	}
@@ -10214,6 +11646,15 @@ func (m *PalletMutation) Fields() []string {
 	}
 	if m.completed_at != nil {
 		fields = append(fields, pallet.FieldCompletedAt)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, pallet.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, pallet.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, pallet.FieldSyncRetryCount)
 	}
 	if m.created_at != nil {
 		fields = append(fields, pallet.FieldCreatedAt)
@@ -10253,6 +11694,12 @@ func (m *PalletMutation) Field(name string) (ent.Value, bool) {
 		return m.PrintedAt()
 	case pallet.FieldCompletedAt:
 		return m.CompletedAt()
+	case pallet.FieldSyncStatus:
+		return m.SyncStatus()
+	case pallet.FieldSyncedAt:
+		return m.SyncedAt()
+	case pallet.FieldSyncRetryCount:
+		return m.SyncRetryCount()
 	case pallet.FieldCreatedAt:
 		return m.CreatedAt()
 	case pallet.FieldUpdatedAt:
@@ -10290,6 +11737,12 @@ func (m *PalletMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldPrintedAt(ctx)
 	case pallet.FieldCompletedAt:
 		return m.OldCompletedAt(ctx)
+	case pallet.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case pallet.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case pallet.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
 	case pallet.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case pallet.FieldUpdatedAt:
@@ -10387,6 +11840,27 @@ func (m *PalletMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCompletedAt(v)
 		return nil
+	case pallet.FieldSyncStatus:
+		v, ok := value.(pallet.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case pallet.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case pallet.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
 	case pallet.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -10424,6 +11898,9 @@ func (m *PalletMutation) AddedFields() []string {
 	if m.addtare_weight != nil {
 		fields = append(fields, pallet.FieldTareWeight)
 	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, pallet.FieldSyncRetryCount)
+	}
 	return fields
 }
 
@@ -10442,6 +11919,8 @@ func (m *PalletMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedGrossWeight()
 	case pallet.FieldTareWeight:
 		return m.AddedTareWeight()
+	case pallet.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
 	}
 	return nil, false
 }
@@ -10486,6 +11965,13 @@ func (m *PalletMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddTareWeight(v)
 		return nil
+	case pallet.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Pallet numeric field %s", name)
 }
@@ -10511,6 +11997,9 @@ func (m *PalletMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(pallet.FieldCompletedAt) {
 		fields = append(fields, pallet.FieldCompletedAt)
+	}
+	if m.FieldCleared(pallet.FieldSyncedAt) {
+		fields = append(fields, pallet.FieldSyncedAt)
 	}
 	return fields
 }
@@ -10543,6 +12032,9 @@ func (m *PalletMutation) ClearField(name string) error {
 		return nil
 	case pallet.FieldCompletedAt:
 		m.ClearCompletedAt()
+		return nil
+	case pallet.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Pallet nullable field %s", name)
@@ -10587,6 +12079,15 @@ func (m *PalletMutation) ResetField(name string) error {
 		return nil
 	case pallet.FieldCompletedAt:
 		m.ResetCompletedAt()
+		return nil
+	case pallet.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case pallet.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case pallet.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
 		return nil
 	case pallet.FieldCreatedAt:
 		m.ResetCreatedAt()

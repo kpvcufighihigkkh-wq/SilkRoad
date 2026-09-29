@@ -126,6 +126,48 @@ func (_c *CartonCreate) SetNillablePackedAt(v *time.Time) *CartonCreate {
 	return _c
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_c *CartonCreate) SetSyncStatus(v carton.SyncStatus) *CartonCreate {
+	_c.mutation.SetSyncStatus(v)
+	return _c
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_c *CartonCreate) SetNillableSyncStatus(v *carton.SyncStatus) *CartonCreate {
+	if v != nil {
+		_c.SetSyncStatus(*v)
+	}
+	return _c
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_c *CartonCreate) SetSyncedAt(v time.Time) *CartonCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *CartonCreate) SetNillableSyncedAt(v *time.Time) *CartonCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_c *CartonCreate) SetSyncRetryCount(v int) *CartonCreate {
+	_c.mutation.SetSyncRetryCount(v)
+	return _c
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_c *CartonCreate) SetNillableSyncRetryCount(v *int) *CartonCreate {
+	if v != nil {
+		_c.SetSyncRetryCount(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *CartonCreate) SetCreatedAt(v time.Time) *CartonCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -230,6 +272,14 @@ func (_c *CartonCreate) defaults() {
 		v := carton.DefaultLabelPrinted
 		_c.mutation.SetLabelPrinted(v)
 	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		v := carton.DefaultSyncStatus
+		_c.mutation.SetSyncStatus(v)
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		v := carton.DefaultSyncRetryCount
+		_c.mutation.SetSyncRetryCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := carton.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -277,6 +327,22 @@ func (_c *CartonCreate) check() error {
 	}
 	if _, ok := _c.mutation.LabelPrinted(); !ok {
 		return &ValidationError{Name: "label_printed", err: errors.New(`ent: missing required field "Carton.label_printed"`)}
+	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Carton.sync_status"`)}
+	}
+	if v, ok := _c.mutation.SyncStatus(); ok {
+		if err := carton.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Carton.sync_status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "Carton.sync_retry_count"`)}
+	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := carton.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Carton.sync_retry_count": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Carton.created_at"`)}
@@ -350,6 +416,18 @@ func (_c *CartonCreate) createSpec() (*Carton, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PackedAt(); ok {
 		_spec.SetField(carton.FieldPackedAt, field.TypeTime, value)
 		_node.PackedAt = value
+	}
+	if value, ok := _c.mutation.SyncStatus(); ok {
+		_spec.SetField(carton.FieldSyncStatus, field.TypeEnum, value)
+		_node.SyncStatus = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(carton.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = value
+	}
+	if value, ok := _c.mutation.SyncRetryCount(); ok {
+		_spec.SetField(carton.FieldSyncRetryCount, field.TypeInt, value)
+		_node.SyncRetryCount = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(carton.FieldCreatedAt, field.TypeTime, value)

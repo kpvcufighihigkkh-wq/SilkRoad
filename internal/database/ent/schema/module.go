@@ -59,6 +59,21 @@ func (Module) Fields() []ent.Field {
 			Comment("当前位置"),
 
 		// 时间戳
+		// 同步元数据（Edge → Center）
+		field.Enum("sync_status").
+			Values("pending", "synced", "failed").
+			Default("pending").
+			Comment("同步状态"),
+
+		field.Time("synced_at").
+			Optional().
+			Comment("同步时间"),
+
+		field.Int("sync_retry_count").
+			Default(0).
+			NonNegative().
+			Comment("同步重试次数"),
+
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable().
@@ -84,6 +99,9 @@ func (Module) Indexes() []ent.Index {
 
 		// RFID索引
 		index.Fields("rfid"),
+
+		// 同步状态索引（Edge端扫描待同步记录）
+		index.Fields("sync_status"),
 
 		// 第一个桶ID索引
 		index.Fields("barrel1_id"),

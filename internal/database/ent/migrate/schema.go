@@ -16,6 +16,9 @@ var (
 		{Name: "current_count", Type: field.TypeInt, Default: 0},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "full", "sorted", "packed"}, Default: "active"},
 		{Name: "filled_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "lot_id", Type: field.TypeUUID},
@@ -28,7 +31,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "barrels_lots_barrels",
-				Columns:    []*schema.Column{BarrelsColumns[8]},
+				Columns:    []*schema.Column{BarrelsColumns[11]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -37,7 +40,7 @@ var (
 			{
 				Name:    "barrel_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{BarrelsColumns[8]},
+				Columns: []*schema.Column{BarrelsColumns[11]},
 			},
 			{
 				Name:    "barrel_status",
@@ -45,14 +48,19 @@ var (
 				Columns: []*schema.Column{BarrelsColumns[4]},
 			},
 			{
-				Name:    "barrel_created_at",
+				Name:    "barrel_sync_status",
 				Unique:  false,
 				Columns: []*schema.Column{BarrelsColumns[6]},
 			},
 			{
+				Name:    "barrel_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{BarrelsColumns[9]},
+			},
+			{
 				Name:    "barrel_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{BarrelsColumns[8], BarrelsColumns[4]},
+				Columns: []*schema.Column{BarrelsColumns[11], BarrelsColumns[4]},
 			},
 		},
 	}
@@ -70,6 +78,9 @@ var (
 		{Name: "label_printed", Type: field.TypeBool, Default: false},
 		{Name: "printed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "barrel_id", Type: field.TypeUUID, Nullable: true},
@@ -85,25 +96,25 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "bobbins_barrels_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[14]},
+				Columns:    []*schema.Column{BobbinsColumns[17]},
 				RefColumns: []*schema.Column{BarrelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "bobbins_cartons_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[15]},
+				Columns:    []*schema.Column{BobbinsColumns[18]},
 				RefColumns: []*schema.Column{CartonsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "bobbins_lots_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[16]},
+				Columns:    []*schema.Column{BobbinsColumns[19]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "bobbins_pallets_bobbins",
-				Columns:    []*schema.Column{BobbinsColumns[17]},
+				Columns:    []*schema.Column{BobbinsColumns[20]},
 				RefColumns: []*schema.Column{PalletsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -112,12 +123,12 @@ var (
 			{
 				Name:    "bobbin_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[16]},
+				Columns: []*schema.Column{BobbinsColumns[19]},
 			},
 			{
 				Name:    "bobbin_barrel_id",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[14]},
+				Columns: []*schema.Column{BobbinsColumns[17]},
 			},
 			{
 				Name:    "bobbin_spinning_position",
@@ -137,12 +148,12 @@ var (
 			{
 				Name:    "bobbin_pallet_id",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[17]},
+				Columns: []*schema.Column{BobbinsColumns[20]},
 			},
 			{
 				Name:    "bobbin_carton_id",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[15]},
+				Columns: []*schema.Column{BobbinsColumns[18]},
 			},
 			{
 				Name:    "bobbin_completed_at",
@@ -152,17 +163,22 @@ var (
 			{
 				Name:    "bobbin_lot_id_spinning_position",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[16], BobbinsColumns[3]},
+				Columns: []*schema.Column{BobbinsColumns[19], BobbinsColumns[3]},
+			},
+			{
+				Name:    "bobbin_sync_status",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinsColumns[12]},
 			},
 			{
 				Name:    "bobbin_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[16], BobbinsColumns[8]},
+				Columns: []*schema.Column{BobbinsColumns[19], BobbinsColumns[8]},
 			},
 			{
 				Name:    "bobbin_barrel_id_barrel_position",
 				Unique:  false,
-				Columns: []*schema.Column{BobbinsColumns[14], BobbinsColumns[2]},
+				Columns: []*schema.Column{BobbinsColumns[17], BobbinsColumns[2]},
 			},
 		},
 	}
@@ -177,6 +193,9 @@ var (
 		{Name: "label_printed", Type: field.TypeBool, Default: false},
 		{Name: "printed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "packed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
@@ -202,9 +221,14 @@ var (
 				Columns: []*schema.Column{CartonsColumns[8]},
 			},
 			{
-				Name:    "carton_created_at",
+				Name:    "carton_sync_status",
 				Unique:  false,
 				Columns: []*schema.Column{CartonsColumns[9]},
+			},
+			{
+				Name:    "carton_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{CartonsColumns[12]},
 			},
 		},
 	}
@@ -221,6 +245,9 @@ var (
 		{Name: "cancel_reason", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "doffing_time", Type: field.TypeTime},
 		{Name: "confirmed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "lot_id", Type: field.TypeUUID},
@@ -233,7 +260,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "doffings_lots_doffings",
-				Columns:    []*schema.Column{DoffingsColumns[13]},
+				Columns:    []*schema.Column{DoffingsColumns[16]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -247,12 +274,17 @@ var (
 			{
 				Name:    "doffing_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{DoffingsColumns[13]},
+				Columns: []*schema.Column{DoffingsColumns[16]},
 			},
 			{
 				Name:    "doffing_status",
 				Unique:  false,
 				Columns: []*schema.Column{DoffingsColumns[4]},
+			},
+			{
+				Name:    "doffing_sync_status",
+				Unique:  false,
+				Columns: []*schema.Column{DoffingsColumns[11]},
 			},
 			{
 				Name:    "doffing_doffing_time",
@@ -362,6 +394,9 @@ var (
 		{Name: "start_time", Type: field.TypeTime, Nullable: true},
 		{Name: "end_time", Type: field.TypeTime, Nullable: true},
 		{Name: "is_locked", Type: field.TypeBool, Default: false},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
@@ -374,7 +409,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "lots_edges_lots",
-				Columns:    []*schema.Column{LotsColumns[14]},
+				Columns:    []*schema.Column{LotsColumns[17]},
 				RefColumns: []*schema.Column{EdgesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -383,7 +418,7 @@ var (
 			{
 				Name:    "lot_edge_id",
 				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[14]},
+				Columns: []*schema.Column{LotsColumns[17]},
 			},
 			{
 				Name:    "lot_product_type",
@@ -396,14 +431,19 @@ var (
 				Columns: []*schema.Column{LotsColumns[8]},
 			},
 			{
-				Name:    "lot_created_at",
+				Name:    "lot_sync_status",
 				Unique:  false,
 				Columns: []*schema.Column{LotsColumns[12]},
 			},
 			{
+				Name:    "lot_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{LotsColumns[15]},
+			},
+			{
 				Name:    "lot_edge_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{LotsColumns[14], LotsColumns[8]},
+				Columns: []*schema.Column{LotsColumns[17], LotsColumns[8]},
 			},
 		},
 	}
@@ -416,6 +456,9 @@ var (
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"loading", "transporting", "sorting", "warehouse", "idle"}, Default: "idle"},
 		{Name: "rfid", Type: field.TypeString, Nullable: true, Size: 100},
 		{Name: "current_location", Type: field.TypeString, Nullable: true, Size: 100},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}
@@ -434,6 +477,11 @@ var (
 				Name:    "module_rfid",
 				Unique:  false,
 				Columns: []*schema.Column{ModulesColumns[5]},
+			},
+			{
+				Name:    "module_sync_status",
+				Unique:  false,
+				Columns: []*schema.Column{ModulesColumns[7]},
 			},
 			{
 				Name:    "module_barrel1_id",
@@ -461,6 +509,9 @@ var (
 		{Name: "printed", Type: field.TypeBool, Default: false},
 		{Name: "printed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "lot_id", Type: field.TypeUUID},
@@ -473,7 +524,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "pallets_lots_pallets",
-				Columns:    []*schema.Column{PalletsColumns[14]},
+				Columns:    []*schema.Column{PalletsColumns[17]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -482,7 +533,7 @@ var (
 			{
 				Name:    "pallet_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[14]},
+				Columns: []*schema.Column{PalletsColumns[17]},
 			},
 			{
 				Name:    "pallet_level",
@@ -505,14 +556,19 @@ var (
 				Columns: []*schema.Column{PalletsColumns[11]},
 			},
 			{
-				Name:    "pallet_created_at",
+				Name:    "pallet_sync_status",
 				Unique:  false,
 				Columns: []*schema.Column{PalletsColumns[12]},
 			},
 			{
+				Name:    "pallet_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{PalletsColumns[15]},
+			},
+			{
 				Name:    "pallet_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{PalletsColumns[14], PalletsColumns[7]},
+				Columns: []*schema.Column{PalletsColumns[17], PalletsColumns[7]},
 			},
 		},
 	}

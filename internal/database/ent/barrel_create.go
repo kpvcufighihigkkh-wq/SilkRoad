@@ -91,6 +91,48 @@ func (_c *BarrelCreate) SetNillableFilledAt(v *time.Time) *BarrelCreate {
 	return _c
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_c *BarrelCreate) SetSyncStatus(v barrel.SyncStatus) *BarrelCreate {
+	_c.mutation.SetSyncStatus(v)
+	return _c
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_c *BarrelCreate) SetNillableSyncStatus(v *barrel.SyncStatus) *BarrelCreate {
+	if v != nil {
+		_c.SetSyncStatus(*v)
+	}
+	return _c
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_c *BarrelCreate) SetSyncedAt(v time.Time) *BarrelCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *BarrelCreate) SetNillableSyncedAt(v *time.Time) *BarrelCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_c *BarrelCreate) SetSyncRetryCount(v int) *BarrelCreate {
+	_c.mutation.SetSyncRetryCount(v)
+	return _c
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_c *BarrelCreate) SetNillableSyncRetryCount(v *int) *BarrelCreate {
+	if v != nil {
+		_c.SetSyncRetryCount(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *BarrelCreate) SetCreatedAt(v time.Time) *BarrelCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -200,6 +242,14 @@ func (_c *BarrelCreate) defaults() {
 		v := barrel.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		v := barrel.DefaultSyncStatus
+		_c.mutation.SetSyncStatus(v)
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		v := barrel.DefaultSyncRetryCount
+		_c.mutation.SetSyncRetryCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := barrel.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -249,6 +299,22 @@ func (_c *BarrelCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := barrel.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Barrel.status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Barrel.sync_status"`)}
+	}
+	if v, ok := _c.mutation.SyncStatus(); ok {
+		if err := barrel.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Barrel.sync_status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "Barrel.sync_retry_count"`)}
+	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := barrel.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Barrel.sync_retry_count": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
@@ -314,6 +380,18 @@ func (_c *BarrelCreate) createSpec() (*Barrel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FilledAt(); ok {
 		_spec.SetField(barrel.FieldFilledAt, field.TypeTime, value)
 		_node.FilledAt = value
+	}
+	if value, ok := _c.mutation.SyncStatus(); ok {
+		_spec.SetField(barrel.FieldSyncStatus, field.TypeEnum, value)
+		_node.SyncStatus = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(barrel.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = value
+	}
+	if value, ok := _c.mutation.SyncRetryCount(); ok {
+		_spec.SetField(barrel.FieldSyncRetryCount, field.TypeInt, value)
+		_node.SyncRetryCount = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(barrel.FieldCreatedAt, field.TypeTime, value)

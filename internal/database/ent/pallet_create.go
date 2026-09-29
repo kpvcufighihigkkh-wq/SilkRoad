@@ -175,6 +175,48 @@ func (_c *PalletCreate) SetNillableCompletedAt(v *time.Time) *PalletCreate {
 	return _c
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_c *PalletCreate) SetSyncStatus(v pallet.SyncStatus) *PalletCreate {
+	_c.mutation.SetSyncStatus(v)
+	return _c
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableSyncStatus(v *pallet.SyncStatus) *PalletCreate {
+	if v != nil {
+		_c.SetSyncStatus(*v)
+	}
+	return _c
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_c *PalletCreate) SetSyncedAt(v time.Time) *PalletCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableSyncedAt(v *time.Time) *PalletCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_c *PalletCreate) SetSyncRetryCount(v int) *PalletCreate {
+	_c.mutation.SetSyncRetryCount(v)
+	return _c
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableSyncRetryCount(v *int) *PalletCreate {
+	if v != nil {
+		_c.SetSyncRetryCount(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *PalletCreate) SetCreatedAt(v time.Time) *PalletCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -288,6 +330,14 @@ func (_c *PalletCreate) defaults() {
 		v := pallet.DefaultPrinted
 		_c.mutation.SetPrinted(v)
 	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		v := pallet.DefaultSyncStatus
+		_c.mutation.SetSyncStatus(v)
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		v := pallet.DefaultSyncRetryCount
+		_c.mutation.SetSyncRetryCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := pallet.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -356,6 +406,22 @@ func (_c *PalletCreate) check() error {
 	}
 	if _, ok := _c.mutation.Printed(); !ok {
 		return &ValidationError{Name: "printed", err: errors.New(`ent: missing required field "Pallet.printed"`)}
+	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Pallet.sync_status"`)}
+	}
+	if v, ok := _c.mutation.SyncStatus(); ok {
+		if err := pallet.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Pallet.sync_status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "Pallet.sync_retry_count"`)}
+	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := pallet.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.sync_retry_count": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Pallet.created_at"`)}
@@ -444,6 +510,18 @@ func (_c *PalletCreate) createSpec() (*Pallet, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CompletedAt(); ok {
 		_spec.SetField(pallet.FieldCompletedAt, field.TypeTime, value)
 		_node.CompletedAt = value
+	}
+	if value, ok := _c.mutation.SyncStatus(); ok {
+		_spec.SetField(pallet.FieldSyncStatus, field.TypeEnum, value)
+		_node.SyncStatus = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(pallet.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = value
+	}
+	if value, ok := _c.mutation.SyncRetryCount(); ok {
+		_spec.SetField(pallet.FieldSyncRetryCount, field.TypeInt, value)
+		_node.SyncRetryCount = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(pallet.FieldCreatedAt, field.TypeTime, value)

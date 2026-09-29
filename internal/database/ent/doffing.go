@@ -41,6 +41,12 @@ type Doffing struct {
 	DoffingTime time.Time `json:"doffing_time,omitempty"`
 	// 确认时间
 	ConfirmedAt time.Time `json:"confirmed_at,omitempty"`
+	// 同步状态
+	SyncStatus doffing.SyncStatus `json:"sync_status,omitempty"`
+	// 同步时间
+	SyncedAt time.Time `json:"synced_at,omitempty"`
+	// 同步重试次数
+	SyncRetryCount int `json:"sync_retry_count,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -78,11 +84,11 @@ func (*Doffing) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case doffing.FieldActualWeight:
 			values[i] = new(sql.NullFloat64)
-		case doffing.FieldSpinningPosition:
+		case doffing.FieldSpinningPosition, doffing.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
-		case doffing.FieldStatus, doffing.FieldBobbinNumber, doffing.FieldGrade, doffing.FieldCancelReason:
+		case doffing.FieldStatus, doffing.FieldBobbinNumber, doffing.FieldGrade, doffing.FieldCancelReason, doffing.FieldSyncStatus:
 			values[i] = new(sql.NullString)
-		case doffing.FieldDoffingTime, doffing.FieldConfirmedAt, doffing.FieldCreatedAt, doffing.FieldUpdatedAt:
+		case doffing.FieldDoffingTime, doffing.FieldConfirmedAt, doffing.FieldSyncedAt, doffing.FieldCreatedAt, doffing.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case doffing.FieldID, doffing.FieldSpinningLineID, doffing.FieldLotID, doffing.FieldOperatorID:
 			values[i] = new(uuid.UUID)
@@ -173,6 +179,24 @@ func (_m *Doffing) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ConfirmedAt = value.Time
 			}
+		case doffing.FieldSyncStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_status", values[i])
+			} else if value.Valid {
+				_m.SyncStatus = doffing.SyncStatus(value.String)
+			}
+		case doffing.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = value.Time
+			}
+		case doffing.FieldSyncRetryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_retry_count", values[i])
+			} else if value.Valid {
+				_m.SyncRetryCount = int(value.Int64)
+			}
 		case doffing.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -258,6 +282,15 @@ func (_m *Doffing) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("confirmed_at=")
 	builder.WriteString(_m.ConfirmedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncStatus))
+	builder.WriteString(", ")
+	builder.WriteString("synced_at=")
+	builder.WriteString(_m.SyncedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_retry_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncRetryCount))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

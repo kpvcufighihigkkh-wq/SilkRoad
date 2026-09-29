@@ -97,6 +97,48 @@ func (_c *ModuleCreate) SetNillableCurrentLocation(v *string) *ModuleCreate {
 	return _c
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_c *ModuleCreate) SetSyncStatus(v module.SyncStatus) *ModuleCreate {
+	_c.mutation.SetSyncStatus(v)
+	return _c
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_c *ModuleCreate) SetNillableSyncStatus(v *module.SyncStatus) *ModuleCreate {
+	if v != nil {
+		_c.SetSyncStatus(*v)
+	}
+	return _c
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_c *ModuleCreate) SetSyncedAt(v time.Time) *ModuleCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *ModuleCreate) SetNillableSyncedAt(v *time.Time) *ModuleCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_c *ModuleCreate) SetSyncRetryCount(v int) *ModuleCreate {
+	_c.mutation.SetSyncRetryCount(v)
+	return _c
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_c *ModuleCreate) SetNillableSyncRetryCount(v *int) *ModuleCreate {
+	if v != nil {
+		_c.SetSyncRetryCount(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *ModuleCreate) SetCreatedAt(v time.Time) *ModuleCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -178,6 +220,14 @@ func (_c *ModuleCreate) defaults() {
 		v := module.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		v := module.DefaultSyncStatus
+		_c.mutation.SetSyncStatus(v)
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		v := module.DefaultSyncRetryCount
+		_c.mutation.SetSyncRetryCount(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := module.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -218,6 +268,22 @@ func (_c *ModuleCreate) check() error {
 	if v, ok := _c.mutation.CurrentLocation(); ok {
 		if err := module.CurrentLocationValidator(v); err != nil {
 			return &ValidationError{Name: "current_location", err: fmt.Errorf(`ent: validator failed for field "Module.current_location": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncStatus(); !ok {
+		return &ValidationError{Name: "sync_status", err: errors.New(`ent: missing required field "Module.sync_status"`)}
+	}
+	if v, ok := _c.mutation.SyncStatus(); ok {
+		if err := module.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Module.sync_status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.SyncRetryCount(); !ok {
+		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "Module.sync_retry_count"`)}
+	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := module.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Module.sync_retry_count": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
@@ -284,6 +350,18 @@ func (_c *ModuleCreate) createSpec() (*Module, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CurrentLocation(); ok {
 		_spec.SetField(module.FieldCurrentLocation, field.TypeString, value)
 		_node.CurrentLocation = value
+	}
+	if value, ok := _c.mutation.SyncStatus(); ok {
+		_spec.SetField(module.FieldSyncStatus, field.TypeEnum, value)
+		_node.SyncStatus = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(module.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = value
+	}
+	if value, ok := _c.mutation.SyncRetryCount(); ok {
+		_spec.SetField(module.FieldSyncRetryCount, field.TypeInt, value)
+		_node.SyncRetryCount = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(module.FieldCreatedAt, field.TypeTime, value)

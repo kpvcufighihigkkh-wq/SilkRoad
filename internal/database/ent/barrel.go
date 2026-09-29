@@ -31,6 +31,12 @@ type Barrel struct {
 	Status barrel.Status `json:"status,omitempty"`
 	// 装满时间
 	FilledAt time.Time `json:"filled_at,omitempty"`
+	// 同步状态
+	SyncStatus barrel.SyncStatus `json:"sync_status,omitempty"`
+	// 同步时间
+	SyncedAt time.Time `json:"synced_at,omitempty"`
+	// 同步重试次数
+	SyncRetryCount int `json:"sync_retry_count,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -77,11 +83,11 @@ func (*Barrel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case barrel.FieldCapacity, barrel.FieldCurrentCount:
+		case barrel.FieldCapacity, barrel.FieldCurrentCount, barrel.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
-		case barrel.FieldBarrelNumber, barrel.FieldStatus:
+		case barrel.FieldBarrelNumber, barrel.FieldStatus, barrel.FieldSyncStatus:
 			values[i] = new(sql.NullString)
-		case barrel.FieldFilledAt, barrel.FieldCreatedAt, barrel.FieldUpdatedAt:
+		case barrel.FieldFilledAt, barrel.FieldSyncedAt, barrel.FieldCreatedAt, barrel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case barrel.FieldID, barrel.FieldLotID:
 			values[i] = new(uuid.UUID)
@@ -141,6 +147,24 @@ func (_m *Barrel) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field filled_at", values[i])
 			} else if value.Valid {
 				_m.FilledAt = value.Time
+			}
+		case barrel.FieldSyncStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_status", values[i])
+			} else if value.Valid {
+				_m.SyncStatus = barrel.SyncStatus(value.String)
+			}
+		case barrel.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = value.Time
+			}
+		case barrel.FieldSyncRetryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_retry_count", values[i])
+			} else if value.Valid {
+				_m.SyncRetryCount = int(value.Int64)
 			}
 		case barrel.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -217,6 +241,15 @@ func (_m *Barrel) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("filled_at=")
 	builder.WriteString(_m.FilledAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncStatus))
+	builder.WriteString(", ")
+	builder.WriteString("synced_at=")
+	builder.WriteString(_m.SyncedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_retry_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncRetryCount))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

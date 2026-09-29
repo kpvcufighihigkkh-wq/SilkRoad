@@ -252,6 +252,61 @@ func (_u *LotUpdate) SetNillableIsLocked(v *bool) *LotUpdate {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *LotUpdate) SetSyncStatus(v lot.SyncStatus) *LotUpdate {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *LotUpdate) SetNillableSyncStatus(v *lot.SyncStatus) *LotUpdate {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *LotUpdate) SetSyncedAt(v time.Time) *LotUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *LotUpdate) SetNillableSyncedAt(v *time.Time) *LotUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *LotUpdate) ClearSyncedAt() *LotUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *LotUpdate) SetSyncRetryCount(v int) *LotUpdate {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *LotUpdate) SetNillableSyncRetryCount(v *int) *LotUpdate {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *LotUpdate) AddSyncRetryCount(v int) *LotUpdate {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *LotUpdate) SetUpdatedAt(v time.Time) *LotUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -496,6 +551,16 @@ func (_u *LotUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Lot.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := lot.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Lot.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := lot.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Lot.sync_retry_count": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -564,6 +629,21 @@ func (_u *LotUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.IsLocked(); ok {
 		_spec.SetField(lot.FieldIsLocked, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(lot.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(lot.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(lot.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(lot.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(lot.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(lot.FieldUpdatedAt, field.TypeTime, value)
@@ -1015,6 +1095,61 @@ func (_u *LotUpdateOne) SetNillableIsLocked(v *bool) *LotUpdateOne {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *LotUpdateOne) SetSyncStatus(v lot.SyncStatus) *LotUpdateOne {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *LotUpdateOne) SetNillableSyncStatus(v *lot.SyncStatus) *LotUpdateOne {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *LotUpdateOne) SetSyncedAt(v time.Time) *LotUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *LotUpdateOne) SetNillableSyncedAt(v *time.Time) *LotUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *LotUpdateOne) ClearSyncedAt() *LotUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *LotUpdateOne) SetSyncRetryCount(v int) *LotUpdateOne {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *LotUpdateOne) SetNillableSyncRetryCount(v *int) *LotUpdateOne {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *LotUpdateOne) AddSyncRetryCount(v int) *LotUpdateOne {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *LotUpdateOne) SetUpdatedAt(v time.Time) *LotUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1272,6 +1407,16 @@ func (_u *LotUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Lot.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := lot.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Lot.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := lot.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Lot.sync_retry_count": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -1357,6 +1502,21 @@ func (_u *LotUpdateOne) sqlSave(ctx context.Context) (_node *Lot, err error) {
 	}
 	if value, ok := _u.mutation.IsLocked(); ok {
 		_spec.SetField(lot.FieldIsLocked, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(lot.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(lot.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(lot.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(lot.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(lot.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(lot.FieldUpdatedAt, field.TypeTime, value)

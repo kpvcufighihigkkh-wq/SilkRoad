@@ -34,6 +34,12 @@ type Carton struct {
 	PrintedAt time.Time `json:"printed_at,omitempty"`
 	// 打包完成时间
 	PackedAt time.Time `json:"packed_at,omitempty"`
+	// 同步状态
+	SyncStatus carton.SyncStatus `json:"sync_status,omitempty"`
+	// 同步时间
+	SyncedAt time.Time `json:"synced_at,omitempty"`
+	// 同步重试次数
+	SyncRetryCount int `json:"sync_retry_count,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -71,11 +77,11 @@ func (*Carton) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case carton.FieldTotalWeight:
 			values[i] = new(sql.NullFloat64)
-		case carton.FieldBobbinCount:
+		case carton.FieldBobbinCount, carton.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
-		case carton.FieldCartonNumber, carton.FieldStatus:
+		case carton.FieldCartonNumber, carton.FieldStatus, carton.FieldSyncStatus:
 			values[i] = new(sql.NullString)
-		case carton.FieldPrintedAt, carton.FieldPackedAt, carton.FieldCreatedAt, carton.FieldUpdatedAt:
+		case carton.FieldPrintedAt, carton.FieldPackedAt, carton.FieldSyncedAt, carton.FieldCreatedAt, carton.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case carton.FieldID, carton.FieldLotID:
 			values[i] = new(uuid.UUID)
@@ -147,6 +153,24 @@ func (_m *Carton) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field packed_at", values[i])
 			} else if value.Valid {
 				_m.PackedAt = value.Time
+			}
+		case carton.FieldSyncStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_status", values[i])
+			} else if value.Valid {
+				_m.SyncStatus = carton.SyncStatus(value.String)
+			}
+		case carton.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = value.Time
+			}
+		case carton.FieldSyncRetryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_retry_count", values[i])
+			} else if value.Valid {
+				_m.SyncRetryCount = int(value.Int64)
 			}
 		case carton.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -224,6 +248,15 @@ func (_m *Carton) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("packed_at=")
 	builder.WriteString(_m.PackedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncStatus))
+	builder.WriteString(", ")
+	builder.WriteString("synced_at=")
+	builder.WriteString(_m.SyncedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_retry_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncRetryCount))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -270,6 +270,61 @@ func (_u *PalletUpdate) ClearCompletedAt() *PalletUpdate {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *PalletUpdate) SetSyncStatus(v pallet.SyncStatus) *PalletUpdate {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *PalletUpdate) SetNillableSyncStatus(v *pallet.SyncStatus) *PalletUpdate {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *PalletUpdate) SetSyncedAt(v time.Time) *PalletUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *PalletUpdate) SetNillableSyncedAt(v *time.Time) *PalletUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *PalletUpdate) ClearSyncedAt() *PalletUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *PalletUpdate) SetSyncRetryCount(v int) *PalletUpdate {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *PalletUpdate) SetNillableSyncRetryCount(v *int) *PalletUpdate {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *PalletUpdate) AddSyncRetryCount(v int) *PalletUpdate {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *PalletUpdate) SetUpdatedAt(v time.Time) *PalletUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -401,6 +456,16 @@ func (_u *PalletUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Pallet.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := pallet.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Pallet.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := pallet.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Pallet.lot"`)
 	}
@@ -484,6 +549,21 @@ func (_u *PalletUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CompletedAtCleared() {
 		_spec.ClearField(pallet.FieldCompletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(pallet.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(pallet.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(pallet.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(pallet.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(pallet.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(pallet.FieldUpdatedAt, field.TypeTime, value)
@@ -821,6 +901,61 @@ func (_u *PalletUpdateOne) ClearCompletedAt() *PalletUpdateOne {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *PalletUpdateOne) SetSyncStatus(v pallet.SyncStatus) *PalletUpdateOne {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *PalletUpdateOne) SetNillableSyncStatus(v *pallet.SyncStatus) *PalletUpdateOne {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *PalletUpdateOne) SetSyncedAt(v time.Time) *PalletUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *PalletUpdateOne) SetNillableSyncedAt(v *time.Time) *PalletUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *PalletUpdateOne) ClearSyncedAt() *PalletUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *PalletUpdateOne) SetSyncRetryCount(v int) *PalletUpdateOne {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *PalletUpdateOne) SetNillableSyncRetryCount(v *int) *PalletUpdateOne {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *PalletUpdateOne) AddSyncRetryCount(v int) *PalletUpdateOne {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *PalletUpdateOne) SetUpdatedAt(v time.Time) *PalletUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -965,6 +1100,16 @@ func (_u *PalletUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Pallet.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := pallet.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Pallet.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := pallet.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Pallet.lot"`)
 	}
@@ -1065,6 +1210,21 @@ func (_u *PalletUpdateOne) sqlSave(ctx context.Context) (_node *Pallet, err erro
 	}
 	if _u.mutation.CompletedAtCleared() {
 		_spec.ClearField(pallet.FieldCompletedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(pallet.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(pallet.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(pallet.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(pallet.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(pallet.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(pallet.FieldUpdatedAt, field.TypeTime, value)

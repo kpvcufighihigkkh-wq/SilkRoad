@@ -43,6 +43,12 @@ type Lot struct {
 	EndTime time.Time `json:"end_time,omitempty"`
 	// 是否锁定（锁定后不可修改）
 	IsLocked bool `json:"is_locked,omitempty"`
+	// 同步状态
+	SyncStatus lot.SyncStatus `json:"sync_status,omitempty"`
+	// 同步时间
+	SyncedAt time.Time `json:"synced_at,omitempty"`
+	// 同步重试次数
+	SyncRetryCount int `json:"sync_retry_count,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -124,11 +130,11 @@ func (*Lot) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case lot.FieldIsLocked:
 			values[i] = new(sql.NullBool)
-		case lot.FieldPlannedQuantity, lot.FieldActualQuantity:
+		case lot.FieldPlannedQuantity, lot.FieldActualQuantity, lot.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
-		case lot.FieldLotNumber, lot.FieldPlcLotNumber, lot.FieldOrderCode, lot.FieldProductType, lot.FieldProductSpec, lot.FieldStatus:
+		case lot.FieldLotNumber, lot.FieldPlcLotNumber, lot.FieldOrderCode, lot.FieldProductType, lot.FieldProductSpec, lot.FieldStatus, lot.FieldSyncStatus:
 			values[i] = new(sql.NullString)
-		case lot.FieldStartTime, lot.FieldEndTime, lot.FieldCreatedAt, lot.FieldUpdatedAt:
+		case lot.FieldStartTime, lot.FieldEndTime, lot.FieldSyncedAt, lot.FieldCreatedAt, lot.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case lot.FieldID, lot.FieldEdgeID:
 			values[i] = new(uuid.UUID)
@@ -224,6 +230,24 @@ func (_m *Lot) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field is_locked", values[i])
 			} else if value.Valid {
 				_m.IsLocked = value.Bool
+			}
+		case lot.FieldSyncStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_status", values[i])
+			} else if value.Valid {
+				_m.SyncStatus = lot.SyncStatus(value.String)
+			}
+		case lot.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = value.Time
+			}
+		case lot.FieldSyncRetryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_retry_count", values[i])
+			} else if value.Valid {
+				_m.SyncRetryCount = int(value.Int64)
 			}
 		case lot.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -333,6 +357,15 @@ func (_m *Lot) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_locked=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsLocked))
+	builder.WriteString(", ")
+	builder.WriteString("sync_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncStatus))
+	builder.WriteString(", ")
+	builder.WriteString("synced_at=")
+	builder.WriteString(_m.SyncedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_retry_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncRetryCount))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

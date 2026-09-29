@@ -43,6 +43,12 @@ type Pallet struct {
 	PrintedAt time.Time `json:"printed_at,omitempty"`
 	// 打包完成时间
 	CompletedAt time.Time `json:"completed_at,omitempty"`
+	// 同步状态
+	SyncStatus pallet.SyncStatus `json:"sync_status,omitempty"`
+	// 同步时间
+	SyncedAt time.Time `json:"synced_at,omitempty"`
+	// 同步重试次数
+	SyncRetryCount int `json:"sync_retry_count,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -93,11 +99,11 @@ func (*Pallet) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case pallet.FieldNetWeight, pallet.FieldGrossWeight, pallet.FieldTareWeight:
 			values[i] = new(sql.NullFloat64)
-		case pallet.FieldLevel, pallet.FieldBobbinsCount:
+		case pallet.FieldLevel, pallet.FieldBobbinsCount, pallet.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
-		case pallet.FieldPalletCode, pallet.FieldStatus:
+		case pallet.FieldPalletCode, pallet.FieldStatus, pallet.FieldSyncStatus:
 			values[i] = new(sql.NullString)
-		case pallet.FieldPrintedAt, pallet.FieldCompletedAt, pallet.FieldCreatedAt, pallet.FieldUpdatedAt:
+		case pallet.FieldPrintedAt, pallet.FieldCompletedAt, pallet.FieldSyncedAt, pallet.FieldCreatedAt, pallet.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case pallet.FieldID, pallet.FieldLotID, pallet.FieldPalletizerID:
 			values[i] = new(uuid.UUID)
@@ -194,6 +200,24 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.CompletedAt = value.Time
 			}
+		case pallet.FieldSyncStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_status", values[i])
+			} else if value.Valid {
+				_m.SyncStatus = pallet.SyncStatus(value.String)
+			}
+		case pallet.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = value.Time
+			}
+		case pallet.FieldSyncRetryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_retry_count", values[i])
+			} else if value.Valid {
+				_m.SyncRetryCount = int(value.Int64)
+			}
 		case pallet.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -287,6 +311,15 @@ func (_m *Pallet) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("completed_at=")
 	builder.WriteString(_m.CompletedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncStatus))
+	builder.WriteString(", ")
+	builder.WriteString("synced_at=")
+	builder.WriteString(_m.SyncedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_retry_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncRetryCount))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

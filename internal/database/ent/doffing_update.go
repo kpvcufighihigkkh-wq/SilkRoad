@@ -234,6 +234,61 @@ func (_u *DoffingUpdate) ClearConfirmedAt() *DoffingUpdate {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *DoffingUpdate) SetSyncStatus(v doffing.SyncStatus) *DoffingUpdate {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *DoffingUpdate) SetNillableSyncStatus(v *doffing.SyncStatus) *DoffingUpdate {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *DoffingUpdate) SetSyncedAt(v time.Time) *DoffingUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *DoffingUpdate) SetNillableSyncedAt(v *time.Time) *DoffingUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *DoffingUpdate) ClearSyncedAt() *DoffingUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *DoffingUpdate) SetSyncRetryCount(v int) *DoffingUpdate {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *DoffingUpdate) SetNillableSyncRetryCount(v *int) *DoffingUpdate {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *DoffingUpdate) AddSyncRetryCount(v int) *DoffingUpdate {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *DoffingUpdate) SetUpdatedAt(v time.Time) *DoffingUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -319,6 +374,16 @@ func (_u *DoffingUpdate) check() error {
 			return &ValidationError{Name: "grade", err: fmt.Errorf(`ent: validator failed for field "Doffing.grade": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := doffing.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Doffing.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := doffing.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Doffing.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Doffing.lot"`)
 	}
@@ -390,6 +455,21 @@ func (_u *DoffingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ConfirmedAtCleared() {
 		_spec.ClearField(doffing.FieldConfirmedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(doffing.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(doffing.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(doffing.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(doffing.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(doffing.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(doffing.FieldUpdatedAt, field.TypeTime, value)
@@ -647,6 +727,61 @@ func (_u *DoffingUpdateOne) ClearConfirmedAt() *DoffingUpdateOne {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *DoffingUpdateOne) SetSyncStatus(v doffing.SyncStatus) *DoffingUpdateOne {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *DoffingUpdateOne) SetNillableSyncStatus(v *doffing.SyncStatus) *DoffingUpdateOne {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *DoffingUpdateOne) SetSyncedAt(v time.Time) *DoffingUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *DoffingUpdateOne) SetNillableSyncedAt(v *time.Time) *DoffingUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *DoffingUpdateOne) ClearSyncedAt() *DoffingUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *DoffingUpdateOne) SetSyncRetryCount(v int) *DoffingUpdateOne {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *DoffingUpdateOne) SetNillableSyncRetryCount(v *int) *DoffingUpdateOne {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *DoffingUpdateOne) AddSyncRetryCount(v int) *DoffingUpdateOne {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *DoffingUpdateOne) SetUpdatedAt(v time.Time) *DoffingUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -745,6 +880,16 @@ func (_u *DoffingUpdateOne) check() error {
 			return &ValidationError{Name: "grade", err: fmt.Errorf(`ent: validator failed for field "Doffing.grade": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := doffing.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Doffing.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := doffing.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Doffing.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Doffing.lot"`)
 	}
@@ -833,6 +978,21 @@ func (_u *DoffingUpdateOne) sqlSave(ctx context.Context) (_node *Doffing, err er
 	}
 	if _u.mutation.ConfirmedAtCleared() {
 		_spec.ClearField(doffing.FieldConfirmedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(doffing.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(doffing.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(doffing.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(doffing.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(doffing.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(doffing.FieldUpdatedAt, field.TypeTime, value)

@@ -91,6 +91,16 @@ func PackedAt(v time.Time) predicate.Carton {
 	return predicate.Carton(sql.FieldEQ(FieldPackedAt, v))
 }
 
+// SyncedAt applies equality check predicate on the "synced_at" field. It's identical to SyncedAtEQ.
+func SyncedAt(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldSyncedAt, v))
+}
+
+// SyncRetryCount applies equality check predicate on the "sync_retry_count" field. It's identical to SyncRetryCountEQ.
+func SyncRetryCount(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldSyncRetryCount, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Carton {
 	return predicate.Carton(sql.FieldEQ(FieldCreatedAt, v))
@@ -434,6 +444,116 @@ func PackedAtIsNil() predicate.Carton {
 // PackedAtNotNil applies the NotNil predicate on the "packed_at" field.
 func PackedAtNotNil() predicate.Carton {
 	return predicate.Carton(sql.FieldNotNull(FieldPackedAt))
+}
+
+// SyncStatusEQ applies the EQ predicate on the "sync_status" field.
+func SyncStatusEQ(v SyncStatus) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldSyncStatus, v))
+}
+
+// SyncStatusNEQ applies the NEQ predicate on the "sync_status" field.
+func SyncStatusNEQ(v SyncStatus) predicate.Carton {
+	return predicate.Carton(sql.FieldNEQ(FieldSyncStatus, v))
+}
+
+// SyncStatusIn applies the In predicate on the "sync_status" field.
+func SyncStatusIn(vs ...SyncStatus) predicate.Carton {
+	return predicate.Carton(sql.FieldIn(FieldSyncStatus, vs...))
+}
+
+// SyncStatusNotIn applies the NotIn predicate on the "sync_status" field.
+func SyncStatusNotIn(vs ...SyncStatus) predicate.Carton {
+	return predicate.Carton(sql.FieldNotIn(FieldSyncStatus, vs...))
+}
+
+// SyncedAtEQ applies the EQ predicate on the "synced_at" field.
+func SyncedAtEQ(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldSyncedAt, v))
+}
+
+// SyncedAtNEQ applies the NEQ predicate on the "synced_at" field.
+func SyncedAtNEQ(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldNEQ(FieldSyncedAt, v))
+}
+
+// SyncedAtIn applies the In predicate on the "synced_at" field.
+func SyncedAtIn(vs ...time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldIn(FieldSyncedAt, vs...))
+}
+
+// SyncedAtNotIn applies the NotIn predicate on the "synced_at" field.
+func SyncedAtNotIn(vs ...time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldNotIn(FieldSyncedAt, vs...))
+}
+
+// SyncedAtGT applies the GT predicate on the "synced_at" field.
+func SyncedAtGT(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldGT(FieldSyncedAt, v))
+}
+
+// SyncedAtGTE applies the GTE predicate on the "synced_at" field.
+func SyncedAtGTE(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldGTE(FieldSyncedAt, v))
+}
+
+// SyncedAtLT applies the LT predicate on the "synced_at" field.
+func SyncedAtLT(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldLT(FieldSyncedAt, v))
+}
+
+// SyncedAtLTE applies the LTE predicate on the "synced_at" field.
+func SyncedAtLTE(v time.Time) predicate.Carton {
+	return predicate.Carton(sql.FieldLTE(FieldSyncedAt, v))
+}
+
+// SyncedAtIsNil applies the IsNil predicate on the "synced_at" field.
+func SyncedAtIsNil() predicate.Carton {
+	return predicate.Carton(sql.FieldIsNull(FieldSyncedAt))
+}
+
+// SyncedAtNotNil applies the NotNil predicate on the "synced_at" field.
+func SyncedAtNotNil() predicate.Carton {
+	return predicate.Carton(sql.FieldNotNull(FieldSyncedAt))
+}
+
+// SyncRetryCountEQ applies the EQ predicate on the "sync_retry_count" field.
+func SyncRetryCountEQ(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldSyncRetryCount, v))
+}
+
+// SyncRetryCountNEQ applies the NEQ predicate on the "sync_retry_count" field.
+func SyncRetryCountNEQ(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldNEQ(FieldSyncRetryCount, v))
+}
+
+// SyncRetryCountIn applies the In predicate on the "sync_retry_count" field.
+func SyncRetryCountIn(vs ...int) predicate.Carton {
+	return predicate.Carton(sql.FieldIn(FieldSyncRetryCount, vs...))
+}
+
+// SyncRetryCountNotIn applies the NotIn predicate on the "sync_retry_count" field.
+func SyncRetryCountNotIn(vs ...int) predicate.Carton {
+	return predicate.Carton(sql.FieldNotIn(FieldSyncRetryCount, vs...))
+}
+
+// SyncRetryCountGT applies the GT predicate on the "sync_retry_count" field.
+func SyncRetryCountGT(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldGT(FieldSyncRetryCount, v))
+}
+
+// SyncRetryCountGTE applies the GTE predicate on the "sync_retry_count" field.
+func SyncRetryCountGTE(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldGTE(FieldSyncRetryCount, v))
+}
+
+// SyncRetryCountLT applies the LT predicate on the "sync_retry_count" field.
+func SyncRetryCountLT(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldLT(FieldSyncRetryCount, v))
+}
+
+// SyncRetryCountLTE applies the LTE predicate on the "sync_retry_count" field.
+func SyncRetryCountLTE(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldLTE(FieldSyncRetryCount, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

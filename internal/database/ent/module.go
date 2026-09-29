@@ -30,6 +30,12 @@ type Module struct {
 	Rfid string `json:"rfid,omitempty"`
 	// 当前位置
 	CurrentLocation string `json:"current_location,omitempty"`
+	// 同步状态
+	SyncStatus module.SyncStatus `json:"sync_status,omitempty"`
+	// 同步时间
+	SyncedAt time.Time `json:"synced_at,omitempty"`
+	// 同步重试次数
+	SyncRetryCount int `json:"sync_retry_count,omitempty"`
 	// 创建时间
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// 更新时间
@@ -42,9 +48,11 @@ func (*Module) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case module.FieldModuleNumber, module.FieldStatus, module.FieldRfid, module.FieldCurrentLocation:
+		case module.FieldSyncRetryCount:
+			values[i] = new(sql.NullInt64)
+		case module.FieldModuleNumber, module.FieldStatus, module.FieldRfid, module.FieldCurrentLocation, module.FieldSyncStatus:
 			values[i] = new(sql.NullString)
-		case module.FieldCreatedAt, module.FieldUpdatedAt:
+		case module.FieldSyncedAt, module.FieldCreatedAt, module.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		case module.FieldID, module.FieldBarrel1ID, module.FieldBarrel2ID:
 			values[i] = new(uuid.UUID)
@@ -104,6 +112,24 @@ func (_m *Module) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field current_location", values[i])
 			} else if value.Valid {
 				_m.CurrentLocation = value.String
+			}
+		case module.FieldSyncStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_status", values[i])
+			} else if value.Valid {
+				_m.SyncStatus = module.SyncStatus(value.String)
+			}
+		case module.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = value.Time
+			}
+		case module.FieldSyncRetryCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field sync_retry_count", values[i])
+			} else if value.Valid {
+				_m.SyncRetryCount = int(value.Int64)
 			}
 		case module.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -170,6 +196,15 @@ func (_m *Module) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("current_location=")
 	builder.WriteString(_m.CurrentLocation)
+	builder.WriteString(", ")
+	builder.WriteString("sync_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncStatus))
+	builder.WriteString(", ")
+	builder.WriteString("synced_at=")
+	builder.WriteString(_m.SyncedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("sync_retry_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SyncRetryCount))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

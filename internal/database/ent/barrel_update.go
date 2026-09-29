@@ -135,6 +135,61 @@ func (_u *BarrelUpdate) ClearFilledAt() *BarrelUpdate {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *BarrelUpdate) SetSyncStatus(v barrel.SyncStatus) *BarrelUpdate {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *BarrelUpdate) SetNillableSyncStatus(v *barrel.SyncStatus) *BarrelUpdate {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *BarrelUpdate) SetSyncedAt(v time.Time) *BarrelUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *BarrelUpdate) SetNillableSyncedAt(v *time.Time) *BarrelUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *BarrelUpdate) ClearSyncedAt() *BarrelUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *BarrelUpdate) SetSyncRetryCount(v int) *BarrelUpdate {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *BarrelUpdate) SetNillableSyncRetryCount(v *int) *BarrelUpdate {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *BarrelUpdate) AddSyncRetryCount(v int) *BarrelUpdate {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *BarrelUpdate) SetUpdatedAt(v time.Time) *BarrelUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -251,6 +306,16 @@ func (_u *BarrelUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Barrel.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := barrel.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Barrel.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := barrel.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Barrel.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Barrel.lot"`)
 	}
@@ -292,6 +357,21 @@ func (_u *BarrelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.FilledAtCleared() {
 		_spec.ClearField(barrel.FieldFilledAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(barrel.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(barrel.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(barrel.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(barrel.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(barrel.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(barrel.FieldUpdatedAt, field.TypeTime, value)
@@ -494,6 +574,61 @@ func (_u *BarrelUpdateOne) ClearFilledAt() *BarrelUpdateOne {
 	return _u
 }
 
+// SetSyncStatus sets the "sync_status" field.
+func (_u *BarrelUpdateOne) SetSyncStatus(v barrel.SyncStatus) *BarrelUpdateOne {
+	_u.mutation.SetSyncStatus(v)
+	return _u
+}
+
+// SetNillableSyncStatus sets the "sync_status" field if the given value is not nil.
+func (_u *BarrelUpdateOne) SetNillableSyncStatus(v *barrel.SyncStatus) *BarrelUpdateOne {
+	if v != nil {
+		_u.SetSyncStatus(*v)
+	}
+	return _u
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (_u *BarrelUpdateOne) SetSyncedAt(v time.Time) *BarrelUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *BarrelUpdateOne) SetNillableSyncedAt(v *time.Time) *BarrelUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *BarrelUpdateOne) ClearSyncedAt() *BarrelUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (_u *BarrelUpdateOne) SetSyncRetryCount(v int) *BarrelUpdateOne {
+	_u.mutation.ResetSyncRetryCount()
+	_u.mutation.SetSyncRetryCount(v)
+	return _u
+}
+
+// SetNillableSyncRetryCount sets the "sync_retry_count" field if the given value is not nil.
+func (_u *BarrelUpdateOne) SetNillableSyncRetryCount(v *int) *BarrelUpdateOne {
+	if v != nil {
+		_u.SetSyncRetryCount(*v)
+	}
+	return _u
+}
+
+// AddSyncRetryCount adds value to the "sync_retry_count" field.
+func (_u *BarrelUpdateOne) AddSyncRetryCount(v int) *BarrelUpdateOne {
+	_u.mutation.AddSyncRetryCount(v)
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *BarrelUpdateOne) SetUpdatedAt(v time.Time) *BarrelUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -623,6 +758,16 @@ func (_u *BarrelUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Barrel.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncStatus(); ok {
+		if err := barrel.SyncStatusValidator(v); err != nil {
+			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "Barrel.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := barrel.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "Barrel.sync_retry_count": %w`, err)}
+		}
+	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Barrel.lot"`)
 	}
@@ -681,6 +826,21 @@ func (_u *BarrelUpdateOne) sqlSave(ctx context.Context) (_node *Barrel, err erro
 	}
 	if _u.mutation.FilledAtCleared() {
 		_spec.ClearField(barrel.FieldFilledAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncStatus(); ok {
+		_spec.SetField(barrel.FieldSyncStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(barrel.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(barrel.FieldSyncedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SyncRetryCount(); ok {
+		_spec.SetField(barrel.FieldSyncRetryCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedSyncRetryCount(); ok {
+		_spec.AddField(barrel.FieldSyncRetryCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(barrel.FieldUpdatedAt, field.TypeTime, value)
