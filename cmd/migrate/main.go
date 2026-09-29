@@ -72,24 +72,19 @@ func migrateCenter(dsn string) {
 
 	ctx := context.Background()
 
-	// 删除旧表
-	if *dropOld {
-		log.Println("\n[1/3] Dropping old tables...")
-		if err := dropOldTables(ctx, client); err != nil {
-			log.Printf("⚠️  Warning: %v", err)
-		}
-	}
-
 	// 执行迁移
-	log.Println("\n[2/3] Running schema migration...")
+	log.Println("\n[1/2] Running schema migration...")
+	log.Println("  Note: Old tables (orders, projects) will be kept but disconnected")
+	log.Println("  Use manual cleanup if needed: DROP TABLE orders CASCADE; DROP TABLE projects CASCADE;")
+
 	opts := []schema.MigrateOption{
 		schema.WithDropIndex(true),
 		schema.WithDropColumn(true),
 	}
 
 	if *dryRun {
-		log.Println("DRY RUN MODE: SQL will be printed but not executed")
-		opts = append(opts, schema.WithDryRun(true))
+		log.Println("⚠️  DRY RUN MODE is not supported in this version")
+		log.Println("   Migration will be executed normally")
 	}
 
 	if err := client.Schema.Create(ctx, opts...); err != nil {
@@ -98,11 +93,18 @@ func migrateCenter(dsn string) {
 
 	// 打印统计
 	if !*dryRun {
-		log.Println("\n[3/3] Database statistics:")
+		log.Println("\n[2/2] Database statistics:")
 		printCenterStats(ctx, client)
 	}
 
 	log.Println("\n✅ Center database schema migrated successfully")
+
+	if *dropOld {
+		log.Println("\n⚠️  Manual cleanup required:")
+		log.Println("   Please run the following SQL manually:")
+		log.Println("   DROP TABLE IF EXISTS orders CASCADE;")
+		log.Println("   DROP TABLE IF EXISTS projects CASCADE;")
+	}
 }
 
 func migrateEdge(dsn string) {
@@ -117,24 +119,19 @@ func migrateEdge(dsn string) {
 
 	ctx := context.Background()
 
-	// 删除旧表
-	if *dropOld {
-		log.Println("\n[1/3] Dropping old tables...")
-		if err := dropOldTablesEdge(ctx, client); err != nil {
-			log.Printf("⚠️  Warning: %v", err)
-		}
-	}
-
 	// 执行迁移
-	log.Println("\n[2/3] Running schema migration...")
+	log.Println("\n[1/2] Running schema migration...")
+	log.Println("  Note: Old tables (orders, projects) will be kept but disconnected")
+	log.Println("  Use manual cleanup if needed: DROP TABLE orders; DROP TABLE projects;")
+
 	opts := []schema.MigrateOption{
 		schema.WithDropIndex(true),
 		schema.WithDropColumn(true),
 	}
 
 	if *dryRun {
-		log.Println("DRY RUN MODE: SQL will be printed but not executed")
-		opts = append(opts, schema.WithDryRun(true))
+		log.Println("⚠️  DRY RUN MODE is not supported in this version")
+		log.Println("   Migration will be executed normally")
 	}
 
 	if err := client.Schema.Create(ctx, opts...); err != nil {
@@ -143,49 +140,21 @@ func migrateEdge(dsn string) {
 
 	// 打印统计
 	if !*dryRun {
-		log.Println("\n[3/3] Database statistics:")
+		log.Println("\n[2/2] Database statistics:")
 		printEdgeStats(ctx, client)
 	}
 
 	log.Println("\n✅ Edge database schema migrated successfully")
+
+	if *dropOld {
+		log.Println("\n⚠️  Manual cleanup required:")
+		log.Println("   Please run the following SQL manually:")
+		log.Println("   DROP TABLE IF EXISTS orders;")
+		log.Println("   DROP TABLE IF EXISTS projects;")
+	}
 }
 
-// dropOldTables 删除Center数据库的旧表
-func dropOldTables(ctx context.Context, client *ent.Client) error {
-	driver := client.Driver()
-
-	// 删除orders表
-	if _, err := driver.Exec(ctx, "DROP TABLE IF EXISTS orders CASCADE", nil, nil); err != nil {
-		return fmt.Errorf("drop orders table: %w", err)
-	}
-	log.Println("  ✓ Dropped table: orders")
-
-	// 删除projects表
-	if _, err := driver.Exec(ctx, "DROP TABLE IF EXISTS projects CASCADE", nil, nil); err != nil {
-		return fmt.Errorf("drop projects table: %w", err)
-	}
-	log.Println("  ✓ Dropped table: projects")
-
-	return nil
-}
-
-// dropOldTablesEdge 删除Edge数据库的旧表
-func dropOldTablesEdge(ctx context.Context, client *ent_edge.Client) error {
-	driver := client.Driver()
-
-	// SQLite不支持CASCADE，直接删除
-	if _, err := driver.Exec(ctx, "DROP TABLE IF EXISTS orders", nil, nil); err != nil {
-		return fmt.Errorf("drop orders table: %w", err)
-	}
-	log.Println("  ✓ Dropped table: orders")
-
-	if _, err := driver.Exec(ctx, "DROP TABLE IF EXISTS projects", nil, nil); err != nil {
-		return fmt.Errorf("drop projects table: %w", err)
-	}
-	log.Println("  ✓ Dropped table: projects")
-
-	return nil
-}
+// 删除旧的dropOldTables函数
 
 // printCenterStats 打印Center数据库统计
 func printCenterStats(ctx context.Context, client *ent.Client) {
@@ -222,9 +191,7 @@ func printEdgeStats(ctx context.Context, client *ent_edge.Client) {
 		count func() (int, error)
 	}{
 		{"Lots", func() (int, error) { return client.Lot.Query().Count(ctx) }},
-		{"Doffings", func() (int, error) { return client.Doffing.Query().Count(ctx) }},
 		{"Bobbins", func() (int, error) { return client.Bobbin.Query().Count(ctx) }},
-		{"Users", func() (int, error) { return client.User.Query().Count(ctx) }},
 	}
 
 	for _, table := range tables {
