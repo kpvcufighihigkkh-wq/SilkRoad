@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -9,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
-	"github.com/yourusername/igh-silkroad/internal/database/ent_edge"
 
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
 	_ "github.com/lib/pq"
 	_ "modernc.org/sqlite"
@@ -111,10 +112,21 @@ func migrateEdge(dsn string) {
 	log.Println("=== Edge Database Migration ===")
 	log.Printf("DSN: %s", dsn)
 
-	client, err := ent_edge.Open("sqlite", dsn)
+	// Edge使用Center的ent包 (SQLite版本)
+	// 使用与edge-server相同的方式连接
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		log.Fatalf("failed opening connection to sqlite: %v", err)
 	}
+
+	// 启用外键约束
+	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		log.Fatalf("failed to enable foreign keys: %v", err)
+	}
+
+	// 创建Ent客户端
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := ent.NewClient(ent.Driver(drv))
 	defer client.Close()
 
 	ctx := context.Background()
@@ -141,7 +153,7 @@ func migrateEdge(dsn string) {
 	// 打印统计
 	if !*dryRun {
 		log.Println("\n[2/2] Database statistics:")
-		printEdgeStats(ctx, client)
+		printEdgeStatsNew(ctx, client)
 	}
 
 	log.Println("\n✅ Edge database schema migrated successfully")
@@ -151,6 +163,28 @@ func migrateEdge(dsn string) {
 		log.Println("   Please run the following SQL manually:")
 		log.Println("   DROP TABLE IF EXISTS orders;")
 		log.Println("   DROP TABLE IF EXISTS projects;")
+	}
+}
+
+// printEdgeStatsNew 使用ent包打印Edge数据库统计
+func printEdgeStatsNew(ctx context.Context, client *ent.Client) {
+	tables := []struct {
+		name  string
+		count func() (int, error)
+	}{
+		{"Lots", func() (int, error) { return client.Lot.Query().Count(ctx) }},
+		{"Doffings", func() (int, error) { return client.Doffing.Query().Count(ctx) }},
+		{"Bobbins", func() (int, error) { return client.Bobbin.Query().Count(ctx) }},
+		{"Users", func() (int, error) { return client.User.Query().Count(ctx) }},
+	}
+
+	for _, table := range tables {
+		count, err := table.count()
+		if err != nil {
+			log.Printf("  %-15s: Error - %v", table.name, err)
+		} else {
+			log.Printf("  %-15s: %d records", table.name, count)
+		}
 	}
 }
 
@@ -172,26 +206,6 @@ func printCenterStats(ctx context.Context, client *ent.Client) {
 		{"Modules", func() (int, error) { return client.Module.Query().Count(ctx) }},
 		{"Grades", func() (int, error) { return client.Grade.Query().Count(ctx) }},
 		{"Users", func() (int, error) { return client.User.Query().Count(ctx) }},
-	}
-
-	for _, table := range tables {
-		count, err := table.count()
-		if err != nil {
-			log.Printf("  %-15s: Error - %v", table.name, err)
-		} else {
-			log.Printf("  %-15s: %d records", table.name, count)
-		}
-	}
-}
-
-// printEdgeStats 打印Edge数据库统计
-func printEdgeStats(ctx context.Context, client *ent_edge.Client) {
-	tables := []struct {
-		name  string
-		count func() (int, error)
-	}{
-		{"Lots", func() (int, error) { return client.Lot.Query().Count(ctx) }},
-		{"Bobbins", func() (int, error) { return client.Bobbin.Query().Count(ctx) }},
 	}
 
 	for _, table := range tables {
