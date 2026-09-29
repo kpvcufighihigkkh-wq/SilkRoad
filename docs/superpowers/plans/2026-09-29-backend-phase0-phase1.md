@@ -360,7 +360,7 @@ func (s *LotService) CreateLot(ctx context.Context, req *CreateLotRequest) (*Lot
 	}
 
 	if req.PLCLotNumber != "" {
-		builder.SetPLCLotNumber(req.PLCLotNumber)
+		builder.SetPlcLotNumber(req.PLCLotNumber)
 	}
 	if req.OrderCode != "" {
 		builder.SetOrderCode(req.OrderCode)
@@ -433,7 +433,7 @@ func (s *LotService) toLotResponse(l *ent.Lot) *LotResponse {
 	resp := &LotResponse{
 		ID:              l.ID.String(),
 		LotNumber:       l.LotNumber,
-		PLCLotNumber:    l.PLCLotNumber,
+		PLCLotNumber:    l.PlcLotNumber,
 		OrderCode:       l.OrderCode,
 		ProductType:     string(l.ProductType),
 		ProductSpec:     l.ProductSpec,
@@ -645,7 +645,7 @@ EOF
 		builder.SetEdgeID(edgeID)
 	}
 	if v := getString(data, "plc_lot_number"); v != "" {
-		builder.SetPLCLotNumber(v)
+		builder.SetPlcLotNumber(v)
 	}
 	if v := getString(data, "order_code"); v != "" {
 		builder.SetOrderCode(v)
@@ -973,7 +973,7 @@ func seedCoreData(ctx context.Context, client *ent.Client) error {
 	lot, err := client.Lot.Create().
 		SetLotNumber("FDY-2026-001-01").
 		SetEdgeID(edge.ID).
-		SetPLCLotNumber("PLC-2026-001").
+		SetPlcLotNumber("PLC-2026-001").
 		SetProductType(lot.ProductTypeFDY).
 		SetProductSpec("150D/48F").
 		SetPlannedQuantity(4800).
