@@ -31,10 +31,6 @@ func (Barrel) Fields() []ent.Field {
 			MaxLen(50).
 			Comment("落纱桶编号"),
 
-		// 关联落纱记录
-		field.UUID("doffing_id", uuid.UUID{}).
-			Comment("关联落纱记录ID"),
-
 		// 关联批号
 		field.UUID("lot_id", uuid.UUID{}).
 			Comment("关联批号ID"),
@@ -77,13 +73,6 @@ func (Barrel) Fields() []ent.Field {
 // Edges of the Barrel.
 func (Barrel) Edges() []ent.Edge {
 	return []ent.Edge{
-		// 一个落纱桶属于一个落纱记录
-		edge.From("doffing", Doffing.Type).
-			Ref("barrels").
-			Field("doffing_id").
-			Required().
-			Unique(),
-
 		// 一个落纱桶属于一个批号
 		edge.From("lot", Lot.Type).
 			Ref("barrels").
@@ -99,9 +88,6 @@ func (Barrel) Edges() []ent.Edge {
 // Indexes of the Barrel.
 func (Barrel) Indexes() []ent.Index {
 	return []ent.Index{
-		// 落纱ID索引
-		index.Fields("doffing_id"),
-
 		// 批号ID索引
 		index.Fields("lot_id"),
 

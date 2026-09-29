@@ -45,23 +45,23 @@ func init() {
 		}
 	}()
 	// barrelDescCapacity is the schema descriptor for capacity field.
-	barrelDescCapacity := barrelFields[4].Descriptor()
+	barrelDescCapacity := barrelFields[3].Descriptor()
 	// barrel.DefaultCapacity holds the default value on creation for the capacity field.
 	barrel.DefaultCapacity = barrelDescCapacity.Default.(int)
 	// barrel.CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
 	barrel.CapacityValidator = barrelDescCapacity.Validators[0].(func(int) error)
 	// barrelDescCurrentCount is the schema descriptor for current_count field.
-	barrelDescCurrentCount := barrelFields[5].Descriptor()
+	barrelDescCurrentCount := barrelFields[4].Descriptor()
 	// barrel.DefaultCurrentCount holds the default value on creation for the current_count field.
 	barrel.DefaultCurrentCount = barrelDescCurrentCount.Default.(int)
 	// barrel.CurrentCountValidator is a validator for the "current_count" field. It is called by the builders before save.
 	barrel.CurrentCountValidator = barrelDescCurrentCount.Validators[0].(func(int) error)
 	// barrelDescCreatedAt is the schema descriptor for created_at field.
-	barrelDescCreatedAt := barrelFields[8].Descriptor()
+	barrelDescCreatedAt := barrelFields[7].Descriptor()
 	// barrel.DefaultCreatedAt holds the default value on creation for the created_at field.
 	barrel.DefaultCreatedAt = barrelDescCreatedAt.Default.(func() time.Time)
 	// barrelDescUpdatedAt is the schema descriptor for updated_at field.
-	barrelDescUpdatedAt := barrelFields[9].Descriptor()
+	barrelDescUpdatedAt := barrelFields[8].Descriptor()
 	// barrel.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	barrel.DefaultUpdatedAt = barrelDescUpdatedAt.Default.(func() time.Time)
 	// barrel.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

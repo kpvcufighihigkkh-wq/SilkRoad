@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 )
 
@@ -27,12 +26,6 @@ type BarrelCreate struct {
 // SetBarrelNumber sets the "barrel_number" field.
 func (_c *BarrelCreate) SetBarrelNumber(v string) *BarrelCreate {
 	_c.mutation.SetBarrelNumber(v)
-	return _c
-}
-
-// SetDoffingID sets the "doffing_id" field.
-func (_c *BarrelCreate) SetDoffingID(v uuid.UUID) *BarrelCreate {
-	_c.mutation.SetDoffingID(v)
 	return _c
 }
 
@@ -140,11 +133,6 @@ func (_c *BarrelCreate) SetNillableID(v *uuid.UUID) *BarrelCreate {
 	return _c
 }
 
-// SetDoffing sets the "doffing" edge to the Doffing entity.
-func (_c *BarrelCreate) SetDoffing(v *Doffing) *BarrelCreate {
-	return _c.SetDoffingID(v.ID)
-}
-
 // SetLot sets the "lot" edge to the Lot entity.
 func (_c *BarrelCreate) SetLot(v *Lot) *BarrelCreate {
 	return _c.SetLotID(v.ID)
@@ -236,9 +224,6 @@ func (_c *BarrelCreate) check() error {
 			return &ValidationError{Name: "barrel_number", err: fmt.Errorf(`ent: validator failed for field "Barrel.barrel_number": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.DoffingID(); !ok {
-		return &ValidationError{Name: "doffing_id", err: errors.New(`ent: missing required field "Barrel.doffing_id"`)}
-	}
 	if _, ok := _c.mutation.LotID(); !ok {
 		return &ValidationError{Name: "lot_id", err: errors.New(`ent: missing required field "Barrel.lot_id"`)}
 	}
@@ -271,9 +256,6 @@ func (_c *BarrelCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Barrel.updated_at"`)}
-	}
-	if len(_c.mutation.DoffingIDs()) == 0 {
-		return &ValidationError{Name: "doffing", err: errors.New(`ent: missing required edge "Barrel.doffing"`)}
 	}
 	if len(_c.mutation.LotIDs()) == 0 {
 		return &ValidationError{Name: "lot", err: errors.New(`ent: missing required edge "Barrel.lot"`)}
@@ -340,23 +322,6 @@ func (_c *BarrelCreate) createSpec() (*Barrel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(barrel.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
-	}
-	if nodes := _c.mutation.DoffingIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   barrel.DoffingTable,
-			Columns: []string{barrel.DoffingColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_node.DoffingID = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.LotIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

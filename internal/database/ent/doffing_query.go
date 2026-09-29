@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -13,7 +12,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
@@ -22,12 +20,11 @@ import (
 // DoffingQuery is the builder for querying Doffing entities.
 type DoffingQuery struct {
 	config
-	ctx         *QueryContext
-	order       []doffing.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Doffing
-	withLot     *LotQuery
-	withBarrels *BarrelQuery
+	ctx        *QueryContext
+	order      []doffing.OrderOption
+	inters     []Interceptor
+	predicates []predicate.Doffing
+	withLot    *LotQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -79,28 +76,6 @@ func (_q *DoffingQuery) QueryLot() *LotQuery {
 			sqlgraph.From(doffing.Table, doffing.FieldID, selector),
 			sqlgraph.To(lot.Table, lot.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, doffing.LotTable, doffing.LotColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryBarrels chains the current query on the "barrels" edge.
-func (_q *DoffingQuery) QueryBarrels() *BarrelQuery {
-	query := (&BarrelClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(doffing.Table, doffing.FieldID, selector),
-			sqlgraph.To(barrel.Table, barrel.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, doffing.BarrelsTable, doffing.BarrelsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -295,13 +270,12 @@ func (_q *DoffingQuery) Clone() *DoffingQuery {
 		return nil
 	}
 	return &DoffingQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]doffing.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.Doffing{}, _q.predicates...),
-		withLot:     _q.withLot.Clone(),
-		withBarrels: _q.withBarrels.Clone(),
+		config:     _q.config,
+		ctx:        _q.ctx.Clone(),
+		order:      append([]doffing.OrderOption{}, _q.order...),
+		inters:     append([]Interceptor{}, _q.inters...),
+		predicates: append([]predicate.Doffing{}, _q.predicates...),
+		withLot:    _q.withLot.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -316,17 +290,6 @@ func (_q *DoffingQuery) WithLot(opts ...func(*LotQuery)) *DoffingQuery {
 		opt(query)
 	}
 	_q.withLot = query
-	return _q
-}
-
-// WithBarrels tells the query-builder to eager-load the nodes that are connected to
-// the "barrels" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DoffingQuery) WithBarrels(opts ...func(*BarrelQuery)) *DoffingQuery {
-	query := (&BarrelClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withBarrels = query
 	return _q
 }
 
@@ -408,9 +371,8 @@ func (_q *DoffingQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Doff
 	var (
 		nodes       = []*Doffing{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [1]bool{
 			_q.withLot != nil,
-			_q.withBarrels != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -434,13 +396,6 @@ func (_q *DoffingQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Doff
 	if query := _q.withLot; query != nil {
 		if err := _q.loadLot(ctx, query, nodes, nil,
 			func(n *Doffing, e *Lot) { n.Edges.Lot = e }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withBarrels; query != nil {
-		if err := _q.loadBarrels(ctx, query, nodes,
-			func(n *Doffing) { n.Edges.Barrels = []*Barrel{} },
-			func(n *Doffing, e *Barrel) { n.Edges.Barrels = append(n.Edges.Barrels, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -473,36 +428,6 @@ func (_q *DoffingQuery) loadLot(ctx context.Context, query *LotQuery, nodes []*D
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
-	}
-	return nil
-}
-func (_q *DoffingQuery) loadBarrels(ctx context.Context, query *BarrelQuery, nodes []*Doffing, init func(*Doffing), assign func(*Doffing, *Barrel)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[uuid.UUID]*Doffing)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(barrel.FieldDoffingID)
-	}
-	query.Where(predicate.Barrel(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(doffing.BarrelsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.DoffingID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "doffing_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
 	}
 	return nil
 }

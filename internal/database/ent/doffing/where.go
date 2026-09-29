@@ -754,29 +754,6 @@ func HasLotWith(preds ...predicate.Lot) predicate.Doffing {
 	})
 }
 
-// HasBarrels applies the HasEdge predicate on the "barrels" edge.
-func HasBarrels() predicate.Doffing {
-	return predicate.Doffing(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, BarrelsTable, BarrelsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasBarrelsWith applies the HasEdge predicate on the "barrels" edge with a given conditions (other predicates).
-func HasBarrelsWith(preds ...predicate.Barrel) predicate.Doffing {
-	return predicate.Doffing(func(s *sql.Selector) {
-		step := newBarrelsStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Doffing) predicate.Doffing {
 	return predicate.Doffing(sql.AndPredicates(predicates...))

@@ -64,8 +64,6 @@ type BarrelMutation struct {
 	created_at       *time.Time
 	updated_at       *time.Time
 	clearedFields    map[string]struct{}
-	doffing          *uuid.UUID
-	cleareddoffing   bool
 	lot              *uuid.UUID
 	clearedlot       bool
 	bobbins          map[uuid.UUID]struct{}
@@ -214,42 +212,6 @@ func (m *BarrelMutation) OldBarrelNumber(ctx context.Context) (v string, err err
 // ResetBarrelNumber resets all changes to the "barrel_number" field.
 func (m *BarrelMutation) ResetBarrelNumber() {
 	m.barrel_number = nil
-}
-
-// SetDoffingID sets the "doffing_id" field.
-func (m *BarrelMutation) SetDoffingID(u uuid.UUID) {
-	m.doffing = &u
-}
-
-// DoffingID returns the value of the "doffing_id" field in the mutation.
-func (m *BarrelMutation) DoffingID() (r uuid.UUID, exists bool) {
-	v := m.doffing
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDoffingID returns the old "doffing_id" field's value of the Barrel entity.
-// If the Barrel object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BarrelMutation) OldDoffingID(ctx context.Context) (v uuid.UUID, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDoffingID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDoffingID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDoffingID: %w", err)
-	}
-	return oldValue.DoffingID, nil
-}
-
-// ResetDoffingID resets all changes to the "doffing_id" field.
-func (m *BarrelMutation) ResetDoffingID() {
-	m.doffing = nil
 }
 
 // SetLotID sets the "lot_id" field.
@@ -557,33 +519,6 @@ func (m *BarrelMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
-// ClearDoffing clears the "doffing" edge to the Doffing entity.
-func (m *BarrelMutation) ClearDoffing() {
-	m.cleareddoffing = true
-	m.clearedFields[barrel.FieldDoffingID] = struct{}{}
-}
-
-// DoffingCleared reports if the "doffing" edge to the Doffing entity was cleared.
-func (m *BarrelMutation) DoffingCleared() bool {
-	return m.cleareddoffing
-}
-
-// DoffingIDs returns the "doffing" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// DoffingID instead. It exists only for internal usage by the builders.
-func (m *BarrelMutation) DoffingIDs() (ids []uuid.UUID) {
-	if id := m.doffing; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetDoffing resets all changes to the "doffing" edge.
-func (m *BarrelMutation) ResetDoffing() {
-	m.doffing = nil
-	m.cleareddoffing = false
-}
-
 // ClearLot clears the "lot" edge to the Lot entity.
 func (m *BarrelMutation) ClearLot() {
 	m.clearedlot = true
@@ -699,12 +634,9 @@ func (m *BarrelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BarrelMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 8)
 	if m.barrel_number != nil {
 		fields = append(fields, barrel.FieldBarrelNumber)
-	}
-	if m.doffing != nil {
-		fields = append(fields, barrel.FieldDoffingID)
 	}
 	if m.lot != nil {
 		fields = append(fields, barrel.FieldLotID)
@@ -737,8 +669,6 @@ func (m *BarrelMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case barrel.FieldBarrelNumber:
 		return m.BarrelNumber()
-	case barrel.FieldDoffingID:
-		return m.DoffingID()
 	case barrel.FieldLotID:
 		return m.LotID()
 	case barrel.FieldCapacity:
@@ -764,8 +694,6 @@ func (m *BarrelMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	switch name {
 	case barrel.FieldBarrelNumber:
 		return m.OldBarrelNumber(ctx)
-	case barrel.FieldDoffingID:
-		return m.OldDoffingID(ctx)
 	case barrel.FieldLotID:
 		return m.OldLotID(ctx)
 	case barrel.FieldCapacity:
@@ -795,13 +723,6 @@ func (m *BarrelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBarrelNumber(v)
-		return nil
-	case barrel.FieldDoffingID:
-		v, ok := value.(uuid.UUID)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDoffingID(v)
 		return nil
 	case barrel.FieldLotID:
 		v, ok := value.(uuid.UUID)
@@ -940,9 +861,6 @@ func (m *BarrelMutation) ResetField(name string) error {
 	case barrel.FieldBarrelNumber:
 		m.ResetBarrelNumber()
 		return nil
-	case barrel.FieldDoffingID:
-		m.ResetDoffingID()
-		return nil
 	case barrel.FieldLotID:
 		m.ResetLotID()
 		return nil
@@ -970,10 +888,7 @@ func (m *BarrelMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *BarrelMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
-	if m.doffing != nil {
-		edges = append(edges, barrel.EdgeDoffing)
-	}
+	edges := make([]string, 0, 2)
 	if m.lot != nil {
 		edges = append(edges, barrel.EdgeLot)
 	}
@@ -987,10 +902,6 @@ func (m *BarrelMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *BarrelMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case barrel.EdgeDoffing:
-		if id := m.doffing; id != nil {
-			return []ent.Value{*id}
-		}
 	case barrel.EdgeLot:
 		if id := m.lot; id != nil {
 			return []ent.Value{*id}
@@ -1007,7 +918,7 @@ func (m *BarrelMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *BarrelMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 2)
 	if m.removedbobbins != nil {
 		edges = append(edges, barrel.EdgeBobbins)
 	}
@@ -1030,10 +941,7 @@ func (m *BarrelMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *BarrelMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
-	if m.cleareddoffing {
-		edges = append(edges, barrel.EdgeDoffing)
-	}
+	edges := make([]string, 0, 2)
 	if m.clearedlot {
 		edges = append(edges, barrel.EdgeLot)
 	}
@@ -1047,8 +955,6 @@ func (m *BarrelMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *BarrelMutation) EdgeCleared(name string) bool {
 	switch name {
-	case barrel.EdgeDoffing:
-		return m.cleareddoffing
 	case barrel.EdgeLot:
 		return m.clearedlot
 	case barrel.EdgeBobbins:
@@ -1061,9 +967,6 @@ func (m *BarrelMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *BarrelMutation) ClearEdge(name string) error {
 	switch name {
-	case barrel.EdgeDoffing:
-		m.ClearDoffing()
-		return nil
 	case barrel.EdgeLot:
 		m.ClearLot()
 		return nil
@@ -1075,9 +978,6 @@ func (m *BarrelMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *BarrelMutation) ResetEdge(name string) error {
 	switch name {
-	case barrel.EdgeDoffing:
-		m.ResetDoffing()
-		return nil
 	case barrel.EdgeLot:
 		m.ResetLot()
 		return nil
@@ -3884,9 +3784,6 @@ type DoffingMutation struct {
 	clearedFields        map[string]struct{}
 	lot                  *uuid.UUID
 	clearedlot           bool
-	barrels              map[uuid.UUID]struct{}
-	removedbarrels       map[uuid.UUID]struct{}
-	clearedbarrels       bool
 	done                 bool
 	oldValue             func(context.Context) (*Doffing, error)
 	predicates           []predicate.Doffing
@@ -4610,60 +4507,6 @@ func (m *DoffingMutation) ResetLot() {
 	m.clearedlot = false
 }
 
-// AddBarrelIDs adds the "barrels" edge to the Barrel entity by ids.
-func (m *DoffingMutation) AddBarrelIDs(ids ...uuid.UUID) {
-	if m.barrels == nil {
-		m.barrels = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		m.barrels[ids[i]] = struct{}{}
-	}
-}
-
-// ClearBarrels clears the "barrels" edge to the Barrel entity.
-func (m *DoffingMutation) ClearBarrels() {
-	m.clearedbarrels = true
-}
-
-// BarrelsCleared reports if the "barrels" edge to the Barrel entity was cleared.
-func (m *DoffingMutation) BarrelsCleared() bool {
-	return m.clearedbarrels
-}
-
-// RemoveBarrelIDs removes the "barrels" edge to the Barrel entity by IDs.
-func (m *DoffingMutation) RemoveBarrelIDs(ids ...uuid.UUID) {
-	if m.removedbarrels == nil {
-		m.removedbarrels = make(map[uuid.UUID]struct{})
-	}
-	for i := range ids {
-		delete(m.barrels, ids[i])
-		m.removedbarrels[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedBarrels returns the removed IDs of the "barrels" edge to the Barrel entity.
-func (m *DoffingMutation) RemovedBarrelsIDs() (ids []uuid.UUID) {
-	for id := range m.removedbarrels {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// BarrelsIDs returns the "barrels" edge IDs in the mutation.
-func (m *DoffingMutation) BarrelsIDs() (ids []uuid.UUID) {
-	for id := range m.barrels {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetBarrels resets all changes to the "barrels" edge.
-func (m *DoffingMutation) ResetBarrels() {
-	m.barrels = nil
-	m.clearedbarrels = false
-	m.removedbarrels = nil
-}
-
 // Where appends a list predicates to the DoffingMutation builder.
 func (m *DoffingMutation) Where(ps ...predicate.Doffing) {
 	m.predicates = append(m.predicates, ps...)
@@ -5067,12 +4910,9 @@ func (m *DoffingMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DoffingMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.lot != nil {
 		edges = append(edges, doffing.EdgeLot)
-	}
-	if m.barrels != nil {
-		edges = append(edges, doffing.EdgeBarrels)
 	}
 	return edges
 }
@@ -5085,47 +4925,27 @@ func (m *DoffingMutation) AddedIDs(name string) []ent.Value {
 		if id := m.lot; id != nil {
 			return []ent.Value{*id}
 		}
-	case doffing.EdgeBarrels:
-		ids := make([]ent.Value, 0, len(m.barrels))
-		for id := range m.barrels {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DoffingMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.removedbarrels != nil {
-		edges = append(edges, doffing.EdgeBarrels)
-	}
+	edges := make([]string, 0, 1)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *DoffingMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case doffing.EdgeBarrels:
-		ids := make([]ent.Value, 0, len(m.removedbarrels))
-		for id := range m.removedbarrels {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DoffingMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.clearedlot {
 		edges = append(edges, doffing.EdgeLot)
-	}
-	if m.clearedbarrels {
-		edges = append(edges, doffing.EdgeBarrels)
 	}
 	return edges
 }
@@ -5136,8 +4956,6 @@ func (m *DoffingMutation) EdgeCleared(name string) bool {
 	switch name {
 	case doffing.EdgeLot:
 		return m.clearedlot
-	case doffing.EdgeBarrels:
-		return m.clearedbarrels
 	}
 	return false
 }
@@ -5159,9 +4977,6 @@ func (m *DoffingMutation) ResetEdge(name string) error {
 	switch name {
 	case doffing.EdgeLot:
 		m.ResetLot()
-		return nil
-	case doffing.EdgeBarrels:
-		m.ResetBarrels()
 		return nil
 	}
 	return fmt.Errorf("unknown Doffing edge %s", name)

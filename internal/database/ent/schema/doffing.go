@@ -103,9 +103,6 @@ func (Doffing) Edges() []ent.Edge {
 			Field("lot_id").
 			Required().
 			Unique(),
-
-		// 一个落纱记录有多个落纱桶
-		edge.To("barrels", Barrel.Type),
 	}
 }
 

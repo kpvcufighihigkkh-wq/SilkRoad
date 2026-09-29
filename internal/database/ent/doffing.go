@@ -55,11 +55,9 @@ type Doffing struct {
 type DoffingEdges struct {
 	// Lot holds the value of the lot edge.
 	Lot *Lot `json:"lot,omitempty"`
-	// Barrels holds the value of the barrels edge.
-	Barrels []*Barrel `json:"barrels,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [1]bool
 }
 
 // LotOrErr returns the Lot value or an error if the edge
@@ -71,15 +69,6 @@ func (e DoffingEdges) LotOrErr() (*Lot, error) {
 		return nil, &NotFoundError{label: lot.Label}
 	}
 	return nil, &NotLoadedError{edge: "lot"}
-}
-
-// BarrelsOrErr returns the Barrels value or an error if the edge
-// was not loaded in eager-loading.
-func (e DoffingEdges) BarrelsOrErr() ([]*Barrel, error) {
-	if e.loadedTypes[1] {
-		return e.Barrels, nil
-	}
-	return nil, &NotLoadedError{edge: "barrels"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -212,11 +201,6 @@ func (_m *Doffing) Value(name string) (ent.Value, error) {
 // QueryLot queries the "lot" edge of the Doffing entity.
 func (_m *Doffing) QueryLot() *LotQuery {
 	return NewDoffingClient(_m.config).QueryLot(_m)
-}
-
-// QueryBarrels queries the "barrels" edge of the Doffing entity.
-func (_m *Doffing) QueryBarrels() *BarrelQuery {
-	return NewDoffingClient(_m.config).QueryBarrels(_m)
 }
 
 // Update returns a builder for updating this Doffing.

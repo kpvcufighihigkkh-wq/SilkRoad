@@ -396,22 +396,6 @@ func (c *BarrelClient) GetX(ctx context.Context, id uuid.UUID) *Barrel {
 	return obj
 }
 
-// QueryDoffing queries the doffing edge of a Barrel.
-func (c *BarrelClient) QueryDoffing(_m *Barrel) *DoffingQuery {
-	query := (&DoffingClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(barrel.Table, barrel.FieldID, id),
-			sqlgraph.To(doffing.Table, doffing.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, barrel.DoffingTable, barrel.DoffingColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // QueryLot queries the lot edge of a Barrel.
 func (c *BarrelClient) QueryLot(_m *Barrel) *LotQuery {
 	query := (&LotClient{config: c.config}).Query()
@@ -932,22 +916,6 @@ func (c *DoffingClient) QueryLot(_m *Doffing) *LotQuery {
 			sqlgraph.From(doffing.Table, doffing.FieldID, id),
 			sqlgraph.To(lot.Table, lot.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, doffing.LotTable, doffing.LotColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryBarrels queries the barrels edge of a Doffing.
-func (c *DoffingClient) QueryBarrels(_m *Doffing) *BarrelQuery {
-	query := (&BarrelClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(doffing.Table, doffing.FieldID, id),
-			sqlgraph.To(barrel.Table, barrel.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, doffing.BarrelsTable, doffing.BarrelsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

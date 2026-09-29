@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
@@ -42,20 +41,6 @@ func (_u *BarrelUpdate) SetBarrelNumber(v string) *BarrelUpdate {
 func (_u *BarrelUpdate) SetNillableBarrelNumber(v *string) *BarrelUpdate {
 	if v != nil {
 		_u.SetBarrelNumber(*v)
-	}
-	return _u
-}
-
-// SetDoffingID sets the "doffing_id" field.
-func (_u *BarrelUpdate) SetDoffingID(v uuid.UUID) *BarrelUpdate {
-	_u.mutation.SetDoffingID(v)
-	return _u
-}
-
-// SetNillableDoffingID sets the "doffing_id" field if the given value is not nil.
-func (_u *BarrelUpdate) SetNillableDoffingID(v *uuid.UUID) *BarrelUpdate {
-	if v != nil {
-		_u.SetDoffingID(*v)
 	}
 	return _u
 }
@@ -156,11 +141,6 @@ func (_u *BarrelUpdate) SetUpdatedAt(v time.Time) *BarrelUpdate {
 	return _u
 }
 
-// SetDoffing sets the "doffing" edge to the Doffing entity.
-func (_u *BarrelUpdate) SetDoffing(v *Doffing) *BarrelUpdate {
-	return _u.SetDoffingID(v.ID)
-}
-
 // SetLot sets the "lot" edge to the Lot entity.
 func (_u *BarrelUpdate) SetLot(v *Lot) *BarrelUpdate {
 	return _u.SetLotID(v.ID)
@@ -184,12 +164,6 @@ func (_u *BarrelUpdate) AddBobbins(v ...*Bobbin) *BarrelUpdate {
 // Mutation returns the BarrelMutation object of the builder.
 func (_u *BarrelUpdate) Mutation() *BarrelMutation {
 	return _u.mutation
-}
-
-// ClearDoffing clears the "doffing" edge to the Doffing entity.
-func (_u *BarrelUpdate) ClearDoffing() *BarrelUpdate {
-	_u.mutation.ClearDoffing()
-	return _u
 }
 
 // ClearLot clears the "lot" edge to the Lot entity.
@@ -277,9 +251,6 @@ func (_u *BarrelUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Barrel.status": %w`, err)}
 		}
 	}
-	if _u.mutation.DoffingCleared() && len(_u.mutation.DoffingIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Barrel.doffing"`)
-	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Barrel.lot"`)
 	}
@@ -324,35 +295,6 @@ func (_u *BarrelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(barrel.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.DoffingCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   barrel.DoffingTable,
-			Columns: []string{barrel.DoffingColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.DoffingIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   barrel.DoffingTable,
-			Columns: []string{barrel.DoffingColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.LotCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -462,20 +404,6 @@ func (_u *BarrelUpdateOne) SetNillableBarrelNumber(v *string) *BarrelUpdateOne {
 	return _u
 }
 
-// SetDoffingID sets the "doffing_id" field.
-func (_u *BarrelUpdateOne) SetDoffingID(v uuid.UUID) *BarrelUpdateOne {
-	_u.mutation.SetDoffingID(v)
-	return _u
-}
-
-// SetNillableDoffingID sets the "doffing_id" field if the given value is not nil.
-func (_u *BarrelUpdateOne) SetNillableDoffingID(v *uuid.UUID) *BarrelUpdateOne {
-	if v != nil {
-		_u.SetDoffingID(*v)
-	}
-	return _u
-}
-
 // SetLotID sets the "lot_id" field.
 func (_u *BarrelUpdateOne) SetLotID(v uuid.UUID) *BarrelUpdateOne {
 	_u.mutation.SetLotID(v)
@@ -572,11 +500,6 @@ func (_u *BarrelUpdateOne) SetUpdatedAt(v time.Time) *BarrelUpdateOne {
 	return _u
 }
 
-// SetDoffing sets the "doffing" edge to the Doffing entity.
-func (_u *BarrelUpdateOne) SetDoffing(v *Doffing) *BarrelUpdateOne {
-	return _u.SetDoffingID(v.ID)
-}
-
 // SetLot sets the "lot" edge to the Lot entity.
 func (_u *BarrelUpdateOne) SetLot(v *Lot) *BarrelUpdateOne {
 	return _u.SetLotID(v.ID)
@@ -600,12 +523,6 @@ func (_u *BarrelUpdateOne) AddBobbins(v ...*Bobbin) *BarrelUpdateOne {
 // Mutation returns the BarrelMutation object of the builder.
 func (_u *BarrelUpdateOne) Mutation() *BarrelMutation {
 	return _u.mutation
-}
-
-// ClearDoffing clears the "doffing" edge to the Doffing entity.
-func (_u *BarrelUpdateOne) ClearDoffing() *BarrelUpdateOne {
-	_u.mutation.ClearDoffing()
-	return _u
 }
 
 // ClearLot clears the "lot" edge to the Lot entity.
@@ -706,9 +623,6 @@ func (_u *BarrelUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Barrel.status": %w`, err)}
 		}
 	}
-	if _u.mutation.DoffingCleared() && len(_u.mutation.DoffingIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Barrel.doffing"`)
-	}
 	if _u.mutation.LotCleared() && len(_u.mutation.LotIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Barrel.lot"`)
 	}
@@ -770,35 +684,6 @@ func (_u *BarrelUpdateOne) sqlSave(ctx context.Context) (_node *Barrel, err erro
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(barrel.FieldUpdatedAt, field.TypeTime, value)
-	}
-	if _u.mutation.DoffingCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   barrel.DoffingTable,
-			Columns: []string{barrel.DoffingColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.DoffingIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   barrel.DoffingTable,
-			Columns: []string{barrel.DoffingColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(doffing.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.LotCleared() {
 		edge := &sqlgraph.EdgeSpec{

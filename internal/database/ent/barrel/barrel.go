@@ -18,8 +18,6 @@ const (
 	FieldID = "id"
 	// FieldBarrelNumber holds the string denoting the barrel_number field in the database.
 	FieldBarrelNumber = "barrel_number"
-	// FieldDoffingID holds the string denoting the doffing_id field in the database.
-	FieldDoffingID = "doffing_id"
 	// FieldLotID holds the string denoting the lot_id field in the database.
 	FieldLotID = "lot_id"
 	// FieldCapacity holds the string denoting the capacity field in the database.
@@ -34,21 +32,12 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
-	// EdgeDoffing holds the string denoting the doffing edge name in mutations.
-	EdgeDoffing = "doffing"
 	// EdgeLot holds the string denoting the lot edge name in mutations.
 	EdgeLot = "lot"
 	// EdgeBobbins holds the string denoting the bobbins edge name in mutations.
 	EdgeBobbins = "bobbins"
 	// Table holds the table name of the barrel in the database.
 	Table = "barrels"
-	// DoffingTable is the table that holds the doffing relation/edge.
-	DoffingTable = "barrels"
-	// DoffingInverseTable is the table name for the Doffing entity.
-	// It exists in this package in order to avoid circular dependency with the "doffing" package.
-	DoffingInverseTable = "doffings"
-	// DoffingColumn is the table column denoting the doffing relation/edge.
-	DoffingColumn = "doffing_id"
 	// LotTable is the table that holds the lot relation/edge.
 	LotTable = "barrels"
 	// LotInverseTable is the table name for the Lot entity.
@@ -69,7 +58,6 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldBarrelNumber,
-	FieldDoffingID,
 	FieldLotID,
 	FieldCapacity,
 	FieldCurrentCount,
@@ -151,11 +139,6 @@ func ByBarrelNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBarrelNumber, opts...).ToFunc()
 }
 
-// ByDoffingID orders the results by the doffing_id field.
-func ByDoffingID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDoffingID, opts...).ToFunc()
-}
-
 // ByLotID orders the results by the lot_id field.
 func ByLotID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLotID, opts...).ToFunc()
@@ -191,13 +174,6 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
-// ByDoffingField orders the results by doffing field.
-func ByDoffingField(field string, opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newDoffingStep(), sql.OrderByField(field, opts...))
-	}
-}
-
 // ByLotField orders the results by lot field.
 func ByLotField(field string, opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -217,13 +193,6 @@ func ByBobbins(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newBobbinsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
-}
-func newDoffingStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(DoffingInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2O, true, DoffingTable, DoffingColumn),
-	)
 }
 func newLotStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

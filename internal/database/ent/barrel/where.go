@@ -61,11 +61,6 @@ func BarrelNumber(v string) predicate.Barrel {
 	return predicate.Barrel(sql.FieldEQ(FieldBarrelNumber, v))
 }
 
-// DoffingID applies equality check predicate on the "doffing_id" field. It's identical to DoffingIDEQ.
-func DoffingID(v uuid.UUID) predicate.Barrel {
-	return predicate.Barrel(sql.FieldEQ(FieldDoffingID, v))
-}
-
 // LotID applies equality check predicate on the "lot_id" field. It's identical to LotIDEQ.
 func LotID(v uuid.UUID) predicate.Barrel {
 	return predicate.Barrel(sql.FieldEQ(FieldLotID, v))
@@ -159,26 +154,6 @@ func BarrelNumberEqualFold(v string) predicate.Barrel {
 // BarrelNumberContainsFold applies the ContainsFold predicate on the "barrel_number" field.
 func BarrelNumberContainsFold(v string) predicate.Barrel {
 	return predicate.Barrel(sql.FieldContainsFold(FieldBarrelNumber, v))
-}
-
-// DoffingIDEQ applies the EQ predicate on the "doffing_id" field.
-func DoffingIDEQ(v uuid.UUID) predicate.Barrel {
-	return predicate.Barrel(sql.FieldEQ(FieldDoffingID, v))
-}
-
-// DoffingIDNEQ applies the NEQ predicate on the "doffing_id" field.
-func DoffingIDNEQ(v uuid.UUID) predicate.Barrel {
-	return predicate.Barrel(sql.FieldNEQ(FieldDoffingID, v))
-}
-
-// DoffingIDIn applies the In predicate on the "doffing_id" field.
-func DoffingIDIn(vs ...uuid.UUID) predicate.Barrel {
-	return predicate.Barrel(sql.FieldIn(FieldDoffingID, vs...))
-}
-
-// DoffingIDNotIn applies the NotIn predicate on the "doffing_id" field.
-func DoffingIDNotIn(vs ...uuid.UUID) predicate.Barrel {
-	return predicate.Barrel(sql.FieldNotIn(FieldDoffingID, vs...))
 }
 
 // LotIDEQ applies the EQ predicate on the "lot_id" field.
@@ -429,29 +404,6 @@ func UpdatedAtLT(v time.Time) predicate.Barrel {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Barrel {
 	return predicate.Barrel(sql.FieldLTE(FieldUpdatedAt, v))
-}
-
-// HasDoffing applies the HasEdge predicate on the "doffing" edge.
-func HasDoffing() predicate.Barrel {
-	return predicate.Barrel(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, DoffingTable, DoffingColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasDoffingWith applies the HasEdge predicate on the "doffing" edge with a given conditions (other predicates).
-func HasDoffingWith(preds ...predicate.Doffing) predicate.Barrel {
-	return predicate.Barrel(func(s *sql.Selector) {
-		step := newDoffingStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
 }
 
 // HasLot applies the HasEdge predicate on the "lot" edge.

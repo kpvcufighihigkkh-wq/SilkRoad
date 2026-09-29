@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 )
@@ -198,21 +197,6 @@ func (_c *DoffingCreate) SetNillableID(v *uuid.UUID) *DoffingCreate {
 // SetLot sets the "lot" edge to the Lot entity.
 func (_c *DoffingCreate) SetLot(v *Lot) *DoffingCreate {
 	return _c.SetLotID(v.ID)
-}
-
-// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
-func (_c *DoffingCreate) AddBarrelIDs(ids ...uuid.UUID) *DoffingCreate {
-	_c.mutation.AddBarrelIDs(ids...)
-	return _c
-}
-
-// AddBarrels adds the "barrels" edges to the Barrel entity.
-func (_c *DoffingCreate) AddBarrels(v ...*Barrel) *DoffingCreate {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddBarrelIDs(ids...)
 }
 
 // Mutation returns the DoffingMutation object of the builder.
@@ -421,22 +405,6 @@ func (_c *DoffingCreate) createSpec() (*Doffing, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.LotID = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.BarrelsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

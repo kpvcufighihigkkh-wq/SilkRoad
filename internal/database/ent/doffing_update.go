@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
@@ -246,21 +245,6 @@ func (_u *DoffingUpdate) SetLot(v *Lot) *DoffingUpdate {
 	return _u.SetLotID(v.ID)
 }
 
-// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
-func (_u *DoffingUpdate) AddBarrelIDs(ids ...uuid.UUID) *DoffingUpdate {
-	_u.mutation.AddBarrelIDs(ids...)
-	return _u
-}
-
-// AddBarrels adds the "barrels" edges to the Barrel entity.
-func (_u *DoffingUpdate) AddBarrels(v ...*Barrel) *DoffingUpdate {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddBarrelIDs(ids...)
-}
-
 // Mutation returns the DoffingMutation object of the builder.
 func (_u *DoffingUpdate) Mutation() *DoffingMutation {
 	return _u.mutation
@@ -270,27 +254,6 @@ func (_u *DoffingUpdate) Mutation() *DoffingMutation {
 func (_u *DoffingUpdate) ClearLot() *DoffingUpdate {
 	_u.mutation.ClearLot()
 	return _u
-}
-
-// ClearBarrels clears all "barrels" edges to the Barrel entity.
-func (_u *DoffingUpdate) ClearBarrels() *DoffingUpdate {
-	_u.mutation.ClearBarrels()
-	return _u
-}
-
-// RemoveBarrelIDs removes the "barrels" edge to Barrel entities by IDs.
-func (_u *DoffingUpdate) RemoveBarrelIDs(ids ...uuid.UUID) *DoffingUpdate {
-	_u.mutation.RemoveBarrelIDs(ids...)
-	return _u
-}
-
-// RemoveBarrels removes "barrels" edges to Barrel entities.
-func (_u *DoffingUpdate) RemoveBarrels(v ...*Barrel) *DoffingUpdate {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveBarrelIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -453,51 +416,6 @@ func (_u *DoffingUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(lot.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.BarrelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedBarrelsIDs(); len(nodes) > 0 && !_u.mutation.BarrelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.BarrelsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -740,21 +658,6 @@ func (_u *DoffingUpdateOne) SetLot(v *Lot) *DoffingUpdateOne {
 	return _u.SetLotID(v.ID)
 }
 
-// AddBarrelIDs adds the "barrels" edge to the Barrel entity by IDs.
-func (_u *DoffingUpdateOne) AddBarrelIDs(ids ...uuid.UUID) *DoffingUpdateOne {
-	_u.mutation.AddBarrelIDs(ids...)
-	return _u
-}
-
-// AddBarrels adds the "barrels" edges to the Barrel entity.
-func (_u *DoffingUpdateOne) AddBarrels(v ...*Barrel) *DoffingUpdateOne {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddBarrelIDs(ids...)
-}
-
 // Mutation returns the DoffingMutation object of the builder.
 func (_u *DoffingUpdateOne) Mutation() *DoffingMutation {
 	return _u.mutation
@@ -764,27 +667,6 @@ func (_u *DoffingUpdateOne) Mutation() *DoffingMutation {
 func (_u *DoffingUpdateOne) ClearLot() *DoffingUpdateOne {
 	_u.mutation.ClearLot()
 	return _u
-}
-
-// ClearBarrels clears all "barrels" edges to the Barrel entity.
-func (_u *DoffingUpdateOne) ClearBarrels() *DoffingUpdateOne {
-	_u.mutation.ClearBarrels()
-	return _u
-}
-
-// RemoveBarrelIDs removes the "barrels" edge to Barrel entities by IDs.
-func (_u *DoffingUpdateOne) RemoveBarrelIDs(ids ...uuid.UUID) *DoffingUpdateOne {
-	_u.mutation.RemoveBarrelIDs(ids...)
-	return _u
-}
-
-// RemoveBarrels removes "barrels" edges to Barrel entities.
-func (_u *DoffingUpdateOne) RemoveBarrels(v ...*Barrel) *DoffingUpdateOne {
-	ids := make([]uuid.UUID, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveBarrelIDs(ids...)
 }
 
 // Where appends a list predicates to the DoffingUpdate builder.
@@ -977,51 +859,6 @@ func (_u *DoffingUpdateOne) sqlSave(ctx context.Context) (_node *Doffing, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(lot.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.BarrelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedBarrelsIDs(); len(nodes) > 0 && !_u.mutation.BarrelsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.BarrelsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   doffing.BarrelsTable,
-			Columns: []string{doffing.BarrelsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(barrel.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

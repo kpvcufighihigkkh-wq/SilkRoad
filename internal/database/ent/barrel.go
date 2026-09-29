@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 )
 
@@ -22,8 +21,6 @@ type Barrel struct {
 	ID uuid.UUID `json:"id,omitempty"`
 	// 落纱桶编号
 	BarrelNumber string `json:"barrel_number,omitempty"`
-	// 关联落纱记录ID
-	DoffingID uuid.UUID `json:"doffing_id,omitempty"`
 	// 关联批号ID
 	LotID uuid.UUID `json:"lot_id,omitempty"`
 	// 桶容量（锭位数）
@@ -46,26 +43,13 @@ type Barrel struct {
 
 // BarrelEdges holds the relations/edges for other nodes in the graph.
 type BarrelEdges struct {
-	// Doffing holds the value of the doffing edge.
-	Doffing *Doffing `json:"doffing,omitempty"`
 	// Lot holds the value of the lot edge.
 	Lot *Lot `json:"lot,omitempty"`
 	// Bobbins holds the value of the bobbins edge.
 	Bobbins []*Bobbin `json:"bobbins,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
-}
-
-// DoffingOrErr returns the Doffing value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e BarrelEdges) DoffingOrErr() (*Doffing, error) {
-	if e.Doffing != nil {
-		return e.Doffing, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: doffing.Label}
-	}
-	return nil, &NotLoadedError{edge: "doffing"}
+	loadedTypes [2]bool
 }
 
 // LotOrErr returns the Lot value or an error if the edge
@@ -73,7 +57,7 @@ func (e BarrelEdges) DoffingOrErr() (*Doffing, error) {
 func (e BarrelEdges) LotOrErr() (*Lot, error) {
 	if e.Lot != nil {
 		return e.Lot, nil
-	} else if e.loadedTypes[1] {
+	} else if e.loadedTypes[0] {
 		return nil, &NotFoundError{label: lot.Label}
 	}
 	return nil, &NotLoadedError{edge: "lot"}
@@ -82,7 +66,7 @@ func (e BarrelEdges) LotOrErr() (*Lot, error) {
 // BobbinsOrErr returns the Bobbins value or an error if the edge
 // was not loaded in eager-loading.
 func (e BarrelEdges) BobbinsOrErr() ([]*Bobbin, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[1] {
 		return e.Bobbins, nil
 	}
 	return nil, &NotLoadedError{edge: "bobbins"}
@@ -99,7 +83,7 @@ func (*Barrel) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case barrel.FieldFilledAt, barrel.FieldCreatedAt, barrel.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case barrel.FieldID, barrel.FieldDoffingID, barrel.FieldLotID:
+		case barrel.FieldID, barrel.FieldLotID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -127,12 +111,6 @@ func (_m *Barrel) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field barrel_number", values[i])
 			} else if value.Valid {
 				_m.BarrelNumber = value.String
-			}
-		case barrel.FieldDoffingID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field doffing_id", values[i])
-			} else if value != nil {
-				_m.DoffingID = *value
 			}
 		case barrel.FieldLotID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
@@ -189,11 +167,6 @@ func (_m *Barrel) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryDoffing queries the "doffing" edge of the Barrel entity.
-func (_m *Barrel) QueryDoffing() *DoffingQuery {
-	return NewBarrelClient(_m.config).QueryDoffing(_m)
-}
-
 // QueryLot queries the "lot" edge of the Barrel entity.
 func (_m *Barrel) QueryLot() *LotQuery {
 	return NewBarrelClient(_m.config).QueryLot(_m)
@@ -229,9 +202,6 @@ func (_m *Barrel) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("barrel_number=")
 	builder.WriteString(_m.BarrelNumber)
-	builder.WriteString(", ")
-	builder.WriteString("doffing_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DoffingID))
 	builder.WriteString(", ")
 	builder.WriteString("lot_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LotID))

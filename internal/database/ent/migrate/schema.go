@@ -18,7 +18,6 @@ var (
 		{Name: "filled_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "doffing_id", Type: field.TypeUUID},
 		{Name: "lot_id", Type: field.TypeUUID},
 	}
 	// BarrelsTable holds the schema information for the "barrels" table.
@@ -28,28 +27,17 @@ var (
 		PrimaryKey: []*schema.Column{BarrelsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "barrels_doffings_barrels",
-				Columns:    []*schema.Column{BarrelsColumns[8]},
-				RefColumns: []*schema.Column{DoffingsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-			{
 				Symbol:     "barrels_lots_barrels",
-				Columns:    []*schema.Column{BarrelsColumns[9]},
+				Columns:    []*schema.Column{BarrelsColumns[8]},
 				RefColumns: []*schema.Column{LotsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "barrel_doffing_id",
-				Unique:  false,
-				Columns: []*schema.Column{BarrelsColumns[8]},
-			},
-			{
 				Name:    "barrel_lot_id",
 				Unique:  false,
-				Columns: []*schema.Column{BarrelsColumns[9]},
+				Columns: []*schema.Column{BarrelsColumns[8]},
 			},
 			{
 				Name:    "barrel_status",
@@ -64,7 +52,7 @@ var (
 			{
 				Name:    "barrel_lot_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{BarrelsColumns[9], BarrelsColumns[4]},
+				Columns: []*schema.Column{BarrelsColumns[8], BarrelsColumns[4]},
 			},
 		},
 	}
@@ -632,8 +620,7 @@ var (
 )
 
 func init() {
-	BarrelsTable.ForeignKeys[0].RefTable = DoffingsTable
-	BarrelsTable.ForeignKeys[1].RefTable = LotsTable
+	BarrelsTable.ForeignKeys[0].RefTable = LotsTable
 	BobbinsTable.ForeignKeys[0].RefTable = BarrelsTable
 	BobbinsTable.ForeignKeys[1].RefTable = CartonsTable
 	BobbinsTable.ForeignKeys[2].RefTable = LotsTable
