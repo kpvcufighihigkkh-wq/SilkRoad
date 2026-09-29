@@ -36,6 +36,11 @@ func (SpinningLine) Fields() []ent.Field {
 			MaxLen(50).
 			Comment("线体编号"),
 
+		// 关联边端设备
+		field.UUID("edge_id", uuid.UUID{}).
+			Optional().
+			Comment("关联边端设备ID"),
+
 		// 位置信息
 		field.String("location").
 			Optional().
@@ -74,13 +79,25 @@ func (SpinningLine) Fields() []ent.Field {
 
 // Edges of the SpinningLine.
 func (SpinningLine) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		// 一个纺丝线属于一个边端设备
+		edge.From("edge", Edge.Type).
+			Ref("spinning_lines").
+			Field("edge_id").
+			Unique(),
+	}
 }
 
 // Indexes of the SpinningLine.
 func (SpinningLine) Indexes() []ent.Index {
 	return []ent.Index{
+		// 边端设备ID索引
+		index.Fields("edge_id"),
+
 		// 状态索引
 		index.Fields("status"),
+
+		// 复合索引：边端设备+状态
+		index.Fields("edge_id", "status"),
 	}
 }

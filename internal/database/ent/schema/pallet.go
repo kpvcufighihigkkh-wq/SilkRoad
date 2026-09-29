@@ -25,7 +25,7 @@ func (Pallet) Fields() []ent.Field {
 			StorageKey("id"),
 
 		// 托盘编号（唯一，条码）
-		field.String("pallet_number").
+		field.String("pallet_code").
 			Unique().
 			NotEmpty().
 			MaxLen(50).
@@ -33,29 +33,50 @@ func (Pallet) Fields() []ent.Field {
 
 		// 关联批次
 		field.UUID("lot_id", uuid.UUID{}).
-			Optional().
 			Comment("关联批次ID"),
 
+		// 层级（1-9）
+		field.Int("level").
+			Default(1).
+			Min(1).
+			Max(9).
+			Comment("栈板层级（1-9）"),
+
 		// 托盘内丝锭数量
-		field.Int("bobbin_count").
+		field.Int("bobbins_count").
 			Default(0).
 			NonNegative().
 			Comment("托盘内丝锭数量"),
 
-		// 总重量
-		field.Float("total_weight").
+		// 重量信息
+		field.Float("net_weight").
 			Optional().
 			Min(0).
-			Comment("托盘总重量（kg）"),
+			Comment("净重（kg）"),
+
+		field.Float("gross_weight").
+			Optional().
+			Min(0).
+			Comment("毛重（kg）"),
+
+		field.Float("tare_weight").
+			Optional().
+			Min(0).
+			Comment("皮重（kg）"),
 
 		// 状态
 		field.Enum("status").
-			Values("packing", "packed", "shipped").
-			Default("packing").
+			Values("building", "completed", "shipped").
+			Default("building").
 			Comment("托盘状态"),
 
+		// 码垛机ID
+		field.UUID("palletizer_id", uuid.UUID{}).
+			Optional().
+			Comment("码垛机ID"),
+
 		// 标签打印
-		field.Bool("label_printed").
+		field.Bool("printed").
 			Default(false).
 			Comment("标签是否已打印"),
 
@@ -64,7 +85,7 @@ func (Pallet) Fields() []ent.Field {
 			Comment("打印时间"),
 
 		// 时间戳
-		field.Time("packed_at").
+		field.Time("completed_at").
 			Optional().
 			Comment("打包完成时间"),
 
@@ -83,6 +104,13 @@ func (Pallet) Fields() []ent.Field {
 // Edges of the Pallet.
 func (Pallet) Edges() []ent.Edge {
 	return []ent.Edge{
+		// 一个托盘属于一个批次
+		edge.From("lot", Lot.Type).
+			Ref("pallets").
+			Field("lot_id").
+			Required().
+			Unique(),
+
 		// 一个托盘有多个丝锭
 		edge.To("bobbins", Bobbin.Type),
 	}
@@ -94,13 +122,22 @@ func (Pallet) Indexes() []ent.Index {
 		// 批次ID索引
 		index.Fields("lot_id"),
 
+		// 层级索引
+		index.Fields("level"),
+
 		// 状态索引
 		index.Fields("status"),
 
-		// 打包时间索引
-		index.Fields("packed_at"),
+		// 码垛机ID索引
+		index.Fields("palletizer_id"),
+
+		// 打包完成时间索引
+		index.Fields("completed_at"),
 
 		// 创建时间倒序索引
 		index.Fields("created_at"),
+
+		// 复合索引：批次+状态
+		index.Fields("lot_id", "status"),
 	}
 }

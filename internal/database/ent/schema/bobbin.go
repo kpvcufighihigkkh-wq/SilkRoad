@@ -35,6 +35,18 @@ func (Bobbin) Fields() []ent.Field {
 		field.UUID("lot_id", uuid.UUID{}).
 			Comment("关联批次ID"),
 
+		// 关联落纱桶
+		field.UUID("barrel_id", uuid.UUID{}).
+			Optional().
+			Comment("关联落纱桶ID"),
+
+		// 桶内位置
+		field.Int("barrel_position").
+			Optional().
+			Min(1).
+			Max(9).
+			Comment("桶内位置（1-9）"),
+
 		// 纺丝位号
 		field.Int("spinning_position").
 			Positive().
@@ -111,6 +123,12 @@ func (Bobbin) Edges() []ent.Edge {
 			Required().
 			Unique(),
 
+		// 一个丝锭可以属于一个落纱桶
+		edge.From("barrel", Barrel.Type).
+			Ref("bobbins").
+			Field("barrel_id").
+			Unique(),
+
 		// 一个丝锭可以属于一个托盘
 		edge.From("pallet", Pallet.Type).
 			Ref("bobbins").
@@ -130,6 +148,9 @@ func (Bobbin) Indexes() []ent.Index {
 	return []ent.Index{
 		// 批次ID索引
 		index.Fields("lot_id"),
+
+		// 落纱桶ID索引
+		index.Fields("barrel_id"),
 
 		// 纺丝位号索引（用于查询某位号的所有丝锭）
 		index.Fields("spinning_position"),
@@ -154,5 +175,8 @@ func (Bobbin) Indexes() []ent.Index {
 
 		// 复合索引：批次+状态
 		index.Fields("lot_id", "status"),
+
+		// 复合索引：落纱桶+桶内位置
+		index.Fields("barrel_id", "barrel_position"),
 	}
 }

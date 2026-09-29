@@ -95,7 +95,17 @@ func (Doffing) Fields() []ent.Field {
 
 // Edges of the Doffing.
 func (Doffing) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		// 一个落纱记录属于一个批次
+		edge.From("lot", Lot.Type).
+			Ref("doffings").
+			Field("lot_id").
+			Required().
+			Unique(),
+
+		// 一个落纱记录有多个落纱桶
+		edge.To("barrels", Barrel.Type),
+	}
 }
 
 // Indexes of the Doffing.

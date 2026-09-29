@@ -31,9 +31,22 @@ func (Lot) Fields() []ent.Field {
 			MaxLen(50).
 			Comment("批次编号，格式: {产品类型}-{年}-{计划号}-{批次号}"),
 
-		// 关联订单
-		field.UUID("order_id", uuid.UUID{}).
-			Comment("关联订单ID"),
+		// 关联边端设备
+		field.UUID("edge_id", uuid.UUID{}).
+			Optional().
+			Comment("来源边端设备ID"),
+
+		// PLC原始批号
+		field.String("plc_lot_number").
+			Optional().
+			MaxLen(50).
+			Comment("PLC原始批号"),
+
+		// ERP订单编号（可选，用于ERP集成）
+		field.String("order_code").
+			Optional().
+			MaxLen(50).
+			Comment("ERP订单编号（可选）"),
 
 		// 产品信息
 		field.Enum("product_type").
@@ -91,23 +104,28 @@ func (Lot) Fields() []ent.Field {
 // Edges of the Lot.
 func (Lot) Edges() []ent.Edge {
 	return []ent.Edge{
-		// 一个批次属于一个订单
-		edge.From("order", Order.Type).
+		// 一个批次属于一个边端设备
+		edge.From("edge", Edge.Type).
 			Ref("lots").
-			Field("order_id").
-			Required().
+			Field("edge_id").
 			Unique(),
+
+		// 一个批次有多个落纱桶
+		edge.To("barrels", Barrel.Type),
 
 		// 一个批次有多个丝锭
 		edge.To("bobbins", Bobbin.Type),
+
+		// 一个批次有多个落纱记录
+		edge.To("doffings", Doffing.Type),
 	}
 }
 
 // Indexes of the Lot.
 func (Lot) Indexes() []ent.Index {
 	return []ent.Index{
-		// 订单ID索引
-		index.Fields("order_id"),
+		// 边端设备ID索引
+		index.Fields("edge_id"),
 
 		// 产品类型索引
 		index.Fields("product_type"),
@@ -122,7 +140,7 @@ func (Lot) Indexes() []ent.Index {
 		// 创建时间倒序索引
 		index.Fields("created_at"),
 
-		// 复合索引：订单+状态
-		index.Fields("order_id", "status"),
+		// 复合索引：边端设备+状态
+		index.Fields("edge_id", "status"),
 	}
 }
