@@ -103,8 +103,9 @@ CREATE TABLE doffings (
 - ➕ 添加 `spinning_line_id` - 纺丝线ID (替代winder_id)
 - ➕ 添加 `spinning_position` - 锭位号
 - ➕ 添加 `operator_id` - 操作工ID
-- ➕ 添加 `edge_id` - 边端设备ID
 - ✅ 已实现 (internal/database/ent/schema/doffing.go)
+
+**V3待办缺口**: `doffing.go` 尚未添加 `edge_id`（当前 `edge_id` 仅实现在 `lot.go`/`spinningline.go`/`module.go`/`pallet.go`/`carton.go`）。
 
 #### 3.1.3 Barrel (落纱桶) - **V2核心，V3缺失**
 
@@ -349,6 +350,7 @@ type Edge struct {
 erDiagram
     Edge ||--o{ Lot : "产生"
     Lot ||--o{ Doffing : "包含"
+    Lot ||--o{ Barrel : "包含"
     Barrel ||--o{ Bobbin : "装载"
     Lot ||--o{ Pallet : "打包为"
     Pallet }o--o{ Bobbin : "包含"

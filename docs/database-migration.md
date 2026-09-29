@@ -162,7 +162,7 @@ DSN: postgres://igh:****@localhost:5432/igh?sslmode=disable
 - 🔧 `lots` - 删除order_id，添加edge_id、plc_lot_number
 - 🔧 `bobbins` - 添加barrel_id、barrel_position
 - 🔧 `pallets` - 重命名字段，添加level、palletizer_id
-- 🔧 `doffings` - 添加Lot和Barrel关联
+- 🔧 `doffings` - 添加Lot关联（Doffing与Barrel不再关联，Barrel归属Lot）
 - 🔧 `spinning_lines` - 添加edge_id关联
 - 🔧 `barrels` - 删除doffing_id（改为归属Lot）
 - 🔧 `modules`/`pallets`/`cartons` - 添加edge_id字段（来源边端设备）
@@ -264,11 +264,14 @@ schema.WithDropColumn(true)  // 删除不再使用的列
 
 ### 后端重构 Phase 0-1（`refactor/PLN-17-backend-service-api`）
 
+- `3e86a83` - 删除OrderService并让LotService匹配V3 Schema
+- `53b3b4f` - 移除Order API并修正Center默认DSN与分页实参顺序
 - `8ac4e03` - 修复Center同步层的Order/Project残留与幂等检查
 - `50c9545` - 删除ent_edge死代码并修复工具命令
 - `4858f9f` - Barrel归属Lot，解除与Doffing的强制关联
 - `88856e5` - 为七个Edge端实体添加同步元数据字段
 - `ca7f440` - Module/Pallet/Carton 添加来源边端设备字段
+- `f691dcd` - 补充迁移记录并修正V3文档的Barrel关系矛盾
 
 ## 注意事项
 
