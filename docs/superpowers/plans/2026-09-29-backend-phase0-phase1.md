@@ -777,17 +777,64 @@ func (p *BaseDataProvider) getGrades(ctx context.Context) ([]map[string]interfac
 
 `internal/sync/center/sync_test.go` 有四处与当前 Schema 不符，逐一修改：
 
-**4a. 测试数据库 DSN（第 17 行附近）** —— 密码错误，且 `igh_test` 库不存在，导致测试永远 `t.Skip`：
+**4a. 测试数据库改为内存 SQLite（第 16–30 行的 `setupTestClient`）** —— 当前它连的是 `igh_test` 库（不存在）且密码错误，`ent.Open` 失败后 `t.Skip`，测试从不真正执行。
+
+**不要改为连接开发库 `igh`。** 那样测试会：向共享开发库写入数据；且 `lot_number`、`line_name` 都是唯一约束（`lot.go:29`、`spinningline.go:29`），第二次运行就因唯一冲突失败。测试必须可重复运行且不污染开发数据。
+
+改为内存 SQLite，与仓库既有的两处做法一致（`internal/sync/edge/sync_test.go:18-28` 和 Task 1 的 `internal/service/setup_test.go`）：
 
 ```go
-	dsn := "postgres://igh:igh@localhost:5432/igh_test?sslmode=disable"
+func setupTestClient(t *testing.T) *ent.Client {
+	// 使用内存SQLite，每个测试独立数据库名，避免相互污染且不触碰开发库
+	db, err := sql.Open("sqlite", "file:synccentertest?mode=memory&cache=shared&_fk=1")
+	if err != nil {
+		t.Fatalf("failed opening sqlite: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("failed enabling foreign keys: %v", err)
+	}
+
+	client := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.SQLite, db)))
+	t.Cleanup(func() { client.Close() })
+
+	if err := client.Schema.Create(context.Background()); err != nil {
+		t.Fatalf("failed creating schema: %v", err)
+	}
+
+	return client
+}
 ```
 
-改为：
+注意：该函数**不要再有 `t.Skip`**。改为 SQLite 后测试在任何机器上都能真跑，跳过它会掩盖真实失败。
+
+同时调整文件顶部的 import 块（第 3–14 行）：
+
+- 删除 `_ "github.com/lib/pq"`
+- 新增 `"database/sql"`、`"entgo.io/ent/dialect/sql"`（别名 `entsql`）、`_ "modernc.org/sqlite"`
+- 保留 `"entgo.io/ent/dialect"`（`OpenDB` 的第一个参数 `dialect.SQLite` 用到）
+
+import 块最终形如：
 
 ```go
-	dsn := "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
+import (
+	"context"
+	"database/sql"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/sync/center"
+	"github.com/yourusername/igh-silkroad/internal/sync/models"
+
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	_ "modernc.org/sqlite"
+)
 ```
+
+**注意：** 主 `ent` 包的完整 Schema 已确认可在 SQLite 上建表 —— 迁移工具 `./bin/migrate.exe edge` 就是这么做的。Schema 中仅 `bobbingrade.go`/`productconfig.go` 的 JSONB 字段带 `"postgres": "jsonb"` 类型提示，ent 在 SQLite 下会忽略该提示并使用通用类型，不影响建表。
 
 **4b. 删除 Project 与 Order 的准备工作**（`TestUploadHandler_HandleUpload` 开头第 39–60 行）—— 这两个实体已不存在。整段 `client.Project.Create()...Save(ctx)` 与 `client.Order.Create()...Save(ctx)` 以及它们的 `if err != nil` 检查全部删除。该测试真正需要的前置数据只是下面那个 `LotID`，不需要数据库里先有批次。
 
