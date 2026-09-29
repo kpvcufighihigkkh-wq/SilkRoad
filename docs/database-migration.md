@@ -172,7 +172,8 @@ DSN: postgres://igh:****@localhost:5432/igh?sslmode=disable
 
 ### 数据流
 ```
-PLC → Edge → Lot → Doffing → Barrel → Bobbin → Pallet
+PLC → Edge → Lot ─┬─ Barrel（落纱桶/载具）→ Bobbin → Pallet
+                  └─ Doffing（落纱操作记录，不再关联Barrel）
 ```
 
 ## 手动清理旧表（可选）

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/igh-silkroad/api"
@@ -77,8 +76,7 @@ func (h *LotHandler) GetLot(c *gin.Context) {
 // @Success 200 {object} api.Response{data=api.PageResponse{list=[]service.LotResponse}}
 // @Router /v1/lots [get]
 func (h *LotHandler) ListLots(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page, pageSize := api.ParsePagination(c.DefaultQuery("page", "1"), c.DefaultQuery("page_size", "20"))
 	edgeID := c.Query("edge_id")
 	status := c.Query("status")
 

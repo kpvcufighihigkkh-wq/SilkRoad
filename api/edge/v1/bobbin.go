@@ -2,7 +2,6 @@ package v1
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/igh-silkroad/api"
@@ -53,8 +52,7 @@ func (h *BobbinHandler) GetBobbin(c *gin.Context) {
 // @Success 200 {object} api.Response{data=api.PageResponse{list=[]service.BobbinResponse}}
 // @Router /v1/bobbins [get]
 func (h *BobbinHandler) ListBobbins(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page, pageSize := api.ParsePagination(c.DefaultQuery("page", "1"), c.DefaultQuery("page_size", "20"))
 	lotID := c.Query("lot_id")
 	status := c.Query("status")
 
@@ -64,7 +62,7 @@ func (h *BobbinHandler) ListBobbins(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.PageSuccess(bobbins, total, page, pageSize))
+	c.JSON(http.StatusOK, api.PageSuccess(bobbins, page, pageSize, total))
 }
 
 // WeighBobbin godoc

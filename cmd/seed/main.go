@@ -120,7 +120,7 @@ func seedCoreData(ctx context.Context, client *ent.Client) error {
 	log.Println("🌱 Seeding core data...")
 
 	// 边端设备
-	edge, err := client.Edge.Create().
+	edgeRow, err := client.Edge.Create().
 		SetEdgeCode("edge-001").
 		SetEdgeName("一号边端").
 		SetIPAddress("192.168.1.101").
@@ -129,13 +129,13 @@ func seedCoreData(ctx context.Context, client *ent.Client) error {
 	if err != nil {
 		return fmt.Errorf("create edge: %w", err)
 	}
-	log.Printf("  ✓ Created edge: %s (ID: %s)", edge.EdgeCode, edge.ID)
+	log.Printf("  ✓ Created edge: %s (ID: %s)", edgeRow.EdgeCode, edgeRow.ID)
 
 	// 纺丝线体
 	line, err := client.SpinningLine.Create().
 		SetLineName("A线").
 		SetLineNumber("LINE-A").
-		SetEdgeID(edge.ID).
+		SetEdgeID(edgeRow.ID).
 		SetLocation("一车间").
 		SetCapacity(48).
 		SetStatus(spinningline.StatusRunning).
@@ -168,9 +168,9 @@ func seedCoreData(ctx context.Context, client *ent.Client) error {
 	}
 
 	// 批次
-	lot, err := client.Lot.Create().
+	lotRow, err := client.Lot.Create().
 		SetLotNumber("FDY-2026-001-01").
-		SetEdgeID(edge.ID).
+		SetEdgeID(edgeRow.ID).
 		SetPlcLotNumber("PLC-2026-001").
 		SetProductType(lot.ProductTypeFDY).
 		SetProductSpec("150D/48F").
@@ -181,7 +181,7 @@ func seedCoreData(ctx context.Context, client *ent.Client) error {
 	if err != nil {
 		return fmt.Errorf("create lot: %w", err)
 	}
-	log.Printf("  ✓ Created lot: %s (ID: %s)", lot.LotNumber, lot.ID)
+	log.Printf("  ✓ Created lot: %s (ID: %s)", lotRow.LotNumber, lotRow.ID)
 
 	return nil
 }

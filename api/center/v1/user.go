@@ -2,7 +2,6 @@ package v1
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/igh-silkroad/api"
@@ -81,8 +80,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 // @Success 200 {object} api.Response{data=api.PageResponse{list=[]service.UserResponse}}
 // @Router /v1/users [get]
 func (h *UserHandler) ListUsers(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page, pageSize := api.ParsePagination(c.DefaultQuery("page", "1"), c.DefaultQuery("page_size", "20"))
 	role := c.Query("role")
 
 	users, total, err := h.userService.ListUsers(c.Request.Context(), page, pageSize, role)
@@ -91,7 +89,7 @@ func (h *UserHandler) ListUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, api.PageSuccess(users, total, page, pageSize))
+	c.JSON(http.StatusOK, api.PageSuccess(users, page, pageSize, total))
 }
 
 // UpdateUser godoc

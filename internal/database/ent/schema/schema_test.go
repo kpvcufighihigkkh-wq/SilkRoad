@@ -13,8 +13,10 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	_ "modernc.org/sqlite"
 )
 
@@ -281,6 +283,38 @@ func TestPallet_EdgeIDOptional(t *testing.T) {
 	if created.EdgeID != uuid.Nil {
 		t.Errorf("EdgeID = %v, want nil", created.EdgeID)
 	}
+
+	// 带 edge_id 创建
+	edge, err := client.Edge.Create().
+		SetEdgeCode("edge-pallet-01").
+		SetEdgeName("托盘测试边端").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating edge: %v", err)
+	}
+
+	tagged, err := client.Pallet.Create().
+		SetPalletCode("PALLET-EDGE-002").
+		SetLotID(lotRow.ID).
+		SetEdgeID(edge.ID).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating pallet with edge: %v", err)
+	}
+	if tagged.EdgeID != edge.ID {
+		t.Errorf("EdgeID = %v, want %v", tagged.EdgeID, edge.ID)
+	}
+
+	// 按 edge_id 过滤
+	count, err := client.Pallet.Query().
+		Where(pallet.EdgeIDEQ(edge.ID)).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("pallets for edge = %d, want 1", count)
+	}
 }
 
 func TestCarton_EdgeIDOptional(t *testing.T) {
@@ -295,5 +329,36 @@ func TestCarton_EdgeIDOptional(t *testing.T) {
 	}
 	if created.EdgeID != uuid.Nil {
 		t.Errorf("EdgeID = %v, want nil", created.EdgeID)
+	}
+
+	// 带 edge_id 创建
+	edge, err := client.Edge.Create().
+		SetEdgeCode("edge-carton-01").
+		SetEdgeName("纸箱测试边端").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating edge: %v", err)
+	}
+
+	tagged, err := client.Carton.Create().
+		SetCartonNumber("CARTON-EDGE-002").
+		SetEdgeID(edge.ID).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating carton with edge: %v", err)
+	}
+	if tagged.EdgeID != edge.ID {
+		t.Errorf("EdgeID = %v, want %v", tagged.EdgeID, edge.ID)
+	}
+
+	// 按 edge_id 过滤
+	count, err := client.Carton.Query().
+		Where(carton.EdgeIDEQ(edge.ID)).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("cartons for edge = %d, want 1", count)
 	}
 }

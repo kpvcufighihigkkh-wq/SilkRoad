@@ -1,3 +1,16 @@
 # Local Agent/Vikunja credentials and activity records
 .veans.yml
 .agent-pm/
+
+# 构建产物
+bin/
+*.exe
+
+# 运行时日志
+*.log
+
+# 本地数据库文件（已迁移，禁止提交）
+edge*.db
+*.db-journal
+*.db-wal
+*.db-shm
