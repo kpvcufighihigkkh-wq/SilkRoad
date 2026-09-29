@@ -890,10 +890,12 @@ Run: `go test ./internal/sync/center/... -v`
 - [ ] **Step 6: 验证中文未损坏**
 
 ```bash
-grep -c "批次\|等级" internal/sync/center/handler.go internal/sync/center/provider.go
+grep -c "[一-龥]" internal/sync/center/handler.go internal/sync/center/provider.go
 ```
 
-预期：两个文件各输出大于 0。
+预期：两个文件各输出大于 0（`handler.go` 约 22 行含中文，`provider.go` 含 `// getGrades 获取等级基础数据` 等）。
+
+**不要用 `grep -c "批次\|等级"` 检查 `handler.go`** —— 该文件从来不含这两个词（`batch` 概念在同步层统一用 "Lot" 表达），任何正确实现都会返回 0，用它做验收会误判正确改动为失败。
 
 - [ ] **Step 7: 提交**
 
@@ -1058,7 +1060,21 @@ func seedCoreData(ctx context.Context, client *ent.Client) error {
 2. 删除对 `internal/database/ent_edge` 的 import（第 11 行）及其使用处（第 126 行附近的 `ent_edge.NewClient`）。
 3. 若删除后 `client` 变量只剩 SQLite 部分，保留主 `ent` 客户端的连接逻辑不变。
 
-- [ ] **Step 6: 全仓库构建与测试**
+- [ ] **Step 6: 修正 scripts/test-center-api.sh**
+
+`scripts/test-center-api.sh` 在第 67、136 行调用已被删除的 `/v1/orders` 端点，对本分支构建必然失败。**本计划没有任何其它任务负责它**（Ruling 8 将其路由到此）。
+
+先定位：
+
+```bash
+grep -n "orders" scripts/test-center-api.sh
+```
+
+对每一处：删除该 curl 调用（及其周边的 echo/断言行，若它们只服务于这个端点）。不要把它改写成 `/v1/lots` —— 两个端点的请求体与断言完全不同，凭空改写会产生一个从未被验证过的测试脚本。
+
+若删除后脚本仍有实质内容（其它端点的测试），保留脚本；若 `orders` 是它唯一测的内容，整个删除该文件并在提交信息中说明。
+
+- [ ] **Step 7: 全仓库构建与测试**
 
 ```bash
 go build ./... && go test ./... 2>&1 | tail -20
@@ -1066,7 +1082,7 @@ go build ./... && go test ./... 2>&1 | tail -20
 
 预期：`go build` 无输出；`go test` 所有包 `ok` 或 `no test files`，无 `FAIL`。
 
-- [ ] **Step 7: 验证中文未损坏**
+- [ ] **Step 8: 验证中文未损坏**
 
 ```bash
 grep -c "边端\|批次\|等级" cmd/seed/main.go
@@ -1074,7 +1090,7 @@ grep -c "边端\|批次\|等级" cmd/seed/main.go
 
 预期：输出大于 0。
 
-- [ ] **Step 8: 提交**
+- [ ] **Step 9: 提交**
 
 ```bash
 git add cmd/ internal/sync/edge/ internal/database/
