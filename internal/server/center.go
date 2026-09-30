@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,12 +29,39 @@ type CenterServer struct {
 	userService   *service.UserService
 }
 
+// applyTrustedProxies 配置 Gin 的可信代理。
+//
+// 必须只信任反向代理那一层：全信任（默认的 0.0.0.0/0）会让攻击者用
+// X-Forwarded-For 冒充任意 IP；设为 nil 则会让 ClientIP() 恒返回代理自身的
+// IP，使基于 IP 的设备识别失效。两种情况都会破坏上传接口的鉴权。
+func applyTrustedProxies(router *gin.Engine) error {
+	raw := os.Getenv("TRUSTED_PROXIES")
+	if raw == "" {
+		// 未配置时不信任任何代理，只信本机回环
+		raw = "127.0.0.1/32,::1/128"
+	}
+
+	proxies := make([]string, 0, 4)
+	for _, p := range strings.Split(raw, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			proxies = append(proxies, p)
+		}
+	}
+
+	return router.SetTrustedProxies(proxies)
+}
+
 // NewCenterServer 创建中心端服务器
 func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServer {
 	// 设置Gin模式
 	gin.SetMode(gin.ReleaseMode)
 
 	router := gin.New()
+
+	if err := applyTrustedProxies(router); err != nil {
+		log.Fatalf("设置可信代理失败: %v", err)
+	}
+
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
