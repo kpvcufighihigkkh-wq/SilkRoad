@@ -173,13 +173,25 @@ func (s *CenterServer) registerRoutes() {
 			users.PUT("/:id/password", userHandler.ChangePassword)
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
+
+		// 边端设备管理（管理员操作，需用户 JWT）
+		edgeService := service.NewEdgeService(s.client)
+		edgeAdminHandler := centerv1.NewEdgeHandler(edgeService, s.jwtAuth)
+
+		edgesAdmin := authorized.Group("/edges")
+		{
+			edgesAdmin.POST("", edgeAdminHandler.CreateEdge)
+			edgesAdmin.GET("", edgeAdminHandler.ListEdges)
+			edgesAdmin.GET("/:code", edgeAdminHandler.GetEdge)
+			edgesAdmin.POST("/:code/token", edgeAdminHandler.IssueToken)
+		}
 	}
 
 	// 边端数据同步路由（需要Edge Token）
 	edge := v1.Group("/edges")
 	edge.Use(s.jwtMiddleware())
 	{
-		edge.POST("/:id/upload", s.handleEdgeUpload)
+		edge.POST("/:code/upload", s.handleEdgeUpload)
 		edge.GET("/base-data", s.handleBaseDataPull)
 	}
 }
@@ -251,7 +263,7 @@ func (s *CenterServer) handleLogin(c *gin.Context) {
 
 // handleEdgeUpload 处理边端数据上传
 func (s *CenterServer) handleEdgeUpload(c *gin.Context) {
-	edgeID := c.Param("id")
+	code := c.Param("code")
 
 	var req struct {
 		EdgeID  string      `json:"edge_id"`
@@ -268,10 +280,10 @@ func (s *CenterServer) handleEdgeUpload(c *gin.Context) {
 		return
 	}
 
-	req.EdgeID = edgeID
+	req.EdgeID = code
 
 	// TODO: 调用uploadHandler处理
-	log.Printf("📥 Received upload from edge: %s, entries: %d", edgeID, len(req.Entries))
+	log.Printf("📥 Received upload from edge: %s, entries: %d", code, len(req.Entries))
 
 	c.JSON(http.StatusOK, api.Success(gin.H{
 		"applied":  len(req.Entries),
