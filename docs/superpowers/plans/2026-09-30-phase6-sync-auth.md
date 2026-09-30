@@ -1352,9 +1352,15 @@ func authenticateEdge(c *gin.Context, svc *service.EdgeService) (*service.EdgeRe
 		return // authenticateEdge 已写响应
 	}
 
-	// 权威身份由 Center 推导，忽略请求体中的 edge_id
+	// 权威身份由 Center 推导，忽略请求体中的 edge_id。
+	//
+	// 必须传 edgeRow.ID（UUID 字符串），不能传 claims.DeviceID 或
+	// EdgeCode：消费端 handler.go 的 createLot 用 uuid.Parse(req.EdgeID)
+	// 解析后写入 lot.edge_id，而该列是 UUID 外键。传 "edge-001" 会让
+	// uuid.Parse 失败并退化为 uuid.Nil，于是 SetEdgeID 永不执行、
+	// 外键恒为 NULL —— 与"载荷伪造被忽略"的结果无法区分。
 	uploadReq := &models.UploadRequest{
-		EdgeID: claims.DeviceID,
+		EdgeID: edgeRow.ID,
 		Cursor: req.Cursor,
 	}
 	for _, e := range req.Entries {
@@ -1633,7 +1639,9 @@ func (h *UploadHandler) HandleUpload(ctx context.Context, req *models.UploadRequ
 在函数开头解析一次权威身份：
 
 ```go
-	// 权威身份由 Center 的鉴权层推导并写入 req.EdgeID；载荷中的 edge_id 一律忽略
+	// 权威身份由 Center 的鉴权层推导并写入 req.EdgeID（UUID 字符串）；
+	// 载荷中的 edge_id 一律忽略。Task 4 必须传 UUID 而非 edge_code，
+	// 否则此处 Parse 失败并退化为 uuid.Nil。
 	authoritativeEdgeID, err := uuid.Parse(req.EdgeID)
 	if err != nil {
 		authoritativeEdgeID = uuid.Nil
