@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"time"
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
@@ -12,6 +13,45 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 	"github.com/google/uuid"
 )
+
+// entityDependencyOrder 定义上传实体的依赖顺序。
+//
+// 外键要求被引用者先到：barrel 引用 lot，bobbin 引用 lot 与 barrel。
+// 乱序到达会使 Ent 的 FK 校验失败，导致整批记录被拒。
+var entityDependencyOrder = map[string]int{
+	"lots":     0,
+	"doffings": 1,
+	"barrels":  2,
+	"bobbins":  3,
+	"modules":  4,
+	"pallets":  5,
+	"cartons":  6,
+}
+
+// SortEntriesByDependency 按外键依赖顺序稳定排序上传条目。
+//
+// 未知表排在已知表之后，并保持其原有相对顺序（sort.SliceStable）。
+func SortEntriesByDependency(entries []models.UploadEntry) []models.UploadEntry {
+	if len(entries) < 2 {
+		return entries
+	}
+
+	sorted := make([]models.UploadEntry, len(entries))
+	copy(sorted, entries)
+
+	rank := func(table string) int {
+		if r, ok := entityDependencyOrder[table]; ok {
+			return r
+		}
+		return len(entityDependencyOrder) // 未知表最后
+	}
+
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return rank(sorted[i].Table) < rank(sorted[j].Table)
+	})
+
+	return sorted
+}
 
 // UploadHandler 处理边端上传的数据
 type UploadHandler struct {
@@ -29,13 +69,23 @@ func NewUploadHandler(client *ent.Client) *UploadHandler {
 func (h *UploadHandler) HandleUpload(ctx context.Context, req *models.UploadRequest) (*models.UploadResponse, error) {
 	log.Printf("📥 Receiving upload from edge_id=%s, entries=%d", req.EdgeID, len(req.Entries))
 
+	// 权威身份由 Center 的鉴权层推导并写入 req.EdgeID（UUID 字符串）；
+	// 载荷中的 edge_id 一律忽略。Task 4 必须传 UUID 而非 edge_code，
+	// 否则此处 Parse 失败并退化为 uuid.Nil。
+	authoritativeEdgeID, err := uuid.Parse(req.EdgeID)
+	if err != nil {
+		authoritativeEdgeID = uuid.Nil
+	}
+
 	applied := 0
 	rejected := 0
 	var errors []string
 
-	// 按顺序处理每条记录
-	for _, entry := range req.Entries {
-		if err := h.applyEntry(ctx, &entry); err != nil {
+	// 按外键依赖顺序处理，避免被引用记录尚未到达
+	entries := SortEntriesByDependency(req.Entries)
+
+	for _, entry := range entries {
+		if err := h.applyEntry(ctx, &entry, authoritativeEdgeID); err != nil {
 			rejected++
 			errors = append(errors, fmt.Sprintf("%s/%s: %v", entry.Table, entry.ID, err))
 			log.Printf("❌ Failed to apply %s/%s: %v", entry.Table, entry.ID, err)
@@ -54,10 +104,10 @@ func (h *UploadHandler) HandleUpload(ctx context.Context, req *models.UploadRequ
 }
 
 // applyEntry 应用单条记录
-func (h *UploadHandler) applyEntry(ctx context.Context, entry *models.UploadEntry) error {
+func (h *UploadHandler) applyEntry(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	switch entry.Operation {
 	case "create":
-		return h.handleCreate(ctx, entry)
+		return h.handleCreate(ctx, entry, edgeID)
 	case "update":
 		return h.handleUpdate(ctx, entry)
 	case "delete":
@@ -68,19 +118,22 @@ func (h *UploadHandler) applyEntry(ctx context.Context, entry *models.UploadEntr
 }
 
 // handleCreate 处理创建操作
-func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEntry) error {
+func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	switch entry.Table {
 	case "lots":
-		return h.createLot(ctx, entry)
+		return h.createLot(ctx, entry, edgeID)
 	case "bobbins":
-		return h.createBobbin(ctx, entry)
+		return h.createBobbin(ctx, entry, edgeID)
 	default:
 		return fmt.Errorf("unknown table: %s", entry.Table)
 	}
 }
 
-// createLot 创建Lot记录
-func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry) error {
+// createLot 创建Lot记录。
+//
+// edgeID 为鉴权层推导的权威设备身份（uuid.Nil 表示未推导出）；
+// 载荷中的 edge_id 一律不采信，避免伪造来源设备。
+func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	data := entry.Data
 
 	// 检查是否已存在（幂等性）
@@ -95,11 +148,6 @@ func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry
 	if exists {
 		log.Printf("⚠️  Lot %s already exists, skipping", id)
 		return nil
-	}
-
-	edgeID, err := uuid.Parse(getString(data, "edge_id"))
-	if err != nil {
-		edgeID = uuid.Nil
 	}
 
 	builder := h.client.Lot.Create().
@@ -134,8 +182,12 @@ func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry
 	return nil
 }
 
-// createBobbin 创建Bobbin记录
-func (h *UploadHandler) createBobbin(ctx context.Context, entry *models.UploadEntry) error {
+// createBobbin 创建Bobbin记录。
+//
+// edgeID 为鉴权层推导的权威设备身份。bobbins 表本身没有 edge_id 列
+// （来源设备经 lot 外键传递），此参数仅为与 createLot 保持一致的调用
+// 链签名而保留，当前未使用。
+func (h *UploadHandler) createBobbin(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	data := entry.Data
 
 	id, err := uuid.Parse(getString(data, "id"))
