@@ -18,9 +18,18 @@ type UploadEntry struct {
 
 // UploadRequest 边端上传请求
 type UploadRequest struct {
-	EdgeID  string        `json:"edge_id"`  // 边端ID
-	Entries []UploadEntry `json:"entries"`  // 批量上传的记录
-	Cursor  int64         `json:"cursor"`   // 当前游标位置
+	// EdgeID 在 Center 侧承载**设备行的 UUID**（edges.id），不是 edge_code。
+	//
+	// 上传路径上该字段由 Center 的鉴权层用权威身份覆写，载荷里的值一律忽略；
+	// HandleUpload 会 uuid.Parse 它并以此为数据归属，解析失败整批拒绝。
+	// Edge 侧构造请求时填的是自己的 EDGE_ID，但那个值在 Center 侧会被丢弃 ——
+	// 传 edge_code（如 "edge-001"）会解析失败。注意与下方
+	// BaseDataPullRequest.EdgeID 区分：那个字段装的是 edge_code。
+	EdgeID string `json:"edge_id"`
+	// Entries 批量上传的记录
+	Entries []UploadEntry `json:"entries"`
+	// Cursor 当前游标位置
+	Cursor int64 `json:"cursor"`
 }
 
 // UploadResponse 服务端上传响应
@@ -53,8 +62,14 @@ type SyncCursor struct {
 
 // BaseDataPullRequest 基础数据拉取请求
 type BaseDataPullRequest struct {
-	EdgeID string   `json:"edge_id"` // 边端ID
-	Tables []string `json:"tables"`  // 需要拉取的表名列表
+	// EdgeID 在下发路径上装的是 **edge_code**（如 "edge-001"），不是设备行 UUID。
+	//
+	// Center 的 handleBaseDataPull 用 edgeRow.EdgeCode 填充它，取值来自鉴权结果；
+	// BaseDataProvider 用它按 edge_code 过滤线体。注意与 UploadRequest.EdgeID
+	// 区分：那个字段装的是设备行 UUID。
+	EdgeID string `json:"edge_id"`
+	// Tables 需要拉取的表名列表
+	Tables []string `json:"tables"`
 }
 
 // BaseDataPullResponse 基础数据拉取响应

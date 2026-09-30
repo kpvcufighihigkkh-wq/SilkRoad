@@ -23,7 +23,22 @@ type JWTConfig struct {
 	SecretKey       string
 	ExpireDuration  time.Duration
 	RefreshDuration time.Duration
+
+	// EdgeExpireDuration 设备凭证（Edge token）的有效期，与用户会话分开配置。
+	//
+	// 设备凭证签发给无人值守的产线设备，仓库里没有任何续期路径：一旦过期，
+	// Edge 只能靠人工取新 token 并重启，期间同步静默停止且 /health 仍返回 ok。
+	// 而它绑定的是已注册设备 + 已注册源 IP，二者在每次请求上都会被重新校验
+	// （internal/server/center.go 的 authenticateEdge），影响面远小于用户会话 ——
+	// 因此短有效期在这里不是安全措施，而是定时故障。
+	EdgeExpireDuration time.Duration
 }
+
+// DefaultEdgeTokenTTL 设备凭证的默认有效期。
+//
+// 取值理由见 JWTConfig.EdgeExpireDuration：设备凭证由设备身份与源 IP 双重约束，
+// 且没有续期机制，所以默认取一个能与无人值守部署兼容的长有效期。
+const DefaultEdgeTokenTTL = 30 * 24 * time.Hour
 
 // JWTAuth JWT认证器
 type JWTAuth struct {
@@ -37,6 +52,9 @@ func NewJWTAuth(config *JWTConfig) *JWTAuth {
 	}
 	if config.RefreshDuration == 0 {
 		config.RefreshDuration = 24 * time.Hour // 默认24小时
+	}
+	if config.EdgeExpireDuration == 0 {
+		config.EdgeExpireDuration = DefaultEdgeTokenTTL
 	}
 	return &JWTAuth{
 		config: config,
@@ -61,7 +79,10 @@ func (j *JWTAuth) GenerateToken(userID, username string, roles []string) (string
 	return token.SignedString([]byte(j.config.SecretKey))
 }
 
-// GenerateEdgeToken 生成边端JWT token（带DeviceID）
+// GenerateEdgeToken 生成边端JWT token（带DeviceID）。
+//
+// 有效期取自 EdgeExpireDuration，与用户 token 的 ExpireDuration 相互独立 ——
+// 设备无人值守且没有续期路径，不能沿用用户会话的 2 小时。
 func (j *JWTAuth) GenerateEdgeToken(deviceID string) (string, error) {
 	now := time.Now()
 	claims := &JWTClaims{
@@ -70,7 +91,7 @@ func (j *JWTAuth) GenerateEdgeToken(deviceID string) (string, error) {
 		Roles:    []string{"edge"},
 		DeviceID: deviceID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(j.config.ExpireDuration)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(j.config.EdgeExpireDuration)),
 			IssuedAt:  jwt.NewNumericDate(now),
 			NotBefore: jwt.NewNumericDate(now),
 		},

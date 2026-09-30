@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/center"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 
@@ -45,10 +46,24 @@ func TestUploadHandler_HandleUpload(t *testing.T) {
 
 	handler := center.NewUploadHandler(client)
 
-	// 构造上传请求
+	// 构造上传请求。
+	//
+	// EdgeID 必须是**已注册设备行的 UUID**，不是 edge_code：HandleUpload 用它
+	// 作为 lot.edge_id 的外键，且解析失败会让整批被拒（此前是静默退化为
+	// uuid.Nil 并照常写入 edge_id = NULL，与身份被伪造无法区分）。
+	// 用真实设备行，顺带验证 edge_id 被真正写上而不是 NULL。
+	edgeRow, err := client.Edge.Create().
+		SetEdgeCode("edge-upload-test").
+		SetEdgeName("上传测试设备").
+		SetIPAddress("192.168.9.9").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating edge row: %v", err)
+	}
+
 	lotID := uuid.New()
 	req := &models.UploadRequest{
-		EdgeID: "edge-001",
+		EdgeID: edgeRow.ID.String(),
 		Entries: []models.UploadEntry{
 			{
 				Table:     "lots",
@@ -83,16 +98,63 @@ func TestUploadHandler_HandleUpload(t *testing.T) {
 	}
 
 	// 验证数据已插入
-	lot, err := client.Lot.Get(ctx, lotID)
+	got, err := client.Lot.Get(ctx, lotID)
 	if err != nil {
 		t.Fatalf("Failed to retrieve created lot: %v", err)
 	}
 
-	if lot.LotNumber != "LOT-UPLOAD-001" {
-		t.Errorf("Expected lot_number=LOT-UPLOAD-001, got %s", lot.LotNumber)
+	if got.LotNumber != "LOT-UPLOAD-001" {
+		t.Errorf("Expected lot_number=LOT-UPLOAD-001, got %s", got.LotNumber)
 	}
 
-	t.Logf("✅ Upload test passed: created lot %s", lot.LotNumber)
+	// 权威身份必须真正落到 edge_id 上，而不是 NULL
+	if got.EdgeID != edgeRow.ID {
+		t.Errorf("lot.edge_id = %v, want %v（权威设备 UUID）", got.EdgeID, edgeRow.ID)
+	}
+
+	t.Logf("✅ Upload test passed: created lot %s", got.LotNumber)
+}
+
+// 非 UUID 的 EdgeID 必须让整批被拒，而不是静默写入 edge_id = NULL。
+//
+// 此前 handleUpload 在 Parse 失败时退化为 uuid.Nil 并继续处理，返回 applied: N，
+// 记录虽写入了却无法归属到任何设备 —— 与「身份被伪造」在观测上完全一致。
+func TestUploadHandler_RejectsNonUUIDEdgeID(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	handler := center.NewUploadHandler(client)
+
+	lotID := uuid.New()
+	req := &models.UploadRequest{
+		EdgeID: "edge-001", // edge_code，不是设备行 UUID
+		Entries: []models.UploadEntry{
+			{
+				Table:     "lots",
+				Operation: "create",
+				ID:        lotID,
+				Data: map[string]interface{}{
+					"id":               lotID.String(),
+					"lot_number":       "LOT-BAD-EDGE",
+					"product_type":     "FDY",
+					"planned_quantity": 1,
+					"status":           "in_progress",
+				},
+			},
+		},
+	}
+
+	if _, err := handler.HandleUpload(ctx, req); err == nil {
+		t.Fatal("非 UUID 的 EdgeID 应当返回错误")
+	}
+
+	// 整批拒绝意味着一条都不应落库
+	if exists, err := client.Lot.Query().Where(lot.IDEQ(lotID)).Exist(ctx); err != nil {
+		t.Fatalf("failed querying lot: %v", err)
+	} else if exists {
+		t.Error("EdgeID 非法时记录仍被写入")
+	}
 }
 
 func TestBaseDataProvider_HandlePullRequest(t *testing.T) {

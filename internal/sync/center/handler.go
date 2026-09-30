@@ -69,12 +69,13 @@ func NewUploadHandler(client *ent.Client) *UploadHandler {
 func (h *UploadHandler) HandleUpload(ctx context.Context, req *models.UploadRequest) (*models.UploadResponse, error) {
 	log.Printf("📥 Receiving upload from edge_id=%s, entries=%d", req.EdgeID, len(req.Entries))
 
-	// 权威身份由 Center 的鉴权层推导并写入 req.EdgeID（UUID 字符串）；
-	// 载荷中的 edge_id 一律忽略。Task 4 必须传 UUID 而非 edge_code，
-	// 否则此处 Parse 失败并退化为 uuid.Nil。
+	// 权威身份由 Center 的鉴权层推导并写入 req.EdgeID（必须是设备行的 UUID，
+	// 而非 edge_code）。解析失败说明调用链上游出错了 —— 此前这里退化为
+	// uuid.Nil 并继续，结果是记录被写入且 edge_id 为 NULL，返回 applied: N，
+	// 与「身份被伪造」在观测上完全一致。宁可整批拒绝，也不留下无法归属的数据。
 	authoritativeEdgeID, err := uuid.Parse(req.EdgeID)
 	if err != nil {
-		authoritativeEdgeID = uuid.Nil
+		return nil, fmt.Errorf("invalid authoritative edge id %q: %w", req.EdgeID, err)
 	}
 
 	applied := 0

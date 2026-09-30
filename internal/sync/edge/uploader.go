@@ -139,7 +139,13 @@ func (u *Uploader) collectLots(ctx context.Context, limit int) ([]models.UploadE
 	return out, nil
 }
 
-// collectDoffings 查询待同步落纱记录
+// collectDoffings 查询待同步落纱记录。
+//
+// 当前未被 collectors() 调用：Center 的 handleCreate 还只有 lots/bobbins 分支，
+// doffings 上传会被判 unknown table 并永久走向 failed。保留此函数是**重新接入的
+// 脚手架** —— Center 的 handleCreate 加上 "doffings" 分支后，把它加回
+// collectors() 即可，无需重写采集逻辑（字段映射与 Center 的 createDoffing 对齐）。
+// 在此之前不要加回 collectors()。
 func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.UploadEntry, error) {
 	rows, err := u.client.Doffing.Query().
 		Where(
@@ -172,7 +178,11 @@ func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.Upl
 	return out, nil
 }
 
-// collectBarrels 查询待同步落纱桶
+// collectBarrels 查询待同步落纱桶。
+//
+// 当前未被 collectors() 调用，理由同 collectDoffings：Center 的 handleCreate
+// 尚未支持 barrels。作为重新接入的脚手架保留，待 Center 侧补上 "barrels"
+// 分支后再加回 collectors()。
 func (u *Uploader) collectBarrels(ctx context.Context, limit int) ([]models.UploadEntry, error) {
 	rows, err := u.client.Barrel.Query().
 		Where(
@@ -595,7 +605,11 @@ func (u *Uploader) markRetried(ctx context.Context, byTable map[string][]uuid.UU
 }
 
 // markExhausted 把重试超限的 pending 记录标记为 failed，
-// 避免它们被无限次重新收集。覆盖全部四个上传实体。
+// 避免它们被无限次重新收集。
+//
+// 覆盖 markableTables 中的全部四张表（而非仅当前被采集的两张）：不被采集的表
+// 其 retry_count 不会增长，但历史上（或人工写入）已达上限的行仍需被翻成 failed，
+// 否则会永远停在 pending 且无人可见。
 func (u *Uploader) markExhausted(ctx context.Context) error {
 	if _, err := u.client.Lot.Update().
 		Where(

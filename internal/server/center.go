@@ -56,6 +56,30 @@ func applyTrustedProxies(router *gin.Engine) error {
 	return router.SetTrustedProxies(proxies)
 }
 
+// edgeTokenTTLFromEnv 读取 EDGE_TOKEN_TTL，任何非法取值都回退到默认值。
+//
+// 必须同时校验解析错误与取值本身：time.ParseDuration("0") / "-1h" 都返回
+// err == nil，但非正的有效期会让签发出的凭证立即过期 —— 设备永久 401，
+// 而 401 不计重试，记录会静默停在 pending。
+func edgeTokenTTLFromEnv() time.Duration {
+	raw := os.Getenv("EDGE_TOKEN_TTL")
+	if raw == "" {
+		return middleware.DefaultEdgeTokenTTL
+	}
+
+	ttl, err := time.ParseDuration(raw)
+	switch {
+	case err != nil:
+		log.Printf("⚠️  EDGE_TOKEN_TTL 解析失败 (%v)，回退到 %s", err, middleware.DefaultEdgeTokenTTL)
+		return middleware.DefaultEdgeTokenTTL
+	case ttl <= 0:
+		log.Printf("⚠️  EDGE_TOKEN_TTL 必须为正数 (得到 %s)，回退到 %s", ttl, middleware.DefaultEdgeTokenTTL)
+		return middleware.DefaultEdgeTokenTTL
+	default:
+		return ttl
+	}
+}
+
 // NewCenterServer 创建中心端服务器
 func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServer {
 	// 设置Gin模式
@@ -92,9 +116,10 @@ func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServ
 
 	// JWT认证器
 	jwtAuth := middleware.NewJWTAuth(&middleware.JWTConfig{
-		SecretKey:       jwtSecret,
-		ExpireDuration:  2 * time.Hour,
-		RefreshDuration: 24 * time.Hour,
+		SecretKey:          jwtSecret,
+		ExpireDuration:     2 * time.Hour,
+		RefreshDuration:    24 * time.Hour,
+		EdgeExpireDuration: edgeTokenTTLFromEnv(),
 	})
 
 	// 同步处理器
@@ -137,9 +162,19 @@ func (s *CenterServer) registerRoutes() {
 		v1.POST("/login", s.handleLogin)
 	}
 
-	// 认证路由（需要JWT）
+	// 认证路由（需要JWT，且必须是用户身份）
+	//
+	// requireUserPrincipal 挂在组本身而非逐个管理子组上，目的是让「拒绝设备凭证」
+	// 成为所有已认证非设备路由的**默认**行为。挂在子组上时，新增一个管理组只要
+	// 忘记加这一行，持有 Edge token 的设备就能直接调用它 —— 例如
+	// POST /v1/users 可以创建 role=admin 的账号（UserService.CreateUser 不校验
+	// role），从而把设备凭证洗成真正的用户 JWT。默认拒绝才是安全的默认值。
+	//
+	// 设备路由（/v1/edges/:code/upload、/:code/base-data）在下面的 edge 组里，
+	// 不经过本组，因此仍可被设备凭证访问。
 	authorized := v1.Group("")
 	authorized.Use(s.jwtMiddleware())
+	authorized.Use(requireUserPrincipal())
 	{
 		// 批次管理
 		lotService := service.NewLotService(s.client)
@@ -186,8 +221,8 @@ func (s *CenterServer) registerRoutes() {
 		// 边端设备管理（管理员操作，需用户 JWT）
 		edgeAdminHandler := centerv1.NewEdgeHandler(s.edgeService, s.jwtAuth)
 
+		// 组级已带 requireUserPrincipal，此处不再重复挂载。
 		edgesAdmin := authorized.Group("/edges")
-		edgesAdmin.Use(requireUserPrincipal())
 		{
 			edgesAdmin.POST("", edgeAdminHandler.CreateEdge)
 			edgesAdmin.GET("", edgeAdminHandler.ListEdges)
