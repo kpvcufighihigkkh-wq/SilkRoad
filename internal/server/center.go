@@ -2,20 +2,24 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/api"
 	centerv1 "github.com/yourusername/igh-silkroad/api/center/v1"
 	"github.com/yourusername/igh-silkroad/api/middleware"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/service"
 	"github.com/yourusername/igh-silkroad/internal/sync/center"
+	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
 
 // CenterServer 中心端HTTP服务器
@@ -27,6 +31,7 @@ type CenterServer struct {
 	uploadHandler *center.UploadHandler
 	dataProvider  *center.BaseDataProvider
 	userService   *service.UserService
+	edgeService   *service.EdgeService
 }
 
 // applyTrustedProxies 配置 Gin 的可信代理。
@@ -99,6 +104,9 @@ func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServ
 	// 用户服务（用于登录验证）
 	userService := service.NewUserService(client)
 
+	// 边端设备服务：管理路由与上传鉴权共用同一实例
+	edgeService := service.NewEdgeService(client)
+
 	s := &CenterServer{
 		router:        router,
 		client:        client,
@@ -106,6 +114,7 @@ func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServ
 		uploadHandler: uploadHandler,
 		dataProvider:  dataProvider,
 		userService:   userService,
+		edgeService:   edgeService,
 		server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: router,
@@ -175,8 +184,7 @@ func (s *CenterServer) registerRoutes() {
 		}
 
 		// 边端设备管理（管理员操作，需用户 JWT）
-		edgeService := service.NewEdgeService(s.client)
-		edgeAdminHandler := centerv1.NewEdgeHandler(edgeService, s.jwtAuth)
+		edgeAdminHandler := centerv1.NewEdgeHandler(s.edgeService, s.jwtAuth)
 
 		edgesAdmin := authorized.Group("/edges")
 		edgesAdmin.Use(requireUserPrincipal())
@@ -289,12 +297,98 @@ func (s *CenterServer) handleLogin(c *gin.Context) {
 	}))
 }
 
+// normalizeIP 把 IP 字符串规范化为可比较的形式。
+//
+// 必须规范化再比较：ClientIP() 返回的是 X-Forwarded-For 头里的原始字符串
+// （而非 net.IP.String()），因此可能带前导零、IPv6 方括号或 IPv4 映射前缀
+// （::ffff:203.0.113.9）。直接与注册值做字符串相等判断会把同一台正确的主机
+// 误判为不匹配，产生难以排查的 403。
+//
+// 解析失败时返回空串，调用方据此拒绝请求 —— 规范化失败必须 fail closed。
+func normalizeIP(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	// 去掉可能的端口，以及 IPv6 的方括号
+	if host, _, err := net.SplitHostPort(trimmed); err == nil {
+		trimmed = host
+	}
+	trimmed = strings.TrimPrefix(strings.TrimSuffix(trimmed, "]"), "[")
+
+	ip := net.ParseIP(trimmed)
+	if ip == nil {
+		return ""
+	}
+
+	// 统一映射形式，使 ::ffff:203.0.113.9 与 203.0.113.9 可比
+	if v4 := ip.To4(); v4 != nil {
+		return v4.String()
+	}
+	return ip.String()
+}
+
+// authenticateEdge 对上传请求做四重校验，返回权威的设备记录。
+//
+// 校验顺序与理由：
+//  1. token 有效且带 DeviceID —— HMAC 签名，不可伪造
+//  2. DeviceID 对应的设备已注册 —— 未注册设备不得被自动接纳
+//  3. URL 的 :code 与 token 的 DeviceID 一致 —— 防 A 持己方 token 冒充 B
+//  4. ClientIP 与注册的 ip_address 一致 —— 第二重约束
+//
+// 校验通过后，调用方必须使用返回记录中的 ID 作为数据归属，
+// 不得采信请求体里的 edge_id。
+//
+// 校验失败时已写入响应，返回的 error 仅供调用方提前 return 使用。
+func authenticateEdge(c *gin.Context, svc *service.EdgeService) (*service.EdgeResponse, error) {
+	// 注意：Center 的 jwtMiddleware 用 c.Set 写入 gin 自己的 Keys map，
+	// 而 middleware.GetClaimsFromContext 读的是 c.Request.Context()。
+	// 二者不互通（gin 的 Value() 只对 string 类型的 key 回退查 Keys，
+	// 而 ClaimsKey 是自定义类型），因此这里必须用 c.Get 读取 —— 与
+	// api/center/v1/user.go:130 的既有写法保持一致。
+	rawClaims, exists := c.Get(string(middleware.ClaimsKey))
+	if !exists {
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "缺少设备凭证"))
+		return nil, errors.New("missing device claims")
+	}
+
+	claims, ok := rawClaims.(*middleware.JWTClaims)
+	if !ok || claims.DeviceID == "" {
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "设备凭证无效"))
+		return nil, errors.New("invalid device claims")
+	}
+
+	edgeRow, err := svc.GetEdgeByCode(c.Request.Context(), claims.DeviceID)
+	if err != nil {
+		if errors.Is(err, service.ErrEdgeNotRegistered) {
+			c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "设备未注册"))
+			return nil, err
+		}
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return nil, err
+	}
+
+	if c.Param("code") != claims.DeviceID {
+		c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "凭证与请求设备不符"))
+		return nil, errors.New("edge code mismatch")
+	}
+
+	clientIP := normalizeIP(c.ClientIP())
+	registeredIP := normalizeIP(edgeRow.IPAddress)
+	if clientIP == "" || registeredIP == "" || clientIP != registeredIP {
+		c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "来源IP与注册地址不符"))
+		return nil, errors.New("ip mismatch")
+	}
+
+	return edgeRow, nil
+}
+
 // handleEdgeUpload 处理边端数据上传
 func (s *CenterServer) handleEdgeUpload(c *gin.Context) {
-	code := c.Param("code")
-
 	var req struct {
-		EdgeID  string      `json:"edge_id"`
+		EdgeID  string `json:"edge_id"`
+		Cursor  int64  `json:"cursor"`
 		Entries []struct {
 			Table     string                 `json:"table"`
 			Operation string                 `json:"operation"`
@@ -308,15 +402,43 @@ func (s *CenterServer) handleEdgeUpload(c *gin.Context) {
 		return
 	}
 
-	req.EdgeID = code
+	edgeRow, err := authenticateEdge(c, s.edgeService)
+	if err != nil {
+		return // authenticateEdge 已写响应
+	}
 
-	// TODO: 调用uploadHandler处理
-	log.Printf("📥 Received upload from edge: %s, entries: %d", code, len(req.Entries))
+	// 权威身份由 Center 推导，忽略请求体中的 edge_id
+	uploadReq := &models.UploadRequest{
+		EdgeID: edgeRow.EdgeCode,
+		Cursor: req.Cursor,
+	}
+	for _, e := range req.Entries {
+		entryID, idErr := uuid.Parse(e.ID)
+		if idErr != nil {
+			c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError,
+				fmt.Sprintf("entry id 非法: %q", e.ID)))
+			return
+		}
+		uploadReq.Entries = append(uploadReq.Entries, models.UploadEntry{
+			Table:     e.Table,
+			Operation: e.Operation,
+			ID:        entryID,
+			Data:      e.Data,
+		})
+	}
 
-	c.JSON(http.StatusOK, api.Success(gin.H{
-		"applied":  len(req.Entries),
-		"rejected": 0,
-	}))
+	resp, err := s.uploadHandler.HandleUpload(c.Request.Context(), uploadReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
+
+	// 心跳：鉴权成功即视为设备在线
+	if hbErr := s.edgeService.UpdateHeartbeat(c.Request.Context(), edgeRow.EdgeCode); hbErr != nil {
+		log.Printf("⚠️  刷新设备心跳失败 %s: %v", edgeRow.EdgeCode, hbErr)
+	}
+
+	c.JSON(http.StatusOK, api.Success(resp))
 }
 
 // handleBaseDataPull 处理基础数据拉取
