@@ -1247,6 +1247,38 @@ Run: `go test ./internal/server/ -run TestAuthenticateEdge -v`
 在 `internal/server/center.go` 中添加：
 
 ```go
+// normalizeIP 把 IP 字符串规范化为可比较的形式。
+//
+// 必须规范化再比较：ClientIP() 返回的是 X-Forwarded-For 头里的原始字符串
+// （而非 net.IP.String()），因此可能带前导零、IPv6 方括号或 IPv4 映射前缀
+// （::ffff:203.0.113.9）。直接与注册值做字符串相等判断会把同一台正确的主机
+// 误判为不匹配，产生难以排查的 403。
+//
+// 解析失败时返回空串，调用方据此拒绝请求 —— 规范化失败必须 fail closed。
+func normalizeIP(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+
+	// 去掉可能的端口，以及 IPv6 的方括号
+	if host, _, err := net.SplitHostPort(trimmed); err == nil {
+		trimmed = host
+	}
+	trimmed = strings.TrimPrefix(strings.TrimSuffix(trimmed, "]"), "[")
+
+	ip := net.ParseIP(trimmed)
+	if ip == nil {
+		return ""
+	}
+
+	// 统一映射形式，使 ::ffff:203.0.113.9 与 203.0.113.9 可比
+	if v4 := ip.To4(); v4 != nil {
+		return v4.String()
+	}
+	return ip.String()
+}
+
 // authenticateEdge 对上传请求做四重校验，返回权威的设备记录。
 //
 // 校验顺序与理由：
@@ -1292,7 +1324,9 @@ func authenticateEdge(c *gin.Context, svc *service.EdgeService) (*service.EdgeRe
 		return nil, errors.New("edge code mismatch")
 	}
 
-	if clientIP := c.ClientIP(); clientIP != edgeRow.IPAddress {
+	clientIP := normalizeIP(c.ClientIP())
+	registeredIP := normalizeIP(edgeRow.IPAddress)
+	if clientIP == "" || registeredIP == "" || clientIP != registeredIP {
 		c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "来源IP与注册地址不符"))
 		return nil, errors.New("ip mismatch")
 	}
@@ -1348,7 +1382,7 @@ func authenticateEdge(c *gin.Context, svc *service.EdgeService) (*service.EdgeRe
 **同时：**
 - `CenterServer` 需新增字段 `edgeService *service.EdgeService`，在 `NewCenterServer` 中初始化
 - 请求体的内联 struct 需增加 `Cursor int64 \`json:"cursor"\`` 字段
-- import 补 `"errors"`、`"fmt"`、`"github.com/yourusername/igh-silkroad/internal/sync/models"`
+- import 补 `"errors"`、`"fmt"`、`"net"`、`"strings"`、`"github.com/yourusername/igh-silkroad/internal/sync/models"`（`net`/`strings` 供 `normalizeIP` 使用）
 
 - [ ] **Step 6: 运行测试确认通过**
 
