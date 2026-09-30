@@ -10,11 +10,18 @@ services:
     ports:
       - "8081:8081"
     environment:
+      # 必须与 Center 注册的 edge_code 完全一致，否则鉴权第三重校验失败（403）
       - EDGE_ID=${EDGE_ID:-edge-001}
       - DATABASE_PATH=/data/edge.db
       - PORT=8081
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CENTER_URL=${CENTER_URL:-http://center:8080}
+      # 必填。缺失时进程会 log.Fatal 退出，在 restart: unless-stopped 下变成崩溃循环。
+      # 获取方式：在 Center 上以管理员用户 JWT 调用
+      #   POST /v1/edges/{EDGE_ID}/token
+      - CENTER_TOKEN=${CENTER_TOKEN:?CENTER_TOKEN 未设置：请先从 Center 获取设备凭证}
+      # 可选，兜底重试间隔，默认 5m；必须为正数（非正值会回退到默认值）
+      - SYNC_INTERVAL=${SYNC_INTERVAL:-5m}
     volumes:
       - edge-data:/data
       - ./logs:/app/logs

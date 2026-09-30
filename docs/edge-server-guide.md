@@ -27,6 +27,83 @@ Edge Server 通过环境变量配置：
 | `PORT` | HTTP服务端口 | `8081` | 否 |
 | `JWT_SECRET` | JWT签名密钥 | `edge-secret-key-change-in-production` | 否 |
 | `CENTER_URL` | 中心端服务地址 | `http://localhost:8080` | 否 |
+| `CENTER_TOKEN` | 访问 Center 上传端点的设备凭证 | 无 | **是** |
+| `SYNC_INTERVAL` | 兜底重试间隔 | `5m` | 否 |
+
+### 关于 `EDGE_ID` 与 `CENTER_TOKEN`（部署时最容易出错的两项）
+
+**`EDGE_ID` 必须与 Center 注册的 `edge_code` 完全一致。** Center 的设备鉴权第三重会拿
+URL 里的 `:code` 与凭证里的 `DeviceID` 比对，二者不一致会直接 403。注册设备用管理员用户
+JWT 调用 `POST /v1/edges`。
+
+**`CENTER_TOKEN` 是必填项，缺失时进程会立即退出**（`log.Fatal`）—— 在
+`restart: unless-stopped` 下表现为容器崩溃循环。获取方式：
+
+```bash
+# 在 Center 上，用管理员用户 JWT（先 POST /v1/login 换取）
+curl -X POST http://center:8080/v1/edges/line-01/token \
+  -H "Authorization: Bearer $ADMIN_JWT"
+```
+
+**该凭证有有效期，且 Edge 不会自动续期。** 有效期由 Center 的 `EDGE_TOKEN_TTL` 控制
+（默认 30 天）。过期后上传返回 401，而 401 **不计入重试**，因此记录会静静停在
+`pending`、调度器每 `SYNC_INTERVAL` 打一行日志、`/health` 仍然返回 ok —— 也就是
+「看起来一切正常，但什么都没在同步」。到期前请重新获取 token 并重启 Edge 容器。
+
+Center 侧相关环境变量：
+
+| 环境变量 | 说明 | 默认值 | 必填 |
+|---------|------|--------|------|
+| `EDGE_TOKEN_TTL` | 设备凭证有效期 | `720h`（30 天） | 否 |
+| `TRUSTED_PROXIES` | 可信反向代理的地址，逗号分隔 | `127.0.0.1/32,::1/128` | **是**（有代理时） |
+
+#### ⚠️ `TRUSTED_PROXIES` 必须填**代理自身的地址**，不是整个网段
+
+这是最容易配错、且配错后**不会报错**的一项。
+
+Center 的设备鉴权第四重校验会把 `ClientIP()` 与设备注册的 `ip_address` 比对。Gin 只有在
+请求确实来自**可信代理**时，才会采用 `X-Forwarded-For` 里的值作为 `ClientIP()`。
+
+如果按直觉把 Edge 与代理所在的整个网段写进去（例如 Edge 在 `192.168.2.84`、代理在
+`192.168.2.1`，于是填 `192.168.2.0/24`），那么 **Edge 自己的地址也被视为可信**。此时
+Edge 直接发来的请求里若带 `X-Forwarded-For`（或经其它路径注入），Gin 会把这个头当作
+权威来源，`ClientIP()` 就变成了攻击者可控的值 —— 第四重校验形同虚设。
+
+**正确写法：只填代理自身的地址。**
+
+```bash
+# 正确：只信任代理那一跳
+TRUSTED_PROXIES=192.168.2.1/32
+
+# 错误：把 Edge 所在网段也算作可信来源
+TRUSTED_PROXIES=192.168.2.0/24
+
+# 多个代理时逐个列出
+TRUSTED_PROXIES=192.168.2.1/32,192.168.2.2/32
+```
+
+未配置时只信任本机回环（`127.0.0.1/32,::1/128`）—— 此时若 Center 在代理之后，
+所有 Edge 都会被识别为代理自身的 IP，第四重校验会**全部失败**。
+
+#### ⚠️ Center 的应用端口必须只对代理开放
+
+Center 的第四重校验依赖「请求确实经过了代理」。如果 Edge 能直连 Center 的应用端口，
+就可以完全绕过代理：
+
+- 代理通常承担 TLS 终止、访问控制与审计，直连等于把这三项全部跳过；
+- 直连时 Center 看到的 `ClientIP()` 是 Edge 的真实地址，而**代理转发时看到的是代理地址**
+  —— 两者不可能同时等于设备注册的 `ip_address`，因此「能直连」本身就意味着有人在
+  绕过代理，或配置已经处于不一致状态。
+
+部署要求：**Center 的应用端口只对代理开放**（防火墙/安全组层面），代理再对外提供服务。
+
+```nginx
+# 代理侧
+location /v1/ {
+    proxy_pass http://center:8080;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
 
 ### 3. 启动
 

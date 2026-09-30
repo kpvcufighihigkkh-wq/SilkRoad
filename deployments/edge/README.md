@@ -15,7 +15,24 @@ cp .env.example .env
 EDGE_ID=line-01
 JWT_SECRET=your-strong-secret-key-here
 CENTER_URL=http://center.example.com:8080
+
+# 必填：从 Center 获取设备凭证（缺了容器会立即退出并崩溃循环）
+# 在 Center 上以管理员用户 JWT 调用：
+#   curl -X POST http://center.example.com:8080/v1/edges/line-01/token \
+#        -H "Authorization: Bearer $ADMIN_JWT"
+CENTER_TOKEN=<粘贴上一步返回的 token>
+
+# 可选：兜底重试间隔，默认 5m，必须为正数
+SYNC_INTERVAL=5m
 ```
+
+> **`EDGE_ID` 必须与 Center 上注册的 `edge_code` 完全一致**，否则设备鉴权第三重校验会
+> 返回 403。注册用管理员用户 JWT 调用 `POST /v1/edges`。
+
+> **`CENTER_TOKEN` 有有效期且不会自动续期**（默认 30 天，由 Center 的 `EDGE_TOKEN_TTL`
+> 控制）。到期后上传返回 401，而 401 不计入重试 —— 记录会停在 `pending`、日志每
+> `SYNC_INTERVAL` 打一行、`/health` 仍返回 ok，即「看似正常但同步已停」。到期前请重新
+> 获取 token 并重启本容器。
 
 ### 2. 启动服务
 
