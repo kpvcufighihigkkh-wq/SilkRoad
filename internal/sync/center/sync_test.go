@@ -313,3 +313,94 @@ func TestHandleEdgeUpload_StampsAuthoritativeEdgeUUID(t *testing.T) {
 		t.Error("EdgeID 为 uuid.Nil：权威身份未能落到外键上")
 	}
 }
+
+// 上传批次内若丝锭（bobbins）先于其所属批次（lots）到达，HandleUpload 必须
+// 先处理 lots，否则 bobbin 的 lot_id 外键指向一条尚不存在的记录，插入被
+// SQLite 外键约束拒绝。
+//
+// 这是 SortEntriesByDependency 唯一能被端到端观测到的接缝：排序只有在批次
+// 含 >= 2 条记录时才可能改变行为，而 handler 目前只支持 lots/bobbins 两张表，
+// 故 lots-before-bobbins 是排序当前唯一影响的顺序，也正是边端队列冲刷的
+// 真实形态：先落纱出桶（bobbin），再补批次头（lot）。
+//
+// 若 handler.go 中 HandleUpload 的排序调用被移除，本用例必须失败：bobbin
+// 插入会撞上真实外键（setupTestClient 以 _fk=1 打开连接并显式执行
+// PRAGMA foreign_keys = ON），applied 退化为 1、rejected 变为 1。
+func TestHandleUpload_SortsBobbinsAfterLots(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	authoritativeEdge, err := client.Edge.Create().
+		SetEdgeCode("edge-sort-order").
+		SetEdgeName("排序验证设备").
+		SetIPAddress("192.168.2.86").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating edge: %v", err)
+	}
+
+	handler := center.NewUploadHandler(client)
+
+	lotID := uuid.New()
+	bobbinID := uuid.New()
+
+	// 刻意乱序：bobbin 先于其所属 lot 到达
+	req := &models.UploadRequest{
+		EdgeID: authoritativeEdge.ID.String(),
+		Entries: []models.UploadEntry{
+			{
+				Table:     "bobbins",
+				Operation: "create",
+				ID:        bobbinID,
+				Data: map[string]interface{}{
+					"id":                bobbinID.String(),
+					"bobbin_number":     "BOBBIN-ORDER-001",
+					"lot_id":            lotID.String(),
+					"spinning_position": 1,
+					"gross_weight":      5.2,
+					"net_weight":        4.8,
+					"status":            "producing",
+				},
+			},
+			{
+				Table:     "lots",
+				Operation: "create",
+				ID:        lotID,
+				Data: map[string]interface{}{
+					"id":               lotID.String(),
+					"lot_number":       "LOT-ORDER-001",
+					"product_type":     "FDY",
+					"planned_quantity": 100,
+					"actual_quantity":  0,
+					"status":           "in_progress",
+				},
+			},
+		},
+	}
+
+	resp, err := handler.HandleUpload(ctx, req)
+	if err != nil {
+		t.Fatalf("HandleUpload failed: %v", err)
+	}
+
+	if resp.Applied != 2 {
+		t.Errorf("applied = %d, want 2（未排序时 bobbin 先撞 lot_id 外键）; errors=%v",
+			resp.Applied, resp.Errors)
+	}
+	if resp.Rejected != 0 {
+		t.Errorf("rejected = %d, want 0; errors=%v", resp.Rejected, resp.Errors)
+	}
+	if len(resp.Errors) != 0 {
+		t.Errorf("Errors 应为空，实际 %v", resp.Errors)
+	}
+
+	// 顺带确认外键确实指向了正确的批次
+	got, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("failed retrieving bobbin: %v", err)
+	}
+	if got.LotID != lotID {
+		t.Errorf("bobbin.LotID = %v, want %v", got.LotID, lotID)
+	}
+}
