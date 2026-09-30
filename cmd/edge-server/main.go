@@ -12,6 +12,7 @@ import (
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/server"
+	"github.com/yourusername/igh-silkroad/internal/sync/edge"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -47,6 +48,24 @@ func main() {
 		centerURL = "http://localhost:8080" // 默认中心端地址
 	}
 
+	// 访问 Center 上传端点的设备凭证。缺失时上传会收到 401，
+	// 因此这里只告警不退出 —— 服务本身仍可提供本地查询功能。
+	centerToken := os.Getenv("CENTER_TOKEN")
+	if centerToken == "" {
+		log.Println("⚠️  CENTER_TOKEN 未配置，向 Center 上传将被拒绝 (401)")
+	}
+
+	// 兜底重试间隔，实时上传由业务操作触发
+	syncInterval := 5 * time.Minute
+	if v := os.Getenv("SYNC_INTERVAL"); v != "" {
+		interval, err := time.ParseDuration(v)
+		if err != nil {
+			log.Printf("⚠️  SYNC_INTERVAL 解析失败 (%v)，回退到 %s", err, syncInterval)
+		} else {
+			syncInterval = interval
+		}
+	}
+
 	// 连接SQLite数据库
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -75,9 +94,17 @@ func main() {
 	portInt := 8081
 	fmt.Sscanf(port, "%d", &portInt)
 
-	edgeServer := server.NewEdgeServer(client, edgeID, centerURL, jwtSecret, portInt)
+	edgeServer := server.NewEdgeServer(client, edgeID, centerURL, jwtSecret, centerToken, portInt)
+
+	// 同步调度器（网络故障后的兜底重试）
+	syncCtx, syncCancel := context.WithCancel(context.Background())
+	defer syncCancel()
+
+	scheduler := edge.NewScheduler(edgeServer.Uploader(), syncInterval)
+	scheduler.Start(syncCtx)
 
 	log.Printf("✅ Edge server initialized (ID: %s)", edgeID)
+	log.Printf("🔄 兜底同步间隔: %s", syncInterval)
 	log.Println("📖 API endpoints:")
 	log.Printf("   - Health: http://localhost:%s/health", port)
 	log.Printf("   - Doffing: POST http://localhost:%s/v1/doffing", port)
@@ -96,6 +123,9 @@ func main() {
 	<-quit
 
 	log.Println("⏹️  Shutting down edge server...")
+
+	// 先停调度器，避免关闭过程中仍有上传在飞行
+	scheduler.Stop()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

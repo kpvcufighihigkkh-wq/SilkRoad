@@ -18,17 +18,21 @@ import (
 
 // EdgeServer 边端HTTP服务器
 type EdgeServer struct {
-	router      *gin.Engine
-	server      *http.Server
-	client      *ent.Client
-	edgeID      string
-	centerURL   string
-	jwtAuth     *middleware.JWTAuth
-	syncClient  *edge.SyncClient
+	router     *gin.Engine
+	server     *http.Server
+	client     *ent.Client
+	edgeID     string
+	centerURL  string
+	jwtAuth    *middleware.JWTAuth
+	syncClient *edge.SyncClient
+	uploader   *edge.Uploader
 }
 
 // NewEdgeServer 创建边端服务器
-func NewEdgeServer(client *ent.Client, edgeID, centerURL, jwtSecret string, port int) *EdgeServer {
+//
+// centerToken 为访问 Center 上传端点的设备凭证（CENTER_TOKEN），
+// 由调用方从环境读取后传入 —— 本包不直接依赖环境变量。
+func NewEdgeServer(client *ent.Client, edgeID, centerURL, jwtSecret, centerToken string, port int) *EdgeServer {
 	// 设置Gin模式
 	gin.SetMode(gin.ReleaseMode)
 
@@ -64,8 +68,11 @@ func NewEdgeServer(client *ent.Client, edgeID, centerURL, jwtSecret string, port
 		RefreshDuration: 24 * time.Hour,
 	})
 
-	// 同步客户端
+	// 同步客户端（下载侧由后续任务接线，此处仅保留实例）
 	syncClient := edge.NewSyncClient(edgeID, centerURL, client)
+
+	// 上传器：唯一的上传路径
+	uploader := edge.NewUploader(client, edgeID, centerURL, centerToken)
 
 	s := &EdgeServer{
 		router:     router,
@@ -74,6 +81,7 @@ func NewEdgeServer(client *ent.Client, edgeID, centerURL, jwtSecret string, port
 		centerURL:  centerURL,
 		jwtAuth:    jwtAuth,
 		syncClient: syncClient,
+		uploader:   uploader,
 		server: &http.Server{
 			Addr:    fmt.Sprintf(":%d", port),
 			Handler: router,
@@ -84,6 +92,14 @@ func NewEdgeServer(client *ent.Client, edgeID, centerURL, jwtSecret string, port
 	s.registerRoutes()
 
 	return s
+}
+
+// Uploader 返回本服务器的上传器。
+//
+// 调度器必须复用同一个实例：上传器无并发保护，两个实例并发扫描并标记
+// 待同步记录会产生竞态，也不便于观测。
+func (s *EdgeServer) Uploader() *edge.Uploader {
+	return s.uploader
 }
 
 // registerRoutes 注册路由
@@ -195,13 +211,13 @@ func (s *EdgeServer) handleLogin(c *gin.Context) {
 
 // handleSyncUpload 处理数据上传
 func (s *EdgeServer) handleSyncUpload(c *gin.Context) {
-	// TODO: 调用syncClient上传数据
-	log.Println("📤 Uploading data to center...")
+	resp, err := s.uploader.Upload(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
 
-	c.JSON(http.StatusOK, api.Success(gin.H{
-		"uploaded": 0,
-		"failed":   0,
-	}))
+	c.JSON(http.StatusOK, api.Success(resp))
 }
 
 // handleSyncDownload 处理数据下载
