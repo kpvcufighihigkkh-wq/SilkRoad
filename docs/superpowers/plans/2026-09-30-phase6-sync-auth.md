@@ -548,7 +548,6 @@ func (s *EdgeService) toEdgeResponse(e *ent.Edge) *EdgeResponse {
 }
 
 ```
-```
 
 - [ ] **Step 4: 运行测试确认通过**
 
