@@ -201,7 +201,7 @@ func (s *CenterServer) registerRoutes() {
 	edge.Use(s.jwtMiddleware())
 	{
 		edge.POST("/:code/upload", s.handleEdgeUpload)
-		edge.GET("/base-data", s.handleBaseDataPull)
+		edge.GET("/:code/base-data", s.handleBaseDataPull)
 	}
 }
 
@@ -449,23 +449,28 @@ func (s *CenterServer) handleEdgeUpload(c *gin.Context) {
 }
 
 // handleBaseDataPull 处理基础数据拉取
+//
+// 与上传端点共用同一套设备鉴权：未接线前该端点直接返回空 map 却报 200，
+// 既是假成功，也对未注册设备开放。
 func (s *CenterServer) handleBaseDataPull(c *gin.Context) {
-	var req struct {
-		EdgeID string   `json:"edge_id"`
-		Tables []string `json:"tables"`
+	edgeRow, err := authenticateEdge(c, s.edgeService)
+	if err != nil {
+		return // authenticateEdge 已写响应
 	}
 
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, "参数错误"))
+	// 权威身份取自鉴权结果，不读请求里的 edge_id。
+	tables := c.QueryArray("tables")
+
+	resp, err := s.dataProvider.HandlePullRequest(c.Request.Context(), &models.BaseDataPullRequest{
+		EdgeID: edgeRow.EdgeCode,
+		Tables: tables,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
 	}
 
-	// TODO: 调用dataProvider处理
-	log.Printf("📤 Edge %s requesting base data: %v", req.EdgeID, req.Tables)
-
-	c.JSON(http.StatusOK, api.Success(gin.H{
-		"data": make(map[string]interface{}),
-	}))
+	c.JSON(http.StatusOK, api.Success(resp))
 }
 
 // Start 启动服务器

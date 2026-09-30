@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/grade"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
@@ -50,6 +51,8 @@ func (p *BaseDataProvider) getTableData(ctx context.Context, table string) ([]ma
 		return p.getSpinningLines(ctx)
 	case "grades":
 		return p.getGrades(ctx)
+	case "edges":
+		return p.getEdges(ctx)
 	default:
 		return nil, nil
 	}
@@ -113,6 +116,30 @@ func (p *BaseDataProvider) getGrades(ctx context.Context) ([]map[string]interfac
 			"description": g.Description,
 			"sort_order":  g.SortOrder,
 			"is_active":   g.IsActive,
+		})
+	}
+
+	return result, nil
+}
+
+// getEdges 获取边端设备基础数据
+func (p *BaseDataProvider) getEdges(ctx context.Context) ([]map[string]interface{}, error) {
+	rows, err := p.client.Edge.Query().
+		Order(ent.Asc(edge.FieldEdgeCode)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]map[string]interface{}, 0, len(rows))
+	for _, e := range rows {
+		result = append(result, map[string]interface{}{
+			"id":         e.ID.String(),
+			"edge_code":  e.EdgeCode,
+			"edge_name":  e.EdgeName,
+			"ip_address": e.IPAddress,
+			"status":     string(e.Status),
+			"version":    e.Version,
 		})
 	}
 
