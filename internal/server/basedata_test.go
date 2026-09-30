@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -168,7 +169,14 @@ func TestHandleBaseDataPull_RejectsIPMismatch(t *testing.T) {
 	}
 }
 
-// edges 表必须可下发（Step 3 新增的分支）。
+// edges 表必须可下发，且**只**下发调用方自己那一行。
+//
+// 两条断言都是必需的：正向断言（含自己的 code）证明分支接通，负向断言
+// （不含同租户设备的 code）才证明过滤真的发生。只有正向断言时，全表下发
+// 也会通过 —— 那正是本测试此前漏掉的问题。
+//
+// 用结构化解析而非子串匹配：子串匹配无法区分「自己的行被下发」与
+// 「别人的行里恰好包含这个字符串」，且无法检查字段名。
 func TestHandleBaseDataPull_EdgesTable(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	client := newServerTestClient(t)
@@ -180,13 +188,19 @@ func TestHandleBaseDataPull_EdgesTable(t *testing.T) {
 	})
 	edgeSvc := service.NewEdgeService(client)
 
+	// 两台设备，各自 IP 不同。调用方是 self，other 是邻居。
 	if _, err := edgeSvc.CreateEdge(ctx, &service.CreateEdgeRequest{
-		EdgeCode: "edge-src", EdgeName: "下发源", IPAddress: "192.168.2.84",
+		EdgeCode: "edge-self", EdgeName: "自身设备", IPAddress: "192.168.2.84",
 	}); err != nil {
-		t.Fatalf("CreateEdge failed: %v", err)
+		t.Fatalf("CreateEdge self failed: %v", err)
+	}
+	if _, err := edgeSvc.CreateEdge(ctx, &service.CreateEdgeRequest{
+		EdgeCode: "edge-neighbor", EdgeName: "邻居设备", IPAddress: "192.168.2.85",
+	}); err != nil {
+		t.Fatalf("CreateEdge neighbor failed: %v", err)
 	}
 
-	token, err := jwtAuth.GenerateEdgeToken("edge-src")
+	token, err := jwtAuth.GenerateEdgeToken("edge-self")
 	if err != nil {
 		t.Fatalf("GenerateEdgeToken failed: %v", err)
 	}
@@ -200,7 +214,7 @@ func TestHandleBaseDataPull_EdgesTable(t *testing.T) {
 	router := newBaseDataRouter(t, svr, jwtAuth)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/edges/edge-src/base-data?tables=edges", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/edges/edge-self/base-data?tables=edges", nil)
 	req.RemoteAddr = "192.168.2.84:1234"
 	req.Header.Set("Authorization", "Bearer "+token)
 	router.ServeHTTP(w, req)
@@ -208,12 +222,43 @@ func TestHandleBaseDataPull_EdgesTable(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
 	}
-	body := w.Body.String()
-	if !strings.Contains(body, "edge-src") {
-		t.Errorf("响应未包含 edges 表数据: %s", body)
+
+	// 信封为 api.Success 包一层 data，内层再是 BaseDataPullResponse.Data
+	var envelope struct {
+		Data struct {
+			Data map[string][]map[string]interface{} `json:"data"`
+		} `json:"data"`
 	}
-	// 必须落在 edges 这个 key 下，而不是被静默丢进空 map
-	if !strings.Contains(body, "\"edges\"") {
-		t.Errorf("响应缺少 edges 键: %s", body)
+	if err := json.Unmarshal(w.Body.Bytes(), &envelope); err != nil {
+		t.Fatalf("响应不是合法 JSON: %v; body=%s", err, w.Body.String())
+	}
+
+	rows, ok := envelope.Data.Data["edges"]
+	if !ok {
+		t.Fatalf("响应缺少 edges 键: %s", w.Body.String())
+	}
+	// 这里刻意用 Errorf 而非 Fatalf：若用 Fatalf，行数断言会先行中断测试，
+	// 使下方承重的负向断言永远得不到执行，从而看不出究竟是哪一处失效。
+	if len(rows) != 1 {
+		t.Errorf("edges 行数 = %d, want 1（只下发自身）; body=%s", len(rows), w.Body.String())
+	}
+
+	// 字段名是跨边界契约（Task 7 的消费者依赖），重命名必须让测试失败。
+	for _, field := range []string{"id", "edge_code", "edge_name", "ip_address", "status", "version"} {
+		if _, ok := rows[0][field]; !ok {
+			t.Errorf("edges 行缺少字段 %q; row=%v", field, rows[0])
+		}
+	}
+
+	if got := rows[0]["edge_code"]; got != "edge-self" {
+		t.Errorf("edge_code = %v, want edge-self", got)
+	}
+
+	// 负向断言：不得出现邻居设备。这是本测试的承重部分。
+	if strings.Contains(w.Body.String(), "edge-neighbor") {
+		t.Errorf("响应泄漏了其它设备: %s", w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "192.168.2.85") {
+		t.Errorf("响应泄漏了其它设备的内网 IP: %s", w.Body.String())
 	}
 }
