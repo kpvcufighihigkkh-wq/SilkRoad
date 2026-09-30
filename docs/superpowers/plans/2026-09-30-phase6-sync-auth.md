@@ -741,6 +741,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yourusername/igh-silkroad/api"
 	"github.com/yourusername/igh-silkroad/api/middleware"
+	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/service"
 )
 
@@ -771,6 +772,13 @@ func (h *EdgeHandler) CreateEdge(c *gin.Context) {
 
 	resp, err := h.edgeService.CreateEdge(c.Request.Context(), &req)
 	if err != nil {
+		// edge_code 有唯一约束；重复注册是客户端错误，不是服务端故障。
+		// 不区分会让 POST /v1/edges 对重复 code 返回 500，运维无法判断
+		// 是自己传错了还是 Center 坏了。
+		if ent.IsConstraintError(err) {
+			c.JSON(http.StatusConflict, api.Error(api.CodeResourceExists, "设备编码已存在"))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
 	}
