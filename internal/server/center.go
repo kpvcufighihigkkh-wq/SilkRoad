@@ -407,9 +407,16 @@ func (s *CenterServer) handleEdgeUpload(c *gin.Context) {
 		return // authenticateEdge 已写响应
 	}
 
-	// 权威身份由 Center 推导，忽略请求体中的 edge_id
+	// 权威身份由 Center 推导，忽略请求体中的 edge_id。
+	//
+	// 这里必须传设备 UUID，不能传 EdgeCode：lot.edge_id 是
+	// field.UUID("edge_id", uuid.UUID{})，指向 edges.id 的外键。
+	// 传 "edge-001" 这类编码时 uuid.Parse 会返回
+	// "invalid UUID length: 8"，调用方退化为 uuid.Nil，
+	// SetEdgeID 的条件分支永不触发，外键恒为 NULL ——
+	// 与「身份被伪造」在观测上无法区分，等于白做这层鉴权。
 	uploadReq := &models.UploadRequest{
-		EdgeID: edgeRow.EdgeCode,
+		EdgeID: edgeRow.ID, // UUID 字符串，非 EdgeCode
 		Cursor: req.Cursor,
 	}
 	for _, e := range req.Entries {

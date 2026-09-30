@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -406,4 +410,174 @@ func TestHandleEdgeUpload_RejectsUnregisteredDevice(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Errorf("status = %d, want 403 (未注册设备不得上传); body=%s", w.Code, w.Body.String())
 	}
+}
+
+// TestAuthenticateEdge_RejectsUserToken 用户 token 必须被拒绝。
+//
+// 用户 token 由同一个 SecretKey 签名，因此能通过 jwtMiddleware ——
+// 中间件只能证明「签名有效」，无法区分身份类型。它带着 DeviceID == ""
+// 抵达 authenticateEdge，必须被第一重校验拦下：否则任何登录用户都能
+// 冒充设备上传数据。
+//
+// 断言 401 而非 403 是有意的：401 表示「没有设备凭证」，
+// 403 表示「设备凭证不对」。用户 token 属于前者 —— 越权的用户身份
+// 压根不该出现在设备通道上，而非「设备身份不匹配」。
+func TestAuthenticateEdge_RejectsUserToken(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	client := newServerTestClient(t)
+
+	jwtAuth := newTestJWTAuth()
+	edgeSvc := service.NewEdgeService(client)
+
+	// 签名有效、但 DeviceID 为空的用户 token
+	userToken, err := jwtAuth.GenerateToken("u1", "alice", []string{"admin"})
+	if err != nil {
+		t.Fatalf("GenerateToken failed: %v", err)
+	}
+
+	var ran bool
+	router := gin.New()
+	router.POST("/v1/edges/:code/upload", testEdgeAuth(jwtAuth), func(c *gin.Context) {
+		ran = true
+		if _, err := authenticateEdge(c, edgeSvc); err != nil {
+			return
+		}
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/edges/edge-any/upload", nil)
+	req.RemoteAddr = "192.168.2.84:1234"
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	router.ServeHTTP(w, req)
+
+	if !ran {
+		t.Fatal("authenticateEdge 未被调用 —— 中间件不应拦截签名有效的用户 token")
+	}
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401（用户 token 不含设备凭证）; body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestAuthenticateEdge_RejectsMissingClaims 未经认证中间件时不得放行。
+//
+// 覆盖 claims 根本不在上下文里的分支：与「claims 在但 DeviceID 为空」
+// 是两条不同的路径，都必须 fail closed。
+func TestAuthenticateEdge_RejectsMissingClaims(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	client := newServerTestClient(t)
+
+	edgeSvc := service.NewEdgeService(client)
+
+	router := gin.New()
+	// 故意不挂 testEdgeAuth：上下文里没有 claims
+	router.POST("/v1/edges/:code/upload", func(c *gin.Context) {
+		if _, err := authenticateEdge(c, edgeSvc); err != nil {
+			return
+		}
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/edges/edge-any/upload", nil)
+	req.RemoteAddr = "192.168.2.84:1234"
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401（上下文中无 claims）; body=%s", w.Code, w.Body.String())
+	}
+}
+
+// TestHandleEdgeUpload_PassesUUIDNotEdgeCode 传递给 uploadHandler 的权威身份
+// 必须能按 UUID 解析。
+//
+// lot.edge_id 声明为 field.UUID("edge_id", uuid.UUID{})
+// （internal/database/ent/schema/lot.go:35），指向 edges.id 的外键；
+// 消费方 handler.go 用 uuid.Parse 解析 UploadRequest.EdgeID。
+// 若传 EdgeCode（如 "edge-001"），uuid.Parse 报 "invalid UUID length: 8"，
+// 消费方退化为 uuid.Nil，SetEdgeID 的条件分支永不触发，外键恒为 NULL ——
+// 与「身份被伪造」在观测上无法区分。
+//
+// 本测试通过捕获 handler.go 的上传日志来观测实际传入的值：
+// handleEdgeUpload 把身份写进 UploadRequest，而 HandleUpload 开头就
+// 打印 edge_id=%s，这是 Task 5 落地前唯一可观测该值的接缝。
+func TestHandleEdgeUpload_PassesUUIDNotEdgeCode(t *testing.T) {
+	client := newServerTestClient(t)
+	ctx := context.Background()
+
+	srv := newTestCenterServer(t, client)
+
+	// 刻意使用无法被 uuid.Parse 接受的设备编码
+	const code = "edge-001"
+	created, err := srv.edgeService.CreateEdge(ctx, &service.CreateEdgeRequest{
+		EdgeCode: code, EdgeName: "UUID断言", IPAddress: "192.168.2.84",
+	})
+	if err != nil {
+		t.Fatalf("CreateEdge failed: %v", err)
+	}
+
+	// 前置校验：本测试依赖 EdgeCode 不是合法 UUID
+	if _, err := uuid.Parse(code); err == nil {
+		t.Fatalf("EdgeCode %q 居然是合法 UUID，本测试失去意义", code)
+	}
+	if _, err := uuid.Parse(created.ID); err != nil {
+		t.Fatalf("EdgeResponse.ID = %q 不是合法 UUID: %v", created.ID, err)
+	}
+
+	// 捕获标准日志（gin 的请求日志走 gin.DefaultWriter，不会被截获）
+	var buf safeBuffer
+	log.SetOutput(&buf)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	w := httptest.NewRecorder()
+	srv.router.ServeHTTP(w, uploadRequest(t, srv, code, lotEntry(uuid.New(), "LOT-UUID-001")))
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", w.Code, w.Body.String())
+	}
+
+	got := extractLoggedEdgeID(buf.String())
+	if got == "" {
+		t.Fatalf("未能从日志中提取 edge_id（handler.go 的日志格式变了？）\n日志: %s", buf.String())
+	}
+	if got != created.ID {
+		t.Errorf("传入 uploadHandler 的 EdgeID = %q, want %q（设备 UUID，而非 EdgeCode）", got, created.ID)
+	}
+	if _, err := uuid.Parse(got); err != nil {
+		t.Errorf("传入 uploadHandler 的 EdgeID = %q 无法按 UUID 解析: %v", got, err)
+	}
+}
+
+// safeBuffer 是并发安全的日志缓冲。
+// 标准 log 包自带互斥锁，但测试读取时仍可能与写入竞争，
+// gin 的中间件亦可能在别的 goroutine 写入。
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// extractLoggedEdgeID 从上传日志中取出 handler.go 打印的 edge_id 值。
+func extractLoggedEdgeID(logs string) string {
+	const marker = "edge_id="
+	idx := strings.Index(logs, marker)
+	if idx < 0 {
+		return ""
+	}
+	rest := logs[idx+len(marker):]
+	if end := strings.IndexAny(rest, ", \n"); end >= 0 {
+		rest = rest[:end]
+	}
+	return strings.TrimSpace(rest)
 }
