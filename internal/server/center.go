@@ -179,6 +179,7 @@ func (s *CenterServer) registerRoutes() {
 		edgeAdminHandler := centerv1.NewEdgeHandler(edgeService, s.jwtAuth)
 
 		edgesAdmin := authorized.Group("/edges")
+		edgesAdmin.Use(requireUserPrincipal())
 		{
 			edgesAdmin.POST("", edgeAdminHandler.CreateEdge)
 			edgesAdmin.GET("", edgeAdminHandler.ListEdges)
@@ -215,6 +216,33 @@ func (s *CenterServer) jwtMiddleware() gin.HandlerFunc {
 
 		// 将claims存入gin.Context（使用gin的Set方法）
 		c.Set(string(middleware.ClaimsKey), claims)
+
+		c.Next()
+	}
+}
+
+// requireUserPrincipal 拒绝携带设备凭证（DeviceID 非空）的请求。
+//
+// Center 的用户 token 与 Edge token 用同一个 SecretKey 签名
+// （api/middleware/jwt.go 中 GenerateToken 与 GenerateEdgeToken 均调用
+// SignedString(j.config.SecretKey)），因此 jwtMiddleware 只能证明"签名有效"，
+// 无法区分身份类型。若不在管理路由上加这道校验，持有自身 Edge token 的设备
+// 就能调用 POST /v1/edges/:code/token，为任意其它已注册设备签发凭证。
+func requireUserPrincipal() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		raw, exists := c.Get(string(middleware.ClaimsKey))
+		if !exists {
+			c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未提供认证token"))
+			c.Abort()
+			return
+		}
+
+		claims, ok := raw.(*middleware.JWTClaims)
+		if !ok || claims.DeviceID != "" {
+			c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "设备凭证无权访问管理接口"))
+			c.Abort()
+			return
+		}
 
 		c.Next()
 	}
