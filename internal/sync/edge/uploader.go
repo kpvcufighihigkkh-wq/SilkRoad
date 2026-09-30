@@ -9,7 +9,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,10 +31,14 @@ const (
 	uploadBatchSize = 100
 )
 
-// uploadableTables 需要上传的表，顺序即外键依赖顺序：被引用者先上传。
-// Center 侧会再排一次序（SortEntriesByDependency），此处先行排序是为了
-// 让 limit 截断时被引用的记录优先进入本批，不会出现「引用者到了、被引用者被截掉」。
-var uploadableTables = []string{"lots", "doffings", "barrels", "bobbins"}
+// markableTables 需要维护同步状态的表，供 markSynced / markRetried /
+// markExhausted 遍历。
+//
+// 注意：这比实际采集的表更多。未采集的表不会有新记录进入 pending，
+// 但历史上（或人工修补后）已存在的 pending 行仍需被正确标记 ——
+// 尤其是 markExhausted 要把重试超限的行翻成 failed，否则它们会
+// 永远停留在 pending 且不被采集，成为不可见的积压。
+var markableTables = []string{"lots", "doffings", "barrels", "bobbins"}
 
 // uploadableEntity 一个可上传实体：表名与采集函数
 type uploadableEntity struct {
@@ -47,6 +53,15 @@ type Uploader struct {
 	centerURL string
 	token     string
 	http      *http.Client
+
+	// uploadMu 保证同一时刻只有一次上传在飞行。
+	//
+	// 用 TryLock 直接跳过而不是排队等待，因为「串行化并不等于去重」：
+	// 一次失败的上传会让记录保持 pending，排在后面的调用者重新读取
+	// 后会再次烧掉同一批记录的重试次数。5 次并发与 5 次串行都会把
+	// retry_count 从 1 推到 5，直接触发 markExhausted。
+	// 跳过则是安全的：记录仍是 pending，下一次触发会重新采集。
+	uploadMu sync.Mutex
 }
 
 // NewUploader 创建上传器
@@ -60,12 +75,24 @@ func NewUploader(client *ent.Client, edgeID, centerURL, token string) *Uploader 
 	}
 }
 
-// collectors 按依赖顺序返回各实体的采集函数
+// collectors 返回启用采集的实体，顺序即外键依赖顺序：被引用者先上传。
+//
+// 只采集 Center 的 handleCreate（center/handler.go:121-130）真正接受的表：
+// 目前是 lots 与 bobbins。
+//
+// 不在此列表中的表不会被采集，因而其记录保持 pending 且 retry_count 不变 ——
+// 这是「延后」而非「丢弃」，等 Center 支持后加上来即可同步。
+// 反之，采集了却被 Center 以 unknown table 拒绝的记录，会在重试上限后
+// 被标记为 failed，而本仓库没有任何回收路径 —— 那才是真正的数据丢失。
+//
+// 重新加入的条件（两者都必须满足）：
+//   - doffings：Center 的 handleCreate 增加 "doffings" 分支
+//   - barrels：Center 的 handleCreate 增加 "barrels" 分支
+//
+// 在此之前不得把它们加回本列表。
 func (u *Uploader) collectors() []uploadableEntity {
 	return []uploadableEntity{
 		{table: "lots", collect: u.collectLots},
-		{table: "doffings", collect: u.collectDoffings},
-		{table: "barrels", collect: u.collectBarrels},
 		{table: "bobbins", collect: u.BobbinQuery},
 	}
 }
@@ -252,8 +279,22 @@ func lotToEntry(r *ent.Lot) models.UploadEntry {
 	}
 }
 
+// ErrUploadInProgress 表示已有一次上传在飞行，本次调用被跳过。
+//
+// 调用方应把它当作「稍后再试」而非失败：被跳过的记录仍是 pending，
+// 下一次触发会重新采集。
+var ErrUploadInProgress = errors.New("upload already in progress")
+
 // Upload 执行一次上传：收集、发送、按响应逐条更新本地同步状态。
+//
+// 同一时刻只允许一次上传在飞行；重入时立即返回 ErrUploadInProgress，
+// 不排队等待（理由见 uploadMu 字段注释）。
 func (u *Uploader) Upload(ctx context.Context) (*models.UploadResponse, error) {
+	if !u.uploadMu.TryLock() {
+		return nil, ErrUploadInProgress
+	}
+	defer u.uploadMu.Unlock()
+
 	entries, err := u.CollectPending(ctx, uploadBatchSize)
 	if err != nil {
 		return nil, err
@@ -274,8 +315,10 @@ func (u *Uploader) Upload(ctx context.Context) (*models.UploadResponse, error) {
 
 	// 必须用 :code 寻址 —— Center 的 authenticateEdge 拿 c.Param("code")
 	// 与 token 里的 DeviceID 比对，路径缺段会被判为「凭证与请求设备不符」。
-	url := fmt.Sprintf("%s/v1/edges/%s/upload", u.centerURL, u.edgeID)
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	// edgeID 来自 EDGE_ID 环境变量，转义后再拼路径，避免其中的 / ? # 等
+	// 字符破坏路径或注入额外查询参数。
+	uploadURL := fmt.Sprintf("%s/v1/edges/%s/upload", u.centerURL, url.PathEscape(u.edgeID))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, uploadURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
@@ -293,6 +336,17 @@ func (u *Uploader) Upload(ctx context.Context) (*models.UploadResponse, error) {
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
+
+	// 凭证类失败（401 未提供/无效 token、403 未注册或设备不符）不计入重试。
+	//
+	// 这类失败重发同样的请求必然同样失败，与记录本身无关 —— 若计入
+	// retry_count，默认 5m 间隔下约 25 分钟后所有 pending 记录都会被
+	// markExhausted 标记为 failed，而本仓库没有回收路径，等于数据丢失。
+	// 保持 pending 则配置修好后可继续同步。
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, fmt.Errorf("upload unauthorized: status=%d body=%s（凭证或设备注册问题，不计入重试）",
+			resp.StatusCode, string(respBody))
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		if markErr := u.markRetried(ctx, perTableIDs(entries)); markErr != nil {
@@ -461,13 +515,13 @@ func perTableIDs(entries []models.UploadEntry) map[string][]uuid.UUID {
 	return out
 }
 
-// forEachTable 对四个可上传实体分别执行 fn（仅限有记录的表）
+// forEachTable 对 markableTables 中出现在 byTable 的表分别执行 fn
 func (u *Uploader) forEachTable(
 	ctx context.Context,
 	byTable map[string][]uuid.UUID,
 	fn func(ctx context.Context, table string, ids []uuid.UUID) error,
 ) error {
-	for _, table := range uploadableTables {
+	for _, table := range markableTables {
 		ids := byTable[table]
 		if len(ids) == 0 {
 			continue

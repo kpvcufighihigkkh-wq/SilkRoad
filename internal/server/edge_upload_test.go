@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -110,5 +112,105 @@ func TestHandleSyncUpload_DrivesUploader(t *testing.T) {
 	}
 	if got.SyncStatus != lot.SyncStatusSynced {
 		t.Errorf("上传后 SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusSynced)
+	}
+}
+
+// 已有上传在飞行时，端点必须返回「请稍后重试」而不是排队等待 30s。
+//
+// 用一个慢响应占住上传器，再发第二个请求 —— 后者必须立刻拿到 409，
+// 且不得增加 Center 收到的请求数。
+func TestHandleSyncUpload_ReturnsBusyWhenUploadInFlight(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	client := newServerTestClient(t)
+	ctx := context.Background()
+
+	var posts int64
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	unblock := func() { releaseOnce.Do(func() { close(release) }) }
+
+	center := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt64(&posts, 1)
+		<-release // 占住第一次上传
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"code": 0,
+			"data": map[string]interface{}{"applied": 1, "rejected": 0, "errors": []string{}},
+		}); err != nil {
+			t.Errorf("center stub encode failed: %v", err)
+		}
+	}))
+	defer func() {
+		unblock()
+		center.Close()
+	}()
+
+	if _, err := client.Lot.Create().
+		SetLotNumber("LOT-BUSY").
+		SetProductType("FDY").
+		SetPlannedQuantity(1).
+		Save(ctx); err != nil {
+		t.Fatalf("failed creating lot: %v", err)
+	}
+
+	jwtAuth := middleware.NewJWTAuth(&middleware.JWTConfig{
+		SecretKey:      "test-secret",
+		ExpireDuration: 1 * time.Hour,
+	})
+
+	svr := &EdgeServer{
+		client:   client,
+		edgeID:   "edge-001",
+		uploader: edge.NewUploader(client, "edge-001", center.URL, "test-token"),
+		jwtAuth:  jwtAuth,
+	}
+
+	router := gin.New()
+	router.POST("/v1/sync/upload", svr.jwtMiddleware(), svr.handleSyncUpload)
+
+	token, err := jwtAuth.GenerateToken("edge-user-id", "edge", []string{"operator"})
+	if err != nil {
+		t.Fatalf("GenerateToken failed: %v", err)
+	}
+
+	// 第一个请求占住上传器
+	firstDone := make(chan int, 1)
+	go func() {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/v1/sync/upload", nil)
+		req.Header.Set("Authorization", "Bearer "+token)
+		router.ServeHTTP(w, req)
+		firstDone <- w.Code
+	}()
+
+	// 等 Center 确实收到第一次请求，确保上传在飞行中
+	deadline := time.After(5 * time.Second)
+	for atomic.LoadInt64(&posts) == 0 {
+		select {
+		case <-deadline:
+			t.Fatal("第一次上传未能在 5s 内到达 Center")
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+
+	// 第二个请求必须立刻拿到 409，而不是排队等待
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/sync/upload", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Errorf("占用中第二个请求 status = %d, want %d", w.Code, http.StatusConflict)
+	}
+
+	// 放行第一次上传
+	unblock()
+	if code := <-firstDone; code != http.StatusOK {
+		t.Errorf("第一个请求 status = %d, want 200", code)
+	}
+
+	if got := atomic.LoadInt64(&posts); got != 1 {
+		t.Errorf("Center 收到 %d 次请求, want 1（第二个请求不应发出上传）", got)
 	}
 }

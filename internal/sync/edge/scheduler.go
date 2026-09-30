@@ -2,7 +2,9 @@ package edge
 
 import (
 	"context"
+	"errors"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -13,6 +15,9 @@ type Scheduler struct {
 	interval time.Duration
 	stop     chan struct{}
 	done     chan struct{}
+
+	// stopOnce 保证 Stop 可被多次调用而不 panic（重复 close 会 panic）。
+	stopOnce sync.Once
 }
 
 // NewScheduler 创建调度器
@@ -42,6 +47,12 @@ func (s *Scheduler) Start(ctx context.Context) {
 			case <-ticker.C:
 				resp, err := s.uploader.Upload(ctx)
 				if err != nil {
+					// 已有实时上传在飞行时跳过本轮是正常的，不是故障：
+					// 被跳过的记录仍是 pending，下一轮会重新采集。
+					if errors.Is(err, ErrUploadInProgress) {
+						log.Println("⏭️  已有上传在进行中，跳过本轮定时同步")
+						continue
+					}
 					log.Printf("⚠️  定时同步失败: %v", err)
 					continue
 				}
@@ -53,8 +64,8 @@ func (s *Scheduler) Start(ctx context.Context) {
 	}()
 }
 
-// Stop 停止调度并等待退出
+// Stop 停止调度并等待退出。可重复调用。
 func (s *Scheduler) Stop() {
-	close(s.stop)
+	s.stopOnce.Do(func() { close(s.stop) })
 	<-s.done
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -212,6 +213,14 @@ func (s *EdgeServer) handleLogin(c *gin.Context) {
 // handleSyncUpload 处理数据上传
 func (s *EdgeServer) handleSyncUpload(c *gin.Context) {
 	resp, err := s.uploader.Upload(c.Request.Context())
+
+	// 已有一次上传在飞行时不排队等待（单次上传最长 30s），直接告知调用方稍后重试。
+	// 这不是失败：被跳过的记录仍是 pending。
+	if errors.Is(err, edge.ErrUploadInProgress) {
+		c.JSON(http.StatusConflict, api.Error(api.CodeServerError, "已有上传任务在进行中，请稍后重试"))
+		return
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return

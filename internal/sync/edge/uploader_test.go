@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/edge"
 	_ "modernc.org/sqlite"
@@ -121,7 +123,8 @@ func TestUploader_CollectPending_SkipsExhaustedRetries(t *testing.T) {
 	}
 }
 
-// 收集结果必须按依赖顺序排列
+// 收集结果必须按外键依赖顺序排列，
+// 且只采集 Center 的 handleCreate 真正接受的表（lots / bobbins）。
 func TestUploader_CollectPending_OrderedByDependency(t *testing.T) {
 	client := setupEdgeClient(t)
 	ctx := context.Background()
@@ -135,11 +138,14 @@ func TestUploader_CollectPending_OrderedByDependency(t *testing.T) {
 		t.Fatalf("failed creating lot: %v", err)
 	}
 
-	if _, err := client.Barrel.Create().
-		SetBarrelNumber("BARREL-ORDER").
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-ORDER").
 		SetLotID(record.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
 		Save(ctx); err != nil {
-		t.Fatalf("failed creating barrel: %v", err)
+		t.Fatalf("failed creating bobbin: %v", err)
 	}
 
 	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
@@ -155,8 +161,59 @@ func TestUploader_CollectPending_OrderedByDependency(t *testing.T) {
 	if entries[0].Table != "lots" {
 		t.Errorf("首个应为 lots，实际 %q（外键要求被引用者先到）", entries[0].Table)
 	}
-	if entries[1].Table != "barrels" {
-		t.Errorf("第二个应为 barrels，实际 %q", entries[1].Table)
+	if entries[1].Table != "bobbins" {
+		t.Errorf("第二个应为 bobbins，实际 %q", entries[1].Table)
+	}
+}
+
+// 未接入 Center 的表不得被采集。
+//
+// Center 的 handleCreate 只支持 lots 与 bobbins，其余表一律返回
+// "unknown table" 而被拒绝。若把 doffings / barrels 采集进来，它们会被
+// 反复拒绝、累加重试次数，最终被 markExhausted 标记为 failed ——
+// 而本仓库没有回收路径。不采集则保持 pending/retry_count=0，
+// 是「延后」而非「丢失」，等 Center 支持后仍能同步。
+func TestUploader_CollectPending_SkipsUnsupportedTables(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	record, err := client.Lot.Create().
+		SetLotNumber("LOT-UNSUPPORTED").
+		SetProductType("FDY").
+		SetPlannedQuantity(100).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating lot: %v", err)
+	}
+
+	if _, err := client.Barrel.Create().
+		SetBarrelNumber("BARREL-UNSUPPORTED").
+		SetLotID(record.ID).
+		Save(ctx); err != nil {
+		t.Fatalf("failed creating barrel: %v", err)
+	}
+
+	if _, err := client.Doffing.Create().
+		SetSpinningLineID(uuid.New()).
+		SetSpinningPosition(1).
+		SetLotID(record.ID).
+		Save(ctx); err != nil {
+		t.Fatalf("failed creating doffing: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending failed: %v", err)
+	}
+
+	// 只有 lot 应被采集
+	if len(entries) != 1 {
+		t.Fatalf("收集到 %d 条，want 1（barrels/doffings 尚未被 Center 支持）", len(entries))
+	}
+	if entries[0].Table != "lots" {
+		t.Errorf("被采集的表 = %q, want %q", entries[0].Table, "lots")
 	}
 }
 
@@ -169,10 +226,34 @@ func TestUploader_CollectPending_OrderedByDependency(t *testing.T) {
 func newCenterStub(t *testing.T, code int, data interface{}) (*httptest.Server, *string) {
 	t.Helper()
 
+	return newCenterStubFull(t, code, data, 0)
+}
+
+// newCenterStubFull 与 newCenterStub 相同，另可延迟响应并断言请求头。
+//
+// delay > 0 时响应前先等待，用于制造「上传在飞行」的时间窗口。
+func newCenterStubFull(t *testing.T, code int, data interface{}, delay time.Duration) (*httptest.Server, *string) {
+	t.Helper()
+
 	gotPath := new(string)
+	block := make(chan struct{})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		*gotPath = r.URL.Path
+
+		// 缺少 Bearer 凭证的上传会被 Center 的 authenticateEdge 拒绝，
+		// 删掉请求头设置应当让测试变红。只断言形状与存在性，不绑定具体
+		// 字面量，避免每个调用点都要跟着改。
+		auth := r.Header.Get("Authorization")
+		if !strings.HasPrefix(auth, "Bearer ") || strings.TrimSpace(strings.TrimPrefix(auth, "Bearer ")) == "" {
+			t.Errorf("Authorization = %q, want 形如 %q 的非空凭证", auth, "Bearer <token>")
+		}
+
+		if delay > 0 {
+			close(block)
+			time.Sleep(delay)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(code)
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -183,7 +264,21 @@ func newCenterStub(t *testing.T, code int, data interface{}) (*httptest.Server, 
 			t.Errorf("stub encode failed: %v", err)
 		}
 	}))
-	t.Cleanup(srv.Close)
+
+	// 延迟模式下必须等真实请求到达再关服务器，否则 handler 内的
+	// t.Errorf 会在测试结束后调用，panic 成 "Log in goroutine after test
+	// has completed"。非延迟模式没有请求阻塞，直接关即可。
+	if delay > 0 {
+		t.Cleanup(func() {
+			select {
+			case <-block:
+			case <-time.After(5 * time.Second):
+			}
+			srv.Close()
+		})
+	} else {
+		t.Cleanup(srv.Close)
+	}
 
 	return srv, gotPath
 }
@@ -207,19 +302,22 @@ func TestUploader_Upload_PartialRejection_KeepsRejectedPending(t *testing.T) {
 		t.Fatalf("failed creating lot: %v", err)
 	}
 
-	// 一条 Center 无法处理的记录：doffings 不在 handleCreate 的 lots/bobbins 分支内，
-	// 走 default 返回 "unknown table: doffings"（handler.go:127-128）。
-	doffingRow, err := client.Doffing.Create().
-		SetSpinningLineID(uuid.New()).
-		SetSpinningPosition(1).
+	// 一条 Center 会拒绝的记录。这里用 bobbins（在采集列表内）并让桩返回
+	// 拒绝，因为 item 4 之后只有 lots/bobbins 会被采集 —— 这样批次里
+	// 确实同时存在「被应用」与「被拒」两条记录，才是本测试要验证的场景。
+	bobbinRow, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-PARTIAL").
 		SetLotID(record.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
 		Save(ctx)
 	if err != nil {
-		t.Fatalf("failed creating doffing: %v", err)
+		t.Fatalf("failed creating bobbin: %v", err)
 	}
 
 	// 复刻 Center 的错误串格式：fmt.Sprintf("%s/%s: %v", entry.Table, entry.ID, err)
-	rejectedMsg := fmt.Sprintf("doffings/%s: unknown table: doffings", doffingRow.ID)
+	rejectedMsg := fmt.Sprintf("bobbins/%s: unknown table: bobbins", bobbinRow.ID)
 
 	srv, gotPath := newCenterStub(t, http.StatusOK, map[string]interface{}{
 		"applied":    1,
@@ -259,13 +357,13 @@ func TestUploader_Upload_PartialRejection_KeepsRejectedPending(t *testing.T) {
 	}
 
 	// 被拒绝的记录：必须仍是 pending，retry_count 累加到 1 —— 下轮还会被收集重试
-	rejectedRow, err := client.Doffing.Get(ctx, doffingRow.ID)
+	rejectedRow, err := client.Bobbin.Get(ctx, bobbinRow.ID)
 	if err != nil {
-		t.Fatalf("failed reloading doffing: %v", err)
+		t.Fatalf("failed reloading bobbin: %v", err)
 	}
-	if rejectedRow.SyncStatus != doffing.SyncStatusPending {
+	if rejectedRow.SyncStatus != bobbin.SyncStatusPending {
 		t.Errorf("被拒记录 SyncStatus = %q, want %q（不得被静默标记 synced）",
-			rejectedRow.SyncStatus, doffing.SyncStatusPending)
+			rejectedRow.SyncStatus, bobbin.SyncStatusPending)
 	}
 	if rejectedRow.SyncRetryCount != 1 {
 		t.Errorf("被拒记录 SyncRetryCount = %d, want 1", rejectedRow.SyncRetryCount)
@@ -359,7 +457,7 @@ func TestUploader_Upload_UnparseableError_MarksNothingSynced(t *testing.T) {
 // 错误串指向本批之外的记录时退化为整批重试。
 //
 // 计数对得上（applied=1 + rejected=1 = 本批 2 条），但被拒的 ID 不在本批中，
-// 说明我们对响应的理解有误 —— 此时一条都不标记 synced。
+// 说明我们对响应的理解有误 —— 此时一条都不标记 synced，两条都计重试。
 func TestUploader_Upload_RejectedIDOutsideBatch_MarksNothingSynced(t *testing.T) {
 	client := setupEdgeClient(t)
 	ctx := context.Background()
@@ -373,16 +471,20 @@ func TestUploader_Upload_RejectedIDOutsideBatch_MarksNothingSynced(t *testing.T)
 		t.Fatalf("failed creating lot: %v", err)
 	}
 
-	doffingRow, err := client.Doffing.Create().
-		SetSpinningLineID(uuid.New()).
-		SetSpinningPosition(1).
+	// 第二条必须来自采集列表内（lots/bobbins），否则批次只有 1 条，
+	// 计数会对不上而走另一条分支，测不到「越界 ID」这条路径。
+	bobbinRow, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-FOREIGN-ID").
 		SetLotID(record.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
 		Save(ctx)
 	if err != nil {
-		t.Fatalf("failed creating doffing: %v", err)
+		t.Fatalf("failed creating bobbin: %v", err)
 	}
 
-	// 错误串指向一个既不是批次也不是被拒之外记录的陌生 ID
+	// 错误串指向一个既不在本批中的陌生 ID
 	foreignMsg := fmt.Sprintf("lots/%s: boom", uuid.New())
 
 	srv, _ := newCenterStub(t, http.StatusOK, map[string]interface{}{
@@ -408,15 +510,15 @@ func TestUploader_Upload_RejectedIDOutsideBatch_MarksNothingSynced(t *testing.T)
 		t.Errorf("错误串越界时 lot SyncRetryCount = %d, want 1", gotLot.SyncRetryCount)
 	}
 
-	gotDoffing, err := client.Doffing.Get(ctx, doffingRow.ID)
+	gotBobbin, err := client.Bobbin.Get(ctx, bobbinRow.ID)
 	if err != nil {
-		t.Fatalf("failed reloading doffing: %v", err)
+		t.Fatalf("failed reloading bobbin: %v", err)
 	}
-	if gotDoffing.SyncStatus != doffing.SyncStatusPending {
-		t.Errorf("错误串越界时 doffing SyncStatus = %q, want %q",
-			gotDoffing.SyncStatus, doffing.SyncStatusPending)
+	if gotBobbin.SyncStatus != bobbin.SyncStatusPending {
+		t.Errorf("错误串越界时 bobbin SyncStatus = %q, want %q",
+			gotBobbin.SyncStatus, bobbin.SyncStatusPending)
 	}
-	if gotDoffing.SyncRetryCount != 1 {
-		t.Errorf("错误串越界时 doffing SyncRetryCount = %d, want 1", gotDoffing.SyncRetryCount)
+	if gotBobbin.SyncRetryCount != 1 {
+		t.Errorf("错误串越界时 bobbin SyncRetryCount = %d, want 1", gotBobbin.SyncRetryCount)
 	}
 }

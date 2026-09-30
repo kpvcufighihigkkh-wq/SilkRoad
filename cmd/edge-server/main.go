@@ -19,6 +19,32 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+// defaultSyncInterval SYNC_INTERVAL 未配置或取值非法时的兜底间隔
+const defaultSyncInterval = 5 * time.Minute
+
+// parseSyncInterval 解析 SYNC_INTERVAL，任何非法取值都回退到默认值。
+//
+// 必须同时校验解析错误与取值本身：time.ParseDuration("0")、"0s"、"-5m"
+// 都返回 err == nil，但把非正值交给 time.NewTicker 会在调度 goroutine 内
+// panic（"non-positive interval for NewTicker"）并终止进程。
+func parseSyncInterval(raw string) time.Duration {
+	if raw == "" {
+		return defaultSyncInterval
+	}
+
+	interval, err := time.ParseDuration(raw)
+	switch {
+	case err != nil:
+		log.Printf("⚠️  SYNC_INTERVAL 解析失败 (%v)，回退到 %s", err, defaultSyncInterval)
+		return defaultSyncInterval
+	case interval <= 0:
+		log.Printf("⚠️  SYNC_INTERVAL 必须为正数 (得到 %s)，回退到 %s", interval, defaultSyncInterval)
+		return defaultSyncInterval
+	default:
+		return interval
+	}
+}
+
 func main() {
 	log.Println("🚀 Starting IGH Edge Server...")
 
@@ -48,23 +74,21 @@ func main() {
 		centerURL = "http://localhost:8080" // 默认中心端地址
 	}
 
-	// 访问 Center 上传端点的设备凭证。缺失时上传会收到 401，
-	// 因此这里只告警不退出 —— 服务本身仍可提供本地查询功能。
+	// 访问 Center 上传端点的设备凭证。
+	//
+	// 缺失时直接退出，而不是告警后继续：Center 会对缺少有效凭证的上传
+	// 返回 401，而上传器把非 200 一律计入重试。凭默认 5m 间隔，约 25 分钟
+	// 后所有 pending 记录都会被标记为 failed，且本仓库没有任何回收路径 ——
+	// 那是不可恢复的数据丢失，比启动失败严重得多。
+	// 这与本文件对其它致命配置的处理一致（如 sqlite 打开失败）。
 	centerToken := os.Getenv("CENTER_TOKEN")
 	if centerToken == "" {
-		log.Println("⚠️  CENTER_TOKEN 未配置，向 Center 上传将被拒绝 (401)")
+		log.Fatal("❌ CENTER_TOKEN 未配置：无法向 Center 上传。" +
+			"请先用 POST /v1/edges/:code/token 获取凭证后再启动")
 	}
 
 	// 兜底重试间隔，实时上传由业务操作触发
-	syncInterval := 5 * time.Minute
-	if v := os.Getenv("SYNC_INTERVAL"); v != "" {
-		interval, err := time.ParseDuration(v)
-		if err != nil {
-			log.Printf("⚠️  SYNC_INTERVAL 解析失败 (%v)，回退到 %s", err, syncInterval)
-		} else {
-			syncInterval = interval
-		}
-	}
+	syncInterval := parseSyncInterval(os.Getenv("SYNC_INTERVAL"))
 
 	// 连接SQLite数据库
 	db, err := sql.Open("sqlite", dbPath)
