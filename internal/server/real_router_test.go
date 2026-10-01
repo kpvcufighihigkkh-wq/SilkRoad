@@ -117,9 +117,23 @@ func TestRealRouter_DeviceRoutesRemainReachableByDeviceToken(t *testing.T) {
 	cases := []struct {
 		method string
 		path   string
+		// wantRoute 该请求必须匹配到的生产路由模板
+		wantRoute string
 	}{
-		{http.MethodPost, "/v1/edges/edge-dev/upload"},
-		{http.MethodGet, "/v1/edges/edge-dev/base-data"},
+		{http.MethodPost, "/v1/edges/edge-dev/upload", "/v1/edges/:code/upload"},
+		{http.MethodGet, "/v1/edges/edge-dev/base-data", "/v1/edges/:code/base-data"},
+	}
+
+	// 先确认路由确实注册了。只断言「不是 403」会被 404 混过去 ——
+	// 删掉整个 edge 组时两个用例都会静默通过。
+	registered := make(map[string]bool)
+	for _, r := range router.Routes() {
+		registered[r.Method+" "+r.Path] = true
+	}
+	for _, tc := range cases {
+		if !registered[tc.method+" "+tc.wantRoute] {
+			t.Errorf("生产路由缺少 %s %s（设备凭证无法访问）", tc.method, tc.wantRoute)
+		}
 	}
 
 	for _, tc := range cases {
@@ -130,11 +144,26 @@ func TestRealRouter_DeviceRoutesRemainReachableByDeviceToken(t *testing.T) {
 			req.Header.Set("Content-Type", "application/json")
 			router.ServeHTTP(w, req)
 
-			// 不得是 403（被身份守卫拦下）。这些 handler 会因 nil client 而失败
-			// 或返回业务错误，但都不应是「设备凭证无权访问」。
+			// 404 = 路由不存在，403 = 被身份守卫拦下。两者都说明设备进不来，
+			// 且都不是本用例想看到的「凭证有效、路由可达」。
+			if w.Code == http.StatusNotFound {
+				t.Errorf("路由不存在（status=404）：%s %s", tc.method, tc.path)
+			}
 			if w.Code == http.StatusForbidden {
 				t.Errorf("设备凭证被拦在上传/下发路由之外（status=%d）; body=%s",
 					w.Code, w.Body.String())
+			}
+			if w.Code == http.StatusUnauthorized {
+				t.Errorf("设备凭证未通过 jwtMiddleware（status=%d）; body=%s",
+					w.Code, w.Body.String())
+			}
+
+			// 必须真的抵达 handler。这些 handler 持有 nil client，抵达后会 panic
+			// 并被 gin 的 Recovery 兜成 500 —— 那正是「已到达」的证据。
+			// 断言 500 而非「不是 403」：后者会被 404（路由被删）混过去。
+			if w.Code != http.StatusInternalServerError {
+				t.Errorf("%s %s → %d, want 500（nil client panic = 已抵达 handler）; body=%s",
+					tc.method, tc.path, w.Code, w.Body.String())
 			}
 		})
 	}

@@ -143,8 +143,8 @@ func (u *Uploader) collectLots(ctx context.Context, limit int) ([]models.UploadE
 //
 // 当前未被 collectors() 调用：Center 的 handleCreate 还只有 lots/bobbins 分支，
 // doffings 上传会被判 unknown table 并永久走向 failed。保留此函数是**重新接入的
-// 脚手架** —— Center 的 handleCreate 加上 "doffings" 分支后，把它加回
-// collectors() 即可，无需重写采集逻辑（字段映射与 Center 的 createDoffing 对齐）。
+// 脚手架** —— 等 Center 的 handleCreate 增加 "doffings" 分支（并实现对应的落库
+// 逻辑）后，把它加回 collectors() 即可，无需重写采集逻辑。
 // 在此之前不要加回 collectors()。
 func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.UploadEntry, error) {
 	rows, err := u.client.Doffing.Query().

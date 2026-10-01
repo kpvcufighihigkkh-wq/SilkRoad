@@ -84,6 +84,14 @@ docker build -f deployments/edge/Dockerfile -t igh-edge-server:v0.1.0 .
 EDGE_ID=line-01
 JWT_SECRET=secret-for-line-01
 CENTER_URL=http://192.168.1.100:8080
+
+# 必填：该生产线的设备凭证，缺了容器会立即退出并崩溃循环
+# 获取：curl -X POST http://192.168.1.100:8080/v1/edges/line-01/token \
+#            -H "Authorization: Bearer $ADMIN_JWT"
+CENTER_TOKEN=<line-01 的 token>
+
+# 可选：兜底重试间隔，默认 5m，必须为正数
+SYNC_INTERVAL=5m
 ```
 
 **line-01/docker-compose.yml**:

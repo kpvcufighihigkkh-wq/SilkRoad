@@ -70,12 +70,21 @@ func (h *UploadHandler) HandleUpload(ctx context.Context, req *models.UploadRequ
 	log.Printf("📥 Receiving upload from edge_id=%s, entries=%d", req.EdgeID, len(req.Entries))
 
 	// 权威身份由 Center 的鉴权层推导并写入 req.EdgeID（必须是设备行的 UUID，
-	// 而非 edge_code）。解析失败说明调用链上游出错了 —— 此前这里退化为
-	// uuid.Nil 并继续，结果是记录被写入且 edge_id 为 NULL，返回 applied: N，
-	// 与「身份被伪造」在观测上完全一致。宁可整批拒绝，也不留下无法归属的数据。
+	// 而非 edge_code）。解析失败或解析出全零 UUID 都说明调用链上游出错了 ——
+	// 此前这里退化为 uuid.Nil 并继续，结果是记录被写入且 edge_id 为 NULL，
+	// 返回 applied: N，与「身份被伪造」在观测上完全一致。
+	// 宁可整批拒绝，也不留下无法归属的数据。
+	//
+	// 必须同时排除 uuid.Nil：uuid.Parse("00000000-0000-0000-0000-000000000000")
+	// 返回的是 err == nil，仅靠上面的错误检查拦不住它，它随后会命中
+	// applyEntry → createLot 里的 `if edgeID != uuid.Nil`，跳过 SetEdgeID，
+	// 同样得到 edge_id = NULL。所以「能解析」不等于「是有效身份」。
 	authoritativeEdgeID, err := uuid.Parse(req.EdgeID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid authoritative edge id %q: %w", req.EdgeID, err)
+	}
+	if authoritativeEdgeID == uuid.Nil {
+		return nil, fmt.Errorf("invalid authoritative edge id %q: 不得为空 UUID", req.EdgeID)
 	}
 
 	applied := 0

@@ -115,6 +115,14 @@ export PORT="8081"
 export JWT_SECRET="your-secret-key"
 export CENTER_URL="http://center.example.com:8080"
 
+# 必填，缺失时进程立即退出（log.Fatal）
+export CENTER_TOKEN="$(curl -s -X POST \
+  http://center.example.com:8080/v1/edges/line-01/token \
+  -H "Authorization: Bearer $ADMIN_JWT" | jq -r .data.token)"
+
+# 可选，默认 5m
+export SYNC_INTERVAL="5m"
+
 ./bin/edge-server
 ```
 
@@ -125,6 +133,12 @@ $env:DATABASE_PATH="C:\data\edge.db"
 $env:PORT="8081"
 $env:JWT_SECRET="your-secret-key"
 $env:CENTER_URL="http://center.example.com:8080"
+
+# 必填，缺失时进程立即退出（log.Fatal）
+$env:CENTER_TOKEN="<从 POST /v1/edges/line-01/token 获取>"
+
+# 可选，默认 5m
+$env:SYNC_INTERVAL="5m"
 
 .\bin\edge-server.exe
 ```
@@ -139,8 +153,14 @@ docker run -d \
   -e DATABASE_PATH="/data/edge.db" \
   -e JWT_SECRET="your-secret-key" \
   -e CENTER_URL="http://center.example.com:8080" \
+  -e CENTER_TOKEN="${CENTER_TOKEN:?未设置 CENTER_TOKEN：容器会立即退出}" \
+  -e SYNC_INTERVAL="5m" \
   igh-edge-server:latest
 ```
+
+> 三个示例都包含 `CENTER_TOKEN`。缺失时进程会 `log.Fatal` 退出，在
+> `restart: unless-stopped` 或 `Restart=always` 下表现为无限崩溃循环。
+> 获取方式见上方「关于 `EDGE_ID` 与 `CENTER_TOKEN`」。
 
 ### 4. 健康检查
 
@@ -481,6 +501,10 @@ Environment="DATABASE_PATH=/data/edge/edge.db"
 Environment="PORT=8081"
 Environment="JWT_SECRET=your-production-secret"
 Environment="CENTER_URL=http://center.example.com:8080"
+# 必填：缺失时进程 log.Fatal 退出，与下面的 Restart=always 组合会变成无限重启
+Environment="CENTER_TOKEN=your-device-token"
+# 可选：兜底重试间隔，默认 5m，必须为正数
+Environment="SYNC_INTERVAL=5m"
 ExecStart=/opt/igh-edge/bin/edge-server
 Restart=always
 RestartSec=10

@@ -157,6 +157,49 @@ func TestUploadHandler_RejectsNonUUIDEdgeID(t *testing.T) {
 	}
 }
 
+// 全零 UUID 也必须被拒 —— 它「能解析」，但不是有效身份。
+//
+// uuid.Parse("00000000-0000-0000-0000-000000000000") 返回 err == nil 且值为
+// uuid.Nil，因此只检查解析错误拦不住它。放行后会命中 createLot 里的
+// `if edgeID != uuid.Nil`，跳过 SetEdgeID，仍然写出 edge_id = NULL 并返回
+// applied: N —— 与伪造身份在观测上无法区分。这是非 UUID 用例的另一半。
+func TestUploadHandler_RejectsNilUUIDEdgeID(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	handler := center.NewUploadHandler(client)
+
+	lotID := uuid.New()
+	req := &models.UploadRequest{
+		EdgeID: uuid.Nil.String(), // 全零，可被 Parse 接受
+		Entries: []models.UploadEntry{
+			{
+				Table:     "lots",
+				Operation: "create",
+				ID:        lotID,
+				Data: map[string]interface{}{
+					"id":               lotID.String(),
+					"lot_number":       "LOT-NIL-EDGE",
+					"product_type":     "FDY",
+					"planned_quantity": 1,
+					"status":           "in_progress",
+				},
+			},
+		},
+	}
+
+	if _, err := handler.HandleUpload(ctx, req); err == nil {
+		t.Fatal("全零 UUID 的 EdgeID 应当返回错误")
+	}
+
+	if exists, err := client.Lot.Query().Where(lot.IDEQ(lotID)).Exist(ctx); err != nil {
+		t.Fatalf("failed querying lot: %v", err)
+	} else if exists {
+		t.Error("EdgeID 为空 UUID 时记录仍被写入（edge_id 会是 NULL）")
+	}
+}
+
 func TestBaseDataProvider_HandlePullRequest(t *testing.T) {
 	client := setupTestClient(t)
 	defer client.Close()
