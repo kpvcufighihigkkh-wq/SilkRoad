@@ -319,6 +319,11 @@ func (_c *BobbinGradeCreate) check() error {
 	if _, ok := _c.mutation.SyncRetryCount(); !ok {
 		return &ValidationError{Name: "sync_retry_count", err: errors.New(`ent: missing required field "BobbinGrade.sync_retry_count"`)}
 	}
+	if v, ok := _c.mutation.SyncRetryCount(); ok {
+		if err := bobbingrade.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "BobbinGrade.sync_retry_count": %w`, err)}
+		}
+	}
 	return nil
 }
 

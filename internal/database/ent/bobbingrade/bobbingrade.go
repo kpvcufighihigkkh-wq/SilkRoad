@@ -96,6 +96,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultSyncRetryCount holds the default value on creation for the "sync_retry_count" field.
 	DefaultSyncRetryCount int
+	// SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
+	SyncRetryCountValidator func(int) error
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )

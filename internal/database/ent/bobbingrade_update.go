@@ -315,6 +315,11 @@ func (_u *BobbinGradeUpdate) check() error {
 			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "BobbinGrade.sync_status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := bobbingrade.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "BobbinGrade.sync_retry_count": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -716,6 +721,11 @@ func (_u *BobbinGradeUpdateOne) check() error {
 	if v, ok := _u.mutation.SyncStatus(); ok {
 		if err := bobbingrade.SyncStatusValidator(v); err != nil {
 			return &ValidationError{Name: "sync_status", err: fmt.Errorf(`ent: validator failed for field "BobbinGrade.sync_status": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.SyncRetryCount(); ok {
+		if err := bobbingrade.SyncRetryCountValidator(v); err != nil {
+			return &ValidationError{Name: "sync_retry_count", err: fmt.Errorf(`ent: validator failed for field "BobbinGrade.sync_retry_count": %w`, err)}
 		}
 	}
 	return nil

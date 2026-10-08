@@ -206,6 +206,8 @@ func init() {
 	bobbingradeDescSyncRetryCount := bobbingradeFields[15].Descriptor()
 	// bobbingrade.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
 	bobbingrade.DefaultSyncRetryCount = bobbingradeDescSyncRetryCount.Default.(int)
+	// bobbingrade.SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
+	bobbingrade.SyncRetryCountValidator = bobbingradeDescSyncRetryCount.Validators[0].(func(int) error)
 	// bobbingradeDescID is the schema descriptor for id field.
 	bobbingradeDescID := bobbingradeFields[0].Descriptor()
 	// bobbingrade.DefaultID holds the default value on creation for the id field.

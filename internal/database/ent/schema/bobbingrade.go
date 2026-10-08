@@ -104,6 +104,7 @@ func (BobbinGrade) Fields() []ent.Field {
 
 		field.Int("sync_retry_count").
 			Default(0).
+			NonNegative().
 			Comment("同步重试次数"),
 	}
 }
