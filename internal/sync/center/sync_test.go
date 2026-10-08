@@ -463,6 +463,7 @@ func TestHandleUpload_SortsBobbinsAfterLots(t *testing.T) {
 					"id":                bobbinID.String(),
 					"bobbin_number":     "BOBBIN-ORDER-001",
 					"lot_id":            lotID.String(),
+					"lot_number":        "LOT-ORDER-001", // 父行解析依据（本任务起 lot_id 不再被采信）
 					"spinning_position": 1,
 					"gross_weight":      5.2,
 					"net_weight":        4.8,
@@ -1064,5 +1065,85 @@ func TestUpsertBobbin_EmptyGradeClearsStoredValue(t *testing.T) {
 	}
 	if got.Grade != "" {
 		t.Errorf("Grade = %q, want \"\"（载荷显式传空串应清空既有值）", got.Grade)
+	}
+}
+
+// 载荷里的 lot_id 是 Edge 本地 UUID，Center 必须按 lot_number 解引用，
+// 把子记录挂到 Center 自己的批次行上。
+func TestUploadBobbin_DereferencesParentByLotNumber(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	// Center 侧已有的批次（UUID 与 Edge 本地不同）
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-DEREF-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	edgeLocalLotID := uuid.New() // Edge 本地的批次 UUID，Center 不认识
+	bobbinID := uuid.New()
+
+	handler := center.NewUploadHandler(client)
+	upload := func() *models.UploadResponse {
+		resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "bobbins", Operation: "create", ID: bobbinID,
+				Data: map[string]interface{}{
+					"id":                bobbinID.String(),
+					"bobbin_number":     "BOBBIN-DEREF-1",
+					"lot_id":            edgeLocalLotID.String(), // 陷阱：会被忽略
+					"lot_number":        "LOT-DEREF-1",           // 真依据
+					"spinning_position": 1,
+					"gross_weight":      1.5,
+					"net_weight":        1.2,
+					"status":            "producing",
+				},
+			}},
+		})
+		if err != nil {
+			t.Fatalf("HandleUpload: %v", err)
+		}
+		return resp
+	}
+
+	resp := upload()
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("get bobbin: %v", err)
+	}
+	if got.LotID != centerLot.ID {
+		t.Errorf("LotID = %v, want %v（必须按编号解引用到 Center 的批次，而非采信载荷的 lot_id）",
+			got.LotID, centerLot.ID)
+	}
+	if got.LotID == edgeLocalLotID {
+		t.Error("采信了载荷中的 lot_id —— 这是安全缺陷")
+	}
+
+	// 第二遍：同一载荷重传。此时 Center 已存在该 bobbin_number 的行，
+	// upsertBobbin 走认领路径转 updateBobbinRow —— 该路径也必须按编号解引用，
+	// 否则会把子记录挂回不存在的 edgeLocalLotID（外键失败）或挂错父行。
+	resp2 := upload()
+	if resp2.Applied != 1 {
+		t.Fatalf("second pass applied = %d, want 1; errors=%v", resp2.Applied, resp2.Errors)
+	}
+	got2, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("get bobbin after second pass: %v", err)
+	}
+	if got2.LotID != centerLot.ID {
+		t.Errorf("第二遍后 LotID = %v, want %v（认领路径 updateBobbinRow 也必须按编号解引用）",
+			got2.LotID, centerLot.ID)
 	}
 }

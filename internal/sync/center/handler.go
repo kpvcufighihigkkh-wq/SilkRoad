@@ -240,6 +240,29 @@ func (h *UploadHandler) resolveLot(ctx context.Context, id uuid.UUID, lotNumber 
 	return byNumber, nil
 }
 
+// resolveParentLotID 按载荷的 lot_number 查 Center 侧的批次行，返回其 ID。
+//
+// 为何不采信载荷里的 lot_id：那是 Edge 本地生成的 UUID。Center 可能已
+// 存在同一业务编号、但主键不同的行（历史数据或人工创建），此时若直接
+// 用载荷的 ID 写外键，要么撞外键约束失败，要么挂到错误的行上。
+// 与整个同步链路的原则一致：身份由 Center 推导，载荷只提供业务键。
+func (h *UploadHandler) resolveParentLotID(ctx context.Context, data map[string]interface{}) (uuid.UUID, error) {
+	lotNumber := getString(data, "lot_number")
+	if lotNumber == "" {
+		return uuid.Nil, fmt.Errorf("missing lot_number：无法定位父批次")
+	}
+	parent, err := h.client.Lot.Query().Where(lot.LotNumberEQ(lotNumber)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			// 父行尚未到达：让本条目计重试，等批次上传后再挂载。
+			// 不写 NULL 外键（lot_id 是 Required），也不静默跳过。
+			return uuid.Nil, fmt.Errorf("parent lot %q not found: %w", lotNumber, err)
+		}
+		return uuid.Nil, err
+	}
+	return parent.ID, nil
+}
+
 // updateLotRow 以 Edge 侧数据更新既有行。整行以 Edge 为准（单向归属）。
 //
 // 认领时保留 target 的 ID —— Center 侧 lot_id 引用随之继续有效。
@@ -291,9 +314,10 @@ func (h *UploadHandler) upsertBobbin(ctx context.Context, entry *models.UploadEn
 	if err != nil {
 		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
 	}
-	lotID, err := uuid.Parse(getString(data, "lot_id"))
+	// 载荷中的 lot_id 是 Edge 本地 UUID，一律不采信；按 lot_number 解引用父行。
+	lotID, err := h.resolveParentLotID(ctx, data)
 	if err != nil {
-		return fmt.Errorf("invalid lot_id %q: %w", getString(data, "lot_id"), err)
+		return err
 	}
 	bobbinNumber := getString(data, "bobbin_number")
 	if bobbinNumber == "" {
@@ -365,9 +389,10 @@ func (h *UploadHandler) resolveBobbin(ctx context.Context, id uuid.UUID, bobbinN
 // `if v != nil` 使其成为 no-op，从而**保留 Center 既有的值**。这是刻意的
 // 取舍（Edge 侧有意抹除该字段不会传播），故此处不加 Clear*。
 func (h *UploadHandler) updateBobbinRow(ctx context.Context, row *ent.Bobbin, data map[string]interface{}) error {
-	lotID, err := uuid.Parse(getString(data, "lot_id"))
+	// 载荷中的 lot_id 是 Edge 本地 UUID，一律不采信；按 lot_number 解引用父行。
+	lotID, err := h.resolveParentLotID(ctx, data)
 	if err != nil {
-		return fmt.Errorf("invalid lot_id %q: %w", getString(data, "lot_id"), err)
+		return err
 	}
 
 	err = row.Update().
