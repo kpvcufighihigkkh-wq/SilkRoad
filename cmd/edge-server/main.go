@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	enthook "github.com/yourusername/igh-silkroad/internal/database/ent/hook"
 	"github.com/yourusername/igh-silkroad/internal/server"
 	"github.com/yourusername/igh-silkroad/internal/sync/edge"
 
@@ -105,6 +106,10 @@ func main() {
 	drv := entsql.OpenDB(dialect.SQLite, db)
 	client := ent.NewClient(ent.Driver(drv))
 	defer client.Close()
+
+	// 脏标记：业务字段被修改时自动把记录重置为待同步。
+	// 必须挂在 Edge 侧 —— Center 不采集数据，置脏没有消费者。
+	client.Use(enthook.NewDirtyMarker())
 
 	log.Println("✅ Database connected:", dbPath)
 
