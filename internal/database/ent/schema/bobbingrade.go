@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
-	"entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
@@ -91,6 +91,20 @@ func (BobbinGrade) Fields() []ent.Field {
 			Default(time.Now).
 			UpdateDefault(time.Now).
 			Comment("更新时间"),
+
+		// 同步元数据（Edge → Center）
+		field.Enum("sync_status").
+			Values("pending", "synced", "failed").
+			Default("pending").
+			Comment("同步状态"),
+
+		field.Time("synced_at").
+			Optional().
+			Comment("同步完成时间"),
+
+		field.Int("sync_retry_count").
+			Default(0).
+			Comment("同步重试次数"),
 	}
 }
 
@@ -102,9 +116,8 @@ func (BobbinGrade) Edges() []ent.Edge {
 // Indexes of the BobbinGrade.
 func (BobbinGrade) Indexes() []ent.Index {
 	return []ent.Index{
-		// 丝锭ID索引（唯一，一个丝锭只有一条质检记录）
-		index.Fields("bobbin_id").
-			Unique(),
+		// 丝锭ID索引（非唯一：同一丝饼可有多次质检，保留历史）
+		index.Fields("bobbin_id"),
 
 		// 质检等级索引
 		index.Fields("grade"),
@@ -117,10 +130,13 @@ func (BobbinGrade) Indexes() []ent.Index {
 
 		// 质检时间索引
 		index.Fields("inspected_at"),
+
+		// 同步状态索引（Edge 端扫描待同步记录）
+		index.Fields("sync_status"),
 	}
 }
 
 // Annotations of the BobbinGrade.
-func (BobbinGrade) Annotations() []entsql.Annotation {
+func (BobbinGrade) Annotations() []schema.Annotation {
 	return nil
 }

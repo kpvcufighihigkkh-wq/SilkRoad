@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
@@ -15,6 +16,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/productconfig"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/schema"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
@@ -158,6 +160,56 @@ func init() {
 	bobbinDescID := bobbinFields[0].Descriptor()
 	// bobbin.DefaultID holds the default value on creation for the id field.
 	bobbin.DefaultID = bobbinDescID.Default.(func() uuid.UUID)
+	bobbingradeFields := schema.BobbinGrade{}.Fields()
+	_ = bobbingradeFields
+	// bobbingradeDescGrade is the schema descriptor for grade field.
+	bobbingradeDescGrade := bobbingradeFields[3].Descriptor()
+	// bobbingrade.GradeValidator is a validator for the "grade" field. It is called by the builders before save.
+	bobbingrade.GradeValidator = func() func(string) error {
+		validators := bobbingradeDescGrade.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(grade string) error {
+			for _, fn := range fns {
+				if err := fn(grade); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// bobbingradeDescFinalScore is the schema descriptor for final_score field.
+	bobbingradeDescFinalScore := bobbingradeFields[6].Descriptor()
+	// bobbingrade.FinalScoreValidator is a validator for the "final_score" field. It is called by the builders before save.
+	bobbingrade.FinalScoreValidator = bobbingradeDescFinalScore.Validators[0].(func(float64) error)
+	// bobbingradeDescIsQualified is the schema descriptor for is_qualified field.
+	bobbingradeDescIsQualified := bobbingradeFields[7].Descriptor()
+	// bobbingrade.DefaultIsQualified holds the default value on creation for the is_qualified field.
+	bobbingrade.DefaultIsQualified = bobbingradeDescIsQualified.Default.(bool)
+	// bobbingradeDescInspectedAt is the schema descriptor for inspected_at field.
+	bobbingradeDescInspectedAt := bobbingradeFields[10].Descriptor()
+	// bobbingrade.DefaultInspectedAt holds the default value on creation for the inspected_at field.
+	bobbingrade.DefaultInspectedAt = bobbingradeDescInspectedAt.Default.(func() time.Time)
+	// bobbingradeDescCreatedAt is the schema descriptor for created_at field.
+	bobbingradeDescCreatedAt := bobbingradeFields[11].Descriptor()
+	// bobbingrade.DefaultCreatedAt holds the default value on creation for the created_at field.
+	bobbingrade.DefaultCreatedAt = bobbingradeDescCreatedAt.Default.(func() time.Time)
+	// bobbingradeDescUpdatedAt is the schema descriptor for updated_at field.
+	bobbingradeDescUpdatedAt := bobbingradeFields[12].Descriptor()
+	// bobbingrade.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	bobbingrade.DefaultUpdatedAt = bobbingradeDescUpdatedAt.Default.(func() time.Time)
+	// bobbingrade.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	bobbingrade.UpdateDefaultUpdatedAt = bobbingradeDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// bobbingradeDescSyncRetryCount is the schema descriptor for sync_retry_count field.
+	bobbingradeDescSyncRetryCount := bobbingradeFields[15].Descriptor()
+	// bobbingrade.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
+	bobbingrade.DefaultSyncRetryCount = bobbingradeDescSyncRetryCount.Default.(int)
+	// bobbingradeDescID is the schema descriptor for id field.
+	bobbingradeDescID := bobbingradeFields[0].Descriptor()
+	// bobbingrade.DefaultID holds the default value on creation for the id field.
+	bobbingrade.DefaultID = bobbingradeDescID.Default.(func() uuid.UUID)
 	cartonFields := schema.Carton{}.Fields()
 	_ = cartonFields
 	// cartonDescCartonNumber is the schema descriptor for carton_number field.
@@ -570,6 +622,52 @@ func init() {
 	palletDescID := palletFields[0].Descriptor()
 	// pallet.DefaultID holds the default value on creation for the id field.
 	pallet.DefaultID = palletDescID.Default.(func() uuid.UUID)
+	productconfigFields := schema.ProductConfig{}.Fields()
+	_ = productconfigFields
+	// productconfigDescProductSpec is the schema descriptor for product_spec field.
+	productconfigDescProductSpec := productconfigFields[2].Descriptor()
+	// productconfig.ProductSpecValidator is a validator for the "product_spec" field. It is called by the builders before save.
+	productconfig.ProductSpecValidator = func() func(string) error {
+		validators := productconfigDescProductSpec.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(product_spec string) error {
+			for _, fn := range fns {
+				if err := fn(product_spec); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// productconfigDescTargetWeight is the schema descriptor for target_weight field.
+	productconfigDescTargetWeight := productconfigFields[6].Descriptor()
+	// productconfig.TargetWeightValidator is a validator for the "target_weight" field. It is called by the builders before save.
+	productconfig.TargetWeightValidator = productconfigDescTargetWeight.Validators[0].(func(float64) error)
+	// productconfigDescWeightTolerance is the schema descriptor for weight_tolerance field.
+	productconfigDescWeightTolerance := productconfigFields[7].Descriptor()
+	// productconfig.WeightToleranceValidator is a validator for the "weight_tolerance" field. It is called by the builders before save.
+	productconfig.WeightToleranceValidator = productconfigDescWeightTolerance.Validators[0].(func(float64) error)
+	// productconfigDescIsActive is the schema descriptor for is_active field.
+	productconfigDescIsActive := productconfigFields[8].Descriptor()
+	// productconfig.DefaultIsActive holds the default value on creation for the is_active field.
+	productconfig.DefaultIsActive = productconfigDescIsActive.Default.(bool)
+	// productconfigDescCreatedAt is the schema descriptor for created_at field.
+	productconfigDescCreatedAt := productconfigFields[10].Descriptor()
+	// productconfig.DefaultCreatedAt holds the default value on creation for the created_at field.
+	productconfig.DefaultCreatedAt = productconfigDescCreatedAt.Default.(func() time.Time)
+	// productconfigDescUpdatedAt is the schema descriptor for updated_at field.
+	productconfigDescUpdatedAt := productconfigFields[11].Descriptor()
+	// productconfig.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	productconfig.DefaultUpdatedAt = productconfigDescUpdatedAt.Default.(func() time.Time)
+	// productconfig.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	productconfig.UpdateDefaultUpdatedAt = productconfigDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// productconfigDescID is the schema descriptor for id field.
+	productconfigDescID := productconfigFields[0].Descriptor()
+	// productconfig.DefaultID holds the default value on creation for the id field.
+	productconfig.DefaultID = productconfigDescID.Default.(func() uuid.UUID)
 	spinninglineFields := schema.SpinningLine{}.Fields()
 	_ = spinninglineFields
 	// spinninglineDescLineName is the schema descriptor for line_name field.

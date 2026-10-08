@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
@@ -21,6 +22,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/productconfig"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 )
@@ -83,17 +85,19 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			barrel.Table:       barrel.ValidColumn,
-			bobbin.Table:       bobbin.ValidColumn,
-			carton.Table:       carton.ValidColumn,
-			doffing.Table:      doffing.ValidColumn,
-			edge.Table:         edge.ValidColumn,
-			grade.Table:        grade.ValidColumn,
-			lot.Table:          lot.ValidColumn,
-			module.Table:       module.ValidColumn,
-			pallet.Table:       pallet.ValidColumn,
-			spinningline.Table: spinningline.ValidColumn,
-			user.Table:         user.ValidColumn,
+			barrel.Table:        barrel.ValidColumn,
+			bobbin.Table:        bobbin.ValidColumn,
+			bobbingrade.Table:   bobbingrade.ValidColumn,
+			carton.Table:        carton.ValidColumn,
+			doffing.Table:       doffing.ValidColumn,
+			edge.Table:          edge.ValidColumn,
+			grade.Table:         grade.ValidColumn,
+			lot.Table:           lot.ValidColumn,
+			module.Table:        module.ValidColumn,
+			pallet.Table:        pallet.ValidColumn,
+			productconfig.Table: productconfig.ValidColumn,
+			spinningline.Table:  spinningline.ValidColumn,
+			user.Table:          user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

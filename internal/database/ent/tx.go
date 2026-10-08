@@ -16,6 +16,8 @@ type Tx struct {
 	Barrel *BarrelClient
 	// Bobbin is the client for interacting with the Bobbin builders.
 	Bobbin *BobbinClient
+	// BobbinGrade is the client for interacting with the BobbinGrade builders.
+	BobbinGrade *BobbinGradeClient
 	// Carton is the client for interacting with the Carton builders.
 	Carton *CartonClient
 	// Doffing is the client for interacting with the Doffing builders.
@@ -30,6 +32,8 @@ type Tx struct {
 	Module *ModuleClient
 	// Pallet is the client for interacting with the Pallet builders.
 	Pallet *PalletClient
+	// ProductConfig is the client for interacting with the ProductConfig builders.
+	ProductConfig *ProductConfigClient
 	// SpinningLine is the client for interacting with the SpinningLine builders.
 	SpinningLine *SpinningLineClient
 	// User is the client for interacting with the User builders.
@@ -167,6 +171,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Barrel = NewBarrelClient(tx.config)
 	tx.Bobbin = NewBobbinClient(tx.config)
+	tx.BobbinGrade = NewBobbinGradeClient(tx.config)
 	tx.Carton = NewCartonClient(tx.config)
 	tx.Doffing = NewDoffingClient(tx.config)
 	tx.Edge = NewEdgeClient(tx.config)
@@ -174,6 +179,7 @@ func (tx *Tx) init() {
 	tx.Lot = NewLotClient(tx.config)
 	tx.Module = NewModuleClient(tx.config)
 	tx.Pallet = NewPalletClient(tx.config)
+	tx.ProductConfig = NewProductConfigClient(tx.config)
 	tx.SpinningLine = NewSpinningLineClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

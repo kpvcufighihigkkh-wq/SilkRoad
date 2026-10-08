@@ -12,6 +12,9 @@ type Barrel func(*sql.Selector)
 // Bobbin is the predicate function for bobbin builders.
 type Bobbin func(*sql.Selector)
 
+// BobbinGrade is the predicate function for bobbingrade builders.
+type BobbinGrade func(*sql.Selector)
+
 // Carton is the predicate function for carton builders.
 type Carton func(*sql.Selector)
 
@@ -32,6 +35,9 @@ type Module func(*sql.Selector)
 
 // Pallet is the predicate function for pallet builders.
 type Pallet func(*sql.Selector)
+
+// ProductConfig is the predicate function for productconfig builders.
+type ProductConfig func(*sql.Selector)
 
 // SpinningLine is the predicate function for spinningline builders.
 type SpinningLine func(*sql.Selector)

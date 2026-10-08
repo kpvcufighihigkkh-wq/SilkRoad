@@ -18,6 +18,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
@@ -25,6 +26,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/productconfig"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 )
@@ -38,6 +40,8 @@ type Client struct {
 	Barrel *BarrelClient
 	// Bobbin is the client for interacting with the Bobbin builders.
 	Bobbin *BobbinClient
+	// BobbinGrade is the client for interacting with the BobbinGrade builders.
+	BobbinGrade *BobbinGradeClient
 	// Carton is the client for interacting with the Carton builders.
 	Carton *CartonClient
 	// Doffing is the client for interacting with the Doffing builders.
@@ -52,6 +56,8 @@ type Client struct {
 	Module *ModuleClient
 	// Pallet is the client for interacting with the Pallet builders.
 	Pallet *PalletClient
+	// ProductConfig is the client for interacting with the ProductConfig builders.
+	ProductConfig *ProductConfigClient
 	// SpinningLine is the client for interacting with the SpinningLine builders.
 	SpinningLine *SpinningLineClient
 	// User is the client for interacting with the User builders.
@@ -69,6 +75,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Barrel = NewBarrelClient(c.config)
 	c.Bobbin = NewBobbinClient(c.config)
+	c.BobbinGrade = NewBobbinGradeClient(c.config)
 	c.Carton = NewCartonClient(c.config)
 	c.Doffing = NewDoffingClient(c.config)
 	c.Edge = NewEdgeClient(c.config)
@@ -76,6 +83,7 @@ func (c *Client) init() {
 	c.Lot = NewLotClient(c.config)
 	c.Module = NewModuleClient(c.config)
 	c.Pallet = NewPalletClient(c.config)
+	c.ProductConfig = NewProductConfigClient(c.config)
 	c.SpinningLine = NewSpinningLineClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -168,19 +176,21 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Barrel:       NewBarrelClient(cfg),
-		Bobbin:       NewBobbinClient(cfg),
-		Carton:       NewCartonClient(cfg),
-		Doffing:      NewDoffingClient(cfg),
-		Edge:         NewEdgeClient(cfg),
-		Grade:        NewGradeClient(cfg),
-		Lot:          NewLotClient(cfg),
-		Module:       NewModuleClient(cfg),
-		Pallet:       NewPalletClient(cfg),
-		SpinningLine: NewSpinningLineClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Barrel:        NewBarrelClient(cfg),
+		Bobbin:        NewBobbinClient(cfg),
+		BobbinGrade:   NewBobbinGradeClient(cfg),
+		Carton:        NewCartonClient(cfg),
+		Doffing:       NewDoffingClient(cfg),
+		Edge:          NewEdgeClient(cfg),
+		Grade:         NewGradeClient(cfg),
+		Lot:           NewLotClient(cfg),
+		Module:        NewModuleClient(cfg),
+		Pallet:        NewPalletClient(cfg),
+		ProductConfig: NewProductConfigClient(cfg),
+		SpinningLine:  NewSpinningLineClient(cfg),
+		User:          NewUserClient(cfg),
 	}, nil
 }
 
@@ -198,19 +208,21 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Barrel:       NewBarrelClient(cfg),
-		Bobbin:       NewBobbinClient(cfg),
-		Carton:       NewCartonClient(cfg),
-		Doffing:      NewDoffingClient(cfg),
-		Edge:         NewEdgeClient(cfg),
-		Grade:        NewGradeClient(cfg),
-		Lot:          NewLotClient(cfg),
-		Module:       NewModuleClient(cfg),
-		Pallet:       NewPalletClient(cfg),
-		SpinningLine: NewSpinningLineClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:           ctx,
+		config:        cfg,
+		Barrel:        NewBarrelClient(cfg),
+		Bobbin:        NewBobbinClient(cfg),
+		BobbinGrade:   NewBobbinGradeClient(cfg),
+		Carton:        NewCartonClient(cfg),
+		Doffing:       NewDoffingClient(cfg),
+		Edge:          NewEdgeClient(cfg),
+		Grade:         NewGradeClient(cfg),
+		Lot:           NewLotClient(cfg),
+		Module:        NewModuleClient(cfg),
+		Pallet:        NewPalletClient(cfg),
+		ProductConfig: NewProductConfigClient(cfg),
+		SpinningLine:  NewSpinningLineClient(cfg),
+		User:          NewUserClient(cfg),
 	}, nil
 }
 
@@ -240,8 +252,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Barrel, c.Bobbin, c.Carton, c.Doffing, c.Edge, c.Grade, c.Lot, c.Module,
-		c.Pallet, c.SpinningLine, c.User,
+		c.Barrel, c.Bobbin, c.BobbinGrade, c.Carton, c.Doffing, c.Edge, c.Grade, c.Lot,
+		c.Module, c.Pallet, c.ProductConfig, c.SpinningLine, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -251,8 +263,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Barrel, c.Bobbin, c.Carton, c.Doffing, c.Edge, c.Grade, c.Lot, c.Module,
-		c.Pallet, c.SpinningLine, c.User,
+		c.Barrel, c.Bobbin, c.BobbinGrade, c.Carton, c.Doffing, c.Edge, c.Grade, c.Lot,
+		c.Module, c.Pallet, c.ProductConfig, c.SpinningLine, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -265,6 +277,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Barrel.mutate(ctx, m)
 	case *BobbinMutation:
 		return c.Bobbin.mutate(ctx, m)
+	case *BobbinGradeMutation:
+		return c.BobbinGrade.mutate(ctx, m)
 	case *CartonMutation:
 		return c.Carton.mutate(ctx, m)
 	case *DoffingMutation:
@@ -279,6 +293,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Module.mutate(ctx, m)
 	case *PalletMutation:
 		return c.Pallet.mutate(ctx, m)
+	case *ProductConfigMutation:
+		return c.ProductConfig.mutate(ctx, m)
 	case *SpinningLineMutation:
 		return c.SpinningLine.mutate(ctx, m)
 	case *UserMutation:
@@ -647,6 +663,139 @@ func (c *BobbinClient) mutate(ctx context.Context, m *BobbinMutation) (Value, er
 		return (&BobbinDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Bobbin mutation op: %q", m.Op())
+	}
+}
+
+// BobbinGradeClient is a client for the BobbinGrade schema.
+type BobbinGradeClient struct {
+	config
+}
+
+// NewBobbinGradeClient returns a client for the BobbinGrade from the given config.
+func NewBobbinGradeClient(c config) *BobbinGradeClient {
+	return &BobbinGradeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `bobbingrade.Hooks(f(g(h())))`.
+func (c *BobbinGradeClient) Use(hooks ...Hook) {
+	c.hooks.BobbinGrade = append(c.hooks.BobbinGrade, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `bobbingrade.Intercept(f(g(h())))`.
+func (c *BobbinGradeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.BobbinGrade = append(c.inters.BobbinGrade, interceptors...)
+}
+
+// Create returns a builder for creating a BobbinGrade entity.
+func (c *BobbinGradeClient) Create() *BobbinGradeCreate {
+	mutation := newBobbinGradeMutation(c.config, OpCreate)
+	return &BobbinGradeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of BobbinGrade entities.
+func (c *BobbinGradeClient) CreateBulk(builders ...*BobbinGradeCreate) *BobbinGradeCreateBulk {
+	return &BobbinGradeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *BobbinGradeClient) MapCreateBulk(slice any, setFunc func(*BobbinGradeCreate, int)) *BobbinGradeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &BobbinGradeCreateBulk{err: fmt.Errorf("calling to BobbinGradeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*BobbinGradeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &BobbinGradeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for BobbinGrade.
+func (c *BobbinGradeClient) Update() *BobbinGradeUpdate {
+	mutation := newBobbinGradeMutation(c.config, OpUpdate)
+	return &BobbinGradeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *BobbinGradeClient) UpdateOne(_m *BobbinGrade) *BobbinGradeUpdateOne {
+	mutation := newBobbinGradeMutation(c.config, OpUpdateOne, withBobbinGrade(_m))
+	return &BobbinGradeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *BobbinGradeClient) UpdateOneID(id uuid.UUID) *BobbinGradeUpdateOne {
+	mutation := newBobbinGradeMutation(c.config, OpUpdateOne, withBobbinGradeID(id))
+	return &BobbinGradeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for BobbinGrade.
+func (c *BobbinGradeClient) Delete() *BobbinGradeDelete {
+	mutation := newBobbinGradeMutation(c.config, OpDelete)
+	return &BobbinGradeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *BobbinGradeClient) DeleteOne(_m *BobbinGrade) *BobbinGradeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *BobbinGradeClient) DeleteOneID(id uuid.UUID) *BobbinGradeDeleteOne {
+	builder := c.Delete().Where(bobbingrade.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &BobbinGradeDeleteOne{builder}
+}
+
+// Query returns a query builder for BobbinGrade.
+func (c *BobbinGradeClient) Query() *BobbinGradeQuery {
+	return &BobbinGradeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeBobbinGrade},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a BobbinGrade entity by its id.
+func (c *BobbinGradeClient) Get(ctx context.Context, id uuid.UUID) (*BobbinGrade, error) {
+	return c.Query().Where(bobbingrade.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *BobbinGradeClient) GetX(ctx context.Context, id uuid.UUID) *BobbinGrade {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *BobbinGradeClient) Hooks() []Hook {
+	return c.hooks.BobbinGrade
+}
+
+// Interceptors returns the client interceptors.
+func (c *BobbinGradeClient) Interceptors() []Interceptor {
+	return c.inters.BobbinGrade
+}
+
+func (c *BobbinGradeClient) mutate(ctx context.Context, m *BobbinGradeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&BobbinGradeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&BobbinGradeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&BobbinGradeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&BobbinGradeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown BobbinGrade mutation op: %q", m.Op())
 	}
 }
 
@@ -1757,6 +1906,139 @@ func (c *PalletClient) mutate(ctx context.Context, m *PalletMutation) (Value, er
 	}
 }
 
+// ProductConfigClient is a client for the ProductConfig schema.
+type ProductConfigClient struct {
+	config
+}
+
+// NewProductConfigClient returns a client for the ProductConfig from the given config.
+func NewProductConfigClient(c config) *ProductConfigClient {
+	return &ProductConfigClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `productconfig.Hooks(f(g(h())))`.
+func (c *ProductConfigClient) Use(hooks ...Hook) {
+	c.hooks.ProductConfig = append(c.hooks.ProductConfig, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `productconfig.Intercept(f(g(h())))`.
+func (c *ProductConfigClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ProductConfig = append(c.inters.ProductConfig, interceptors...)
+}
+
+// Create returns a builder for creating a ProductConfig entity.
+func (c *ProductConfigClient) Create() *ProductConfigCreate {
+	mutation := newProductConfigMutation(c.config, OpCreate)
+	return &ProductConfigCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ProductConfig entities.
+func (c *ProductConfigClient) CreateBulk(builders ...*ProductConfigCreate) *ProductConfigCreateBulk {
+	return &ProductConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ProductConfigClient) MapCreateBulk(slice any, setFunc func(*ProductConfigCreate, int)) *ProductConfigCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ProductConfigCreateBulk{err: fmt.Errorf("calling to ProductConfigClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ProductConfigCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ProductConfigCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ProductConfig.
+func (c *ProductConfigClient) Update() *ProductConfigUpdate {
+	mutation := newProductConfigMutation(c.config, OpUpdate)
+	return &ProductConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ProductConfigClient) UpdateOne(_m *ProductConfig) *ProductConfigUpdateOne {
+	mutation := newProductConfigMutation(c.config, OpUpdateOne, withProductConfig(_m))
+	return &ProductConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ProductConfigClient) UpdateOneID(id uuid.UUID) *ProductConfigUpdateOne {
+	mutation := newProductConfigMutation(c.config, OpUpdateOne, withProductConfigID(id))
+	return &ProductConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ProductConfig.
+func (c *ProductConfigClient) Delete() *ProductConfigDelete {
+	mutation := newProductConfigMutation(c.config, OpDelete)
+	return &ProductConfigDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ProductConfigClient) DeleteOne(_m *ProductConfig) *ProductConfigDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ProductConfigClient) DeleteOneID(id uuid.UUID) *ProductConfigDeleteOne {
+	builder := c.Delete().Where(productconfig.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ProductConfigDeleteOne{builder}
+}
+
+// Query returns a query builder for ProductConfig.
+func (c *ProductConfigClient) Query() *ProductConfigQuery {
+	return &ProductConfigQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeProductConfig},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ProductConfig entity by its id.
+func (c *ProductConfigClient) Get(ctx context.Context, id uuid.UUID) (*ProductConfig, error) {
+	return c.Query().Where(productconfig.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ProductConfigClient) GetX(ctx context.Context, id uuid.UUID) *ProductConfig {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ProductConfigClient) Hooks() []Hook {
+	return c.hooks.ProductConfig
+}
+
+// Interceptors returns the client interceptors.
+func (c *ProductConfigClient) Interceptors() []Interceptor {
+	return c.inters.ProductConfig
+}
+
+func (c *ProductConfigClient) mutate(ctx context.Context, m *ProductConfigMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ProductConfigCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ProductConfigUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ProductConfigUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ProductConfigDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ProductConfig mutation op: %q", m.Op())
+	}
+}
+
 // SpinningLineClient is a client for the SpinningLine schema.
 type SpinningLineClient struct {
 	config
@@ -2042,11 +2324,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Barrel, Bobbin, Carton, Doffing, Edge, Grade, Lot, Module, Pallet, SpinningLine,
-		User []ent.Hook
+		Barrel, Bobbin, BobbinGrade, Carton, Doffing, Edge, Grade, Lot, Module, Pallet,
+		ProductConfig, SpinningLine, User []ent.Hook
 	}
 	inters struct {
-		Barrel, Bobbin, Carton, Doffing, Edge, Grade, Lot, Module, Pallet, SpinningLine,
-		User []ent.Interceptor
+		Barrel, Bobbin, BobbinGrade, Carton, Doffing, Edge, Grade, Lot, Module, Pallet,
+		ProductConfig, SpinningLine, User []ent.Interceptor
 	}
 )

@@ -33,6 +33,18 @@ func (f BobbinFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BobbinMutation", m)
 }
 
+// The BobbinGradeFunc type is an adapter to allow the use of ordinary
+// function as BobbinGrade mutator.
+type BobbinGradeFunc func(context.Context, *ent.BobbinGradeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f BobbinGradeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.BobbinGradeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BobbinGradeMutation", m)
+}
+
 // The CartonFunc type is an adapter to allow the use of ordinary
 // function as Carton mutator.
 type CartonFunc func(context.Context, *ent.CartonMutation) (ent.Value, error)
@@ -115,6 +127,18 @@ func (f PalletFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, erro
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PalletMutation", m)
+}
+
+// The ProductConfigFunc type is an adapter to allow the use of ordinary
+// function as ProductConfig mutator.
+type ProductConfigFunc func(context.Context, *ent.ProductConfigMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ProductConfigFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ProductConfigMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProductConfigMutation", m)
 }
 
 // The SpinningLineFunc type is an adapter to allow the use of ordinary

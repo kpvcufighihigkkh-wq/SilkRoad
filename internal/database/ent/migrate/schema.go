@@ -182,6 +182,63 @@ var (
 			},
 		},
 	}
+	// BobbinGradesColumns holds the columns for the "bobbin_grades" table.
+	BobbinGradesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "bobbin_id", Type: field.TypeUUID},
+		{Name: "inspector_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "grade", Type: field.TypeString, Size: 20},
+		{Name: "inspection_details", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "scores", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "final_score", Type: field.TypeFloat64, Nullable: true},
+		{Name: "is_qualified", Type: field.TypeBool, Default: true},
+		{Name: "defect_reason", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "inspected_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "sync_status", Type: field.TypeEnum, Enums: []string{"pending", "synced", "failed"}, Default: "pending"},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
+		{Name: "sync_retry_count", Type: field.TypeInt, Default: 0},
+	}
+	// BobbinGradesTable holds the schema information for the "bobbin_grades" table.
+	BobbinGradesTable = &schema.Table{
+		Name:       "bobbin_grades",
+		Columns:    BobbinGradesColumns,
+		PrimaryKey: []*schema.Column{BobbinGradesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "bobbingrade_bobbin_id",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinGradesColumns[1]},
+			},
+			{
+				Name:    "bobbingrade_grade",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinGradesColumns[3]},
+			},
+			{
+				Name:    "bobbingrade_is_qualified",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinGradesColumns[7]},
+			},
+			{
+				Name:    "bobbingrade_inspector_id",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinGradesColumns[2]},
+			},
+			{
+				Name:    "bobbingrade_inspected_at",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinGradesColumns[10]},
+			},
+			{
+				Name:    "bobbingrade_sync_status",
+				Unique:  false,
+				Columns: []*schema.Column{BobbinGradesColumns[13]},
+			},
+		},
+	}
 	// CartonsColumns holds the columns for the "cartons" table.
 	CartonsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -590,6 +647,49 @@ var (
 			},
 		},
 	}
+	// ProductConfigsColumns holds the columns for the "product_configs" table.
+	ProductConfigsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "product_type", Type: field.TypeEnum, Enums: []string{"FDY", "POY", "DTY"}},
+		{Name: "product_spec", Type: field.TypeString, Size: 100},
+		{Name: "process_params", Type: field.TypeJSON, Nullable: true},
+		{Name: "quality_standards", Type: field.TypeJSON, Nullable: true},
+		{Name: "grade_system", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
+		{Name: "target_weight", Type: field.TypeFloat64, Nullable: true},
+		{Name: "weight_tolerance", Type: field.TypeFloat64, Nullable: true},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// ProductConfigsTable holds the schema information for the "product_configs" table.
+	ProductConfigsTable = &schema.Table{
+		Name:       "product_configs",
+		Columns:    ProductConfigsColumns,
+		PrimaryKey: []*schema.Column{ProductConfigsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "productconfig_product_type",
+				Unique:  false,
+				Columns: []*schema.Column{ProductConfigsColumns[1]},
+			},
+			{
+				Name:    "productconfig_product_spec",
+				Unique:  false,
+				Columns: []*schema.Column{ProductConfigsColumns[2]},
+			},
+			{
+				Name:    "productconfig_is_active",
+				Unique:  false,
+				Columns: []*schema.Column{ProductConfigsColumns[8]},
+			},
+			{
+				Name:    "productconfig_product_type_product_spec",
+				Unique:  true,
+				Columns: []*schema.Column{ProductConfigsColumns[1], ProductConfigsColumns[2]},
+			},
+		},
+	}
 	// SpinningLinesColumns holds the columns for the "spinning_lines" table.
 	SpinningLinesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -681,6 +781,7 @@ var (
 	Tables = []*schema.Table{
 		BarrelsTable,
 		BobbinsTable,
+		BobbinGradesTable,
 		CartonsTable,
 		DoffingsTable,
 		EdgesTable,
@@ -688,6 +789,7 @@ var (
 		LotsTable,
 		ModulesTable,
 		PalletsTable,
+		ProductConfigsTable,
 		SpinningLinesTable,
 		UsersTable,
 	}

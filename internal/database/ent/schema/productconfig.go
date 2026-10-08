@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
-	"entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
@@ -112,6 +112,6 @@ func (ProductConfig) Indexes() []ent.Index {
 }
 
 // Annotations of the ProductConfig.
-func (ProductConfig) Annotations() []entsql.Annotation {
+func (ProductConfig) Annotations() []schema.Annotation {
 	return nil
 }

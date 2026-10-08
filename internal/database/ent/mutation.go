@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/edge"
@@ -22,6 +23,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/productconfig"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 )
@@ -35,17 +37,19 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeBarrel       = "Barrel"
-	TypeBobbin       = "Bobbin"
-	TypeCarton       = "Carton"
-	TypeDoffing      = "Doffing"
-	TypeEdge         = "Edge"
-	TypeGrade        = "Grade"
-	TypeLot          = "Lot"
-	TypeModule       = "Module"
-	TypePallet       = "Pallet"
-	TypeSpinningLine = "SpinningLine"
-	TypeUser         = "User"
+	TypeBarrel        = "Barrel"
+	TypeBobbin        = "Bobbin"
+	TypeBobbinGrade   = "BobbinGrade"
+	TypeCarton        = "Carton"
+	TypeDoffing       = "Doffing"
+	TypeEdge          = "Edge"
+	TypeGrade         = "Grade"
+	TypeLot           = "Lot"
+	TypeModule        = "Module"
+	TypePallet        = "Pallet"
+	TypeProductConfig = "ProductConfig"
+	TypeSpinningLine  = "SpinningLine"
+	TypeUser          = "User"
 )
 
 // BarrelMutation represents an operation that mutates the Barrel nodes in the graph.
@@ -3127,6 +3131,1300 @@ func (m *BobbinMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Bobbin edge %s", name)
+}
+
+// BobbinGradeMutation represents an operation that mutates the BobbinGrade nodes in the graph.
+type BobbinGradeMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	bobbin_id           *uuid.UUID
+	inspector_id        *uuid.UUID
+	grade               *string
+	inspection_details  *map[string]interface{}
+	scores              *map[string]interface{}
+	final_score         *float64
+	addfinal_score      *float64
+	is_qualified        *bool
+	defect_reason       *string
+	notes               *string
+	inspected_at        *time.Time
+	created_at          *time.Time
+	updated_at          *time.Time
+	sync_status         *bobbingrade.SyncStatus
+	synced_at           *time.Time
+	sync_retry_count    *int
+	addsync_retry_count *int
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*BobbinGrade, error)
+	predicates          []predicate.BobbinGrade
+}
+
+var _ ent.Mutation = (*BobbinGradeMutation)(nil)
+
+// bobbingradeOption allows management of the mutation configuration using functional options.
+type bobbingradeOption func(*BobbinGradeMutation)
+
+// newBobbinGradeMutation creates new mutation for the BobbinGrade entity.
+func newBobbinGradeMutation(c config, op Op, opts ...bobbingradeOption) *BobbinGradeMutation {
+	m := &BobbinGradeMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeBobbinGrade,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withBobbinGradeID sets the ID field of the mutation.
+func withBobbinGradeID(id uuid.UUID) bobbingradeOption {
+	return func(m *BobbinGradeMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *BobbinGrade
+		)
+		m.oldValue = func(ctx context.Context) (*BobbinGrade, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().BobbinGrade.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withBobbinGrade sets the old BobbinGrade of the mutation.
+func withBobbinGrade(node *BobbinGrade) bobbingradeOption {
+	return func(m *BobbinGradeMutation) {
+		m.oldValue = func(context.Context) (*BobbinGrade, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m BobbinGradeMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m BobbinGradeMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of BobbinGrade entities.
+func (m *BobbinGradeMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *BobbinGradeMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *BobbinGradeMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().BobbinGrade.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetBobbinID sets the "bobbin_id" field.
+func (m *BobbinGradeMutation) SetBobbinID(u uuid.UUID) {
+	m.bobbin_id = &u
+}
+
+// BobbinID returns the value of the "bobbin_id" field in the mutation.
+func (m *BobbinGradeMutation) BobbinID() (r uuid.UUID, exists bool) {
+	v := m.bobbin_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBobbinID returns the old "bobbin_id" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldBobbinID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBobbinID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBobbinID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBobbinID: %w", err)
+	}
+	return oldValue.BobbinID, nil
+}
+
+// ResetBobbinID resets all changes to the "bobbin_id" field.
+func (m *BobbinGradeMutation) ResetBobbinID() {
+	m.bobbin_id = nil
+}
+
+// SetInspectorID sets the "inspector_id" field.
+func (m *BobbinGradeMutation) SetInspectorID(u uuid.UUID) {
+	m.inspector_id = &u
+}
+
+// InspectorID returns the value of the "inspector_id" field in the mutation.
+func (m *BobbinGradeMutation) InspectorID() (r uuid.UUID, exists bool) {
+	v := m.inspector_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInspectorID returns the old "inspector_id" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldInspectorID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInspectorID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInspectorID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInspectorID: %w", err)
+	}
+	return oldValue.InspectorID, nil
+}
+
+// ClearInspectorID clears the value of the "inspector_id" field.
+func (m *BobbinGradeMutation) ClearInspectorID() {
+	m.inspector_id = nil
+	m.clearedFields[bobbingrade.FieldInspectorID] = struct{}{}
+}
+
+// InspectorIDCleared returns if the "inspector_id" field was cleared in this mutation.
+func (m *BobbinGradeMutation) InspectorIDCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldInspectorID]
+	return ok
+}
+
+// ResetInspectorID resets all changes to the "inspector_id" field.
+func (m *BobbinGradeMutation) ResetInspectorID() {
+	m.inspector_id = nil
+	delete(m.clearedFields, bobbingrade.FieldInspectorID)
+}
+
+// SetGrade sets the "grade" field.
+func (m *BobbinGradeMutation) SetGrade(s string) {
+	m.grade = &s
+}
+
+// Grade returns the value of the "grade" field in the mutation.
+func (m *BobbinGradeMutation) Grade() (r string, exists bool) {
+	v := m.grade
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGrade returns the old "grade" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldGrade(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGrade is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGrade requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGrade: %w", err)
+	}
+	return oldValue.Grade, nil
+}
+
+// ResetGrade resets all changes to the "grade" field.
+func (m *BobbinGradeMutation) ResetGrade() {
+	m.grade = nil
+}
+
+// SetInspectionDetails sets the "inspection_details" field.
+func (m *BobbinGradeMutation) SetInspectionDetails(value map[string]interface{}) {
+	m.inspection_details = &value
+}
+
+// InspectionDetails returns the value of the "inspection_details" field in the mutation.
+func (m *BobbinGradeMutation) InspectionDetails() (r map[string]interface{}, exists bool) {
+	v := m.inspection_details
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInspectionDetails returns the old "inspection_details" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldInspectionDetails(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInspectionDetails is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInspectionDetails requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInspectionDetails: %w", err)
+	}
+	return oldValue.InspectionDetails, nil
+}
+
+// ClearInspectionDetails clears the value of the "inspection_details" field.
+func (m *BobbinGradeMutation) ClearInspectionDetails() {
+	m.inspection_details = nil
+	m.clearedFields[bobbingrade.FieldInspectionDetails] = struct{}{}
+}
+
+// InspectionDetailsCleared returns if the "inspection_details" field was cleared in this mutation.
+func (m *BobbinGradeMutation) InspectionDetailsCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldInspectionDetails]
+	return ok
+}
+
+// ResetInspectionDetails resets all changes to the "inspection_details" field.
+func (m *BobbinGradeMutation) ResetInspectionDetails() {
+	m.inspection_details = nil
+	delete(m.clearedFields, bobbingrade.FieldInspectionDetails)
+}
+
+// SetScores sets the "scores" field.
+func (m *BobbinGradeMutation) SetScores(value map[string]interface{}) {
+	m.scores = &value
+}
+
+// Scores returns the value of the "scores" field in the mutation.
+func (m *BobbinGradeMutation) Scores() (r map[string]interface{}, exists bool) {
+	v := m.scores
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScores returns the old "scores" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldScores(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScores is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScores requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScores: %w", err)
+	}
+	return oldValue.Scores, nil
+}
+
+// ClearScores clears the value of the "scores" field.
+func (m *BobbinGradeMutation) ClearScores() {
+	m.scores = nil
+	m.clearedFields[bobbingrade.FieldScores] = struct{}{}
+}
+
+// ScoresCleared returns if the "scores" field was cleared in this mutation.
+func (m *BobbinGradeMutation) ScoresCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldScores]
+	return ok
+}
+
+// ResetScores resets all changes to the "scores" field.
+func (m *BobbinGradeMutation) ResetScores() {
+	m.scores = nil
+	delete(m.clearedFields, bobbingrade.FieldScores)
+}
+
+// SetFinalScore sets the "final_score" field.
+func (m *BobbinGradeMutation) SetFinalScore(f float64) {
+	m.final_score = &f
+	m.addfinal_score = nil
+}
+
+// FinalScore returns the value of the "final_score" field in the mutation.
+func (m *BobbinGradeMutation) FinalScore() (r float64, exists bool) {
+	v := m.final_score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFinalScore returns the old "final_score" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldFinalScore(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFinalScore is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFinalScore requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFinalScore: %w", err)
+	}
+	return oldValue.FinalScore, nil
+}
+
+// AddFinalScore adds f to the "final_score" field.
+func (m *BobbinGradeMutation) AddFinalScore(f float64) {
+	if m.addfinal_score != nil {
+		*m.addfinal_score += f
+	} else {
+		m.addfinal_score = &f
+	}
+}
+
+// AddedFinalScore returns the value that was added to the "final_score" field in this mutation.
+func (m *BobbinGradeMutation) AddedFinalScore() (r float64, exists bool) {
+	v := m.addfinal_score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearFinalScore clears the value of the "final_score" field.
+func (m *BobbinGradeMutation) ClearFinalScore() {
+	m.final_score = nil
+	m.addfinal_score = nil
+	m.clearedFields[bobbingrade.FieldFinalScore] = struct{}{}
+}
+
+// FinalScoreCleared returns if the "final_score" field was cleared in this mutation.
+func (m *BobbinGradeMutation) FinalScoreCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldFinalScore]
+	return ok
+}
+
+// ResetFinalScore resets all changes to the "final_score" field.
+func (m *BobbinGradeMutation) ResetFinalScore() {
+	m.final_score = nil
+	m.addfinal_score = nil
+	delete(m.clearedFields, bobbingrade.FieldFinalScore)
+}
+
+// SetIsQualified sets the "is_qualified" field.
+func (m *BobbinGradeMutation) SetIsQualified(b bool) {
+	m.is_qualified = &b
+}
+
+// IsQualified returns the value of the "is_qualified" field in the mutation.
+func (m *BobbinGradeMutation) IsQualified() (r bool, exists bool) {
+	v := m.is_qualified
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsQualified returns the old "is_qualified" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldIsQualified(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsQualified is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsQualified requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsQualified: %w", err)
+	}
+	return oldValue.IsQualified, nil
+}
+
+// ResetIsQualified resets all changes to the "is_qualified" field.
+func (m *BobbinGradeMutation) ResetIsQualified() {
+	m.is_qualified = nil
+}
+
+// SetDefectReason sets the "defect_reason" field.
+func (m *BobbinGradeMutation) SetDefectReason(s string) {
+	m.defect_reason = &s
+}
+
+// DefectReason returns the value of the "defect_reason" field in the mutation.
+func (m *BobbinGradeMutation) DefectReason() (r string, exists bool) {
+	v := m.defect_reason
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefectReason returns the old "defect_reason" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldDefectReason(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefectReason is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefectReason requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefectReason: %w", err)
+	}
+	return oldValue.DefectReason, nil
+}
+
+// ClearDefectReason clears the value of the "defect_reason" field.
+func (m *BobbinGradeMutation) ClearDefectReason() {
+	m.defect_reason = nil
+	m.clearedFields[bobbingrade.FieldDefectReason] = struct{}{}
+}
+
+// DefectReasonCleared returns if the "defect_reason" field was cleared in this mutation.
+func (m *BobbinGradeMutation) DefectReasonCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldDefectReason]
+	return ok
+}
+
+// ResetDefectReason resets all changes to the "defect_reason" field.
+func (m *BobbinGradeMutation) ResetDefectReason() {
+	m.defect_reason = nil
+	delete(m.clearedFields, bobbingrade.FieldDefectReason)
+}
+
+// SetNotes sets the "notes" field.
+func (m *BobbinGradeMutation) SetNotes(s string) {
+	m.notes = &s
+}
+
+// Notes returns the value of the "notes" field in the mutation.
+func (m *BobbinGradeMutation) Notes() (r string, exists bool) {
+	v := m.notes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNotes returns the old "notes" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldNotes(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNotes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNotes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNotes: %w", err)
+	}
+	return oldValue.Notes, nil
+}
+
+// ClearNotes clears the value of the "notes" field.
+func (m *BobbinGradeMutation) ClearNotes() {
+	m.notes = nil
+	m.clearedFields[bobbingrade.FieldNotes] = struct{}{}
+}
+
+// NotesCleared returns if the "notes" field was cleared in this mutation.
+func (m *BobbinGradeMutation) NotesCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldNotes]
+	return ok
+}
+
+// ResetNotes resets all changes to the "notes" field.
+func (m *BobbinGradeMutation) ResetNotes() {
+	m.notes = nil
+	delete(m.clearedFields, bobbingrade.FieldNotes)
+}
+
+// SetInspectedAt sets the "inspected_at" field.
+func (m *BobbinGradeMutation) SetInspectedAt(t time.Time) {
+	m.inspected_at = &t
+}
+
+// InspectedAt returns the value of the "inspected_at" field in the mutation.
+func (m *BobbinGradeMutation) InspectedAt() (r time.Time, exists bool) {
+	v := m.inspected_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInspectedAt returns the old "inspected_at" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldInspectedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInspectedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInspectedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInspectedAt: %w", err)
+	}
+	return oldValue.InspectedAt, nil
+}
+
+// ResetInspectedAt resets all changes to the "inspected_at" field.
+func (m *BobbinGradeMutation) ResetInspectedAt() {
+	m.inspected_at = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *BobbinGradeMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *BobbinGradeMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *BobbinGradeMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *BobbinGradeMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *BobbinGradeMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *BobbinGradeMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// SetSyncStatus sets the "sync_status" field.
+func (m *BobbinGradeMutation) SetSyncStatus(bs bobbingrade.SyncStatus) {
+	m.sync_status = &bs
+}
+
+// SyncStatus returns the value of the "sync_status" field in the mutation.
+func (m *BobbinGradeMutation) SyncStatus() (r bobbingrade.SyncStatus, exists bool) {
+	v := m.sync_status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncStatus returns the old "sync_status" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldSyncStatus(ctx context.Context) (v bobbingrade.SyncStatus, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncStatus: %w", err)
+	}
+	return oldValue.SyncStatus, nil
+}
+
+// ResetSyncStatus resets all changes to the "sync_status" field.
+func (m *BobbinGradeMutation) ResetSyncStatus() {
+	m.sync_status = nil
+}
+
+// SetSyncedAt sets the "synced_at" field.
+func (m *BobbinGradeMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *BobbinGradeMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldSyncedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *BobbinGradeMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[bobbingrade.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *BobbinGradeMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *BobbinGradeMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, bobbingrade.FieldSyncedAt)
+}
+
+// SetSyncRetryCount sets the "sync_retry_count" field.
+func (m *BobbinGradeMutation) SetSyncRetryCount(i int) {
+	m.sync_retry_count = &i
+	m.addsync_retry_count = nil
+}
+
+// SyncRetryCount returns the value of the "sync_retry_count" field in the mutation.
+func (m *BobbinGradeMutation) SyncRetryCount() (r int, exists bool) {
+	v := m.sync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncRetryCount returns the old "sync_retry_count" field's value of the BobbinGrade entity.
+// If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BobbinGradeMutation) OldSyncRetryCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncRetryCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncRetryCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncRetryCount: %w", err)
+	}
+	return oldValue.SyncRetryCount, nil
+}
+
+// AddSyncRetryCount adds i to the "sync_retry_count" field.
+func (m *BobbinGradeMutation) AddSyncRetryCount(i int) {
+	if m.addsync_retry_count != nil {
+		*m.addsync_retry_count += i
+	} else {
+		m.addsync_retry_count = &i
+	}
+}
+
+// AddedSyncRetryCount returns the value that was added to the "sync_retry_count" field in this mutation.
+func (m *BobbinGradeMutation) AddedSyncRetryCount() (r int, exists bool) {
+	v := m.addsync_retry_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSyncRetryCount resets all changes to the "sync_retry_count" field.
+func (m *BobbinGradeMutation) ResetSyncRetryCount() {
+	m.sync_retry_count = nil
+	m.addsync_retry_count = nil
+}
+
+// Where appends a list predicates to the BobbinGradeMutation builder.
+func (m *BobbinGradeMutation) Where(ps ...predicate.BobbinGrade) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the BobbinGradeMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BobbinGradeMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.BobbinGrade, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *BobbinGradeMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BobbinGradeMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (BobbinGrade).
+func (m *BobbinGradeMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *BobbinGradeMutation) Fields() []string {
+	fields := make([]string, 0, 15)
+	if m.bobbin_id != nil {
+		fields = append(fields, bobbingrade.FieldBobbinID)
+	}
+	if m.inspector_id != nil {
+		fields = append(fields, bobbingrade.FieldInspectorID)
+	}
+	if m.grade != nil {
+		fields = append(fields, bobbingrade.FieldGrade)
+	}
+	if m.inspection_details != nil {
+		fields = append(fields, bobbingrade.FieldInspectionDetails)
+	}
+	if m.scores != nil {
+		fields = append(fields, bobbingrade.FieldScores)
+	}
+	if m.final_score != nil {
+		fields = append(fields, bobbingrade.FieldFinalScore)
+	}
+	if m.is_qualified != nil {
+		fields = append(fields, bobbingrade.FieldIsQualified)
+	}
+	if m.defect_reason != nil {
+		fields = append(fields, bobbingrade.FieldDefectReason)
+	}
+	if m.notes != nil {
+		fields = append(fields, bobbingrade.FieldNotes)
+	}
+	if m.inspected_at != nil {
+		fields = append(fields, bobbingrade.FieldInspectedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, bobbingrade.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, bobbingrade.FieldUpdatedAt)
+	}
+	if m.sync_status != nil {
+		fields = append(fields, bobbingrade.FieldSyncStatus)
+	}
+	if m.synced_at != nil {
+		fields = append(fields, bobbingrade.FieldSyncedAt)
+	}
+	if m.sync_retry_count != nil {
+		fields = append(fields, bobbingrade.FieldSyncRetryCount)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *BobbinGradeMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case bobbingrade.FieldBobbinID:
+		return m.BobbinID()
+	case bobbingrade.FieldInspectorID:
+		return m.InspectorID()
+	case bobbingrade.FieldGrade:
+		return m.Grade()
+	case bobbingrade.FieldInspectionDetails:
+		return m.InspectionDetails()
+	case bobbingrade.FieldScores:
+		return m.Scores()
+	case bobbingrade.FieldFinalScore:
+		return m.FinalScore()
+	case bobbingrade.FieldIsQualified:
+		return m.IsQualified()
+	case bobbingrade.FieldDefectReason:
+		return m.DefectReason()
+	case bobbingrade.FieldNotes:
+		return m.Notes()
+	case bobbingrade.FieldInspectedAt:
+		return m.InspectedAt()
+	case bobbingrade.FieldCreatedAt:
+		return m.CreatedAt()
+	case bobbingrade.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case bobbingrade.FieldSyncStatus:
+		return m.SyncStatus()
+	case bobbingrade.FieldSyncedAt:
+		return m.SyncedAt()
+	case bobbingrade.FieldSyncRetryCount:
+		return m.SyncRetryCount()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *BobbinGradeMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case bobbingrade.FieldBobbinID:
+		return m.OldBobbinID(ctx)
+	case bobbingrade.FieldInspectorID:
+		return m.OldInspectorID(ctx)
+	case bobbingrade.FieldGrade:
+		return m.OldGrade(ctx)
+	case bobbingrade.FieldInspectionDetails:
+		return m.OldInspectionDetails(ctx)
+	case bobbingrade.FieldScores:
+		return m.OldScores(ctx)
+	case bobbingrade.FieldFinalScore:
+		return m.OldFinalScore(ctx)
+	case bobbingrade.FieldIsQualified:
+		return m.OldIsQualified(ctx)
+	case bobbingrade.FieldDefectReason:
+		return m.OldDefectReason(ctx)
+	case bobbingrade.FieldNotes:
+		return m.OldNotes(ctx)
+	case bobbingrade.FieldInspectedAt:
+		return m.OldInspectedAt(ctx)
+	case bobbingrade.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case bobbingrade.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case bobbingrade.FieldSyncStatus:
+		return m.OldSyncStatus(ctx)
+	case bobbingrade.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
+	case bobbingrade.FieldSyncRetryCount:
+		return m.OldSyncRetryCount(ctx)
+	}
+	return nil, fmt.Errorf("unknown BobbinGrade field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BobbinGradeMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case bobbingrade.FieldBobbinID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBobbinID(v)
+		return nil
+	case bobbingrade.FieldInspectorID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInspectorID(v)
+		return nil
+	case bobbingrade.FieldGrade:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGrade(v)
+		return nil
+	case bobbingrade.FieldInspectionDetails:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInspectionDetails(v)
+		return nil
+	case bobbingrade.FieldScores:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScores(v)
+		return nil
+	case bobbingrade.FieldFinalScore:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFinalScore(v)
+		return nil
+	case bobbingrade.FieldIsQualified:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsQualified(v)
+		return nil
+	case bobbingrade.FieldDefectReason:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefectReason(v)
+		return nil
+	case bobbingrade.FieldNotes:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNotes(v)
+		return nil
+	case bobbingrade.FieldInspectedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInspectedAt(v)
+		return nil
+	case bobbingrade.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case bobbingrade.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case bobbingrade.FieldSyncStatus:
+		v, ok := value.(bobbingrade.SyncStatus)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncStatus(v)
+		return nil
+	case bobbingrade.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
+	case bobbingrade.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncRetryCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BobbinGrade field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *BobbinGradeMutation) AddedFields() []string {
+	var fields []string
+	if m.addfinal_score != nil {
+		fields = append(fields, bobbingrade.FieldFinalScore)
+	}
+	if m.addsync_retry_count != nil {
+		fields = append(fields, bobbingrade.FieldSyncRetryCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *BobbinGradeMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case bobbingrade.FieldFinalScore:
+		return m.AddedFinalScore()
+	case bobbingrade.FieldSyncRetryCount:
+		return m.AddedSyncRetryCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *BobbinGradeMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case bobbingrade.FieldFinalScore:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddFinalScore(v)
+		return nil
+	case bobbingrade.FieldSyncRetryCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSyncRetryCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown BobbinGrade numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *BobbinGradeMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(bobbingrade.FieldInspectorID) {
+		fields = append(fields, bobbingrade.FieldInspectorID)
+	}
+	if m.FieldCleared(bobbingrade.FieldInspectionDetails) {
+		fields = append(fields, bobbingrade.FieldInspectionDetails)
+	}
+	if m.FieldCleared(bobbingrade.FieldScores) {
+		fields = append(fields, bobbingrade.FieldScores)
+	}
+	if m.FieldCleared(bobbingrade.FieldFinalScore) {
+		fields = append(fields, bobbingrade.FieldFinalScore)
+	}
+	if m.FieldCleared(bobbingrade.FieldDefectReason) {
+		fields = append(fields, bobbingrade.FieldDefectReason)
+	}
+	if m.FieldCleared(bobbingrade.FieldNotes) {
+		fields = append(fields, bobbingrade.FieldNotes)
+	}
+	if m.FieldCleared(bobbingrade.FieldSyncedAt) {
+		fields = append(fields, bobbingrade.FieldSyncedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *BobbinGradeMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *BobbinGradeMutation) ClearField(name string) error {
+	switch name {
+	case bobbingrade.FieldInspectorID:
+		m.ClearInspectorID()
+		return nil
+	case bobbingrade.FieldInspectionDetails:
+		m.ClearInspectionDetails()
+		return nil
+	case bobbingrade.FieldScores:
+		m.ClearScores()
+		return nil
+	case bobbingrade.FieldFinalScore:
+		m.ClearFinalScore()
+		return nil
+	case bobbingrade.FieldDefectReason:
+		m.ClearDefectReason()
+		return nil
+	case bobbingrade.FieldNotes:
+		m.ClearNotes()
+		return nil
+	case bobbingrade.FieldSyncedAt:
+		m.ClearSyncedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown BobbinGrade nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *BobbinGradeMutation) ResetField(name string) error {
+	switch name {
+	case bobbingrade.FieldBobbinID:
+		m.ResetBobbinID()
+		return nil
+	case bobbingrade.FieldInspectorID:
+		m.ResetInspectorID()
+		return nil
+	case bobbingrade.FieldGrade:
+		m.ResetGrade()
+		return nil
+	case bobbingrade.FieldInspectionDetails:
+		m.ResetInspectionDetails()
+		return nil
+	case bobbingrade.FieldScores:
+		m.ResetScores()
+		return nil
+	case bobbingrade.FieldFinalScore:
+		m.ResetFinalScore()
+		return nil
+	case bobbingrade.FieldIsQualified:
+		m.ResetIsQualified()
+		return nil
+	case bobbingrade.FieldDefectReason:
+		m.ResetDefectReason()
+		return nil
+	case bobbingrade.FieldNotes:
+		m.ResetNotes()
+		return nil
+	case bobbingrade.FieldInspectedAt:
+		m.ResetInspectedAt()
+		return nil
+	case bobbingrade.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case bobbingrade.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case bobbingrade.FieldSyncStatus:
+		m.ResetSyncStatus()
+		return nil
+	case bobbingrade.FieldSyncedAt:
+		m.ResetSyncedAt()
+		return nil
+	case bobbingrade.FieldSyncRetryCount:
+		m.ResetSyncRetryCount()
+		return nil
+	}
+	return fmt.Errorf("unknown BobbinGrade field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *BobbinGradeMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *BobbinGradeMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *BobbinGradeMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *BobbinGradeMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *BobbinGradeMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *BobbinGradeMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *BobbinGradeMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown BobbinGrade unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *BobbinGradeMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown BobbinGrade edge %s", name)
 }
 
 // CartonMutation represents an operation that mutates the Carton nodes in the graph.
@@ -12418,6 +13716,1066 @@ func (m *PalletMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Pallet edge %s", name)
+}
+
+// ProductConfigMutation represents an operation that mutates the ProductConfig nodes in the graph.
+type ProductConfigMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	product_type        *productconfig.ProductType
+	product_spec        *string
+	process_params      *map[string]interface{}
+	quality_standards   *map[string]interface{}
+	grade_system        *map[string]interface{}
+	target_weight       *float64
+	addtarget_weight    *float64
+	weight_tolerance    *float64
+	addweight_tolerance *float64
+	is_active           *bool
+	notes               *string
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	done                bool
+	oldValue            func(context.Context) (*ProductConfig, error)
+	predicates          []predicate.ProductConfig
+}
+
+var _ ent.Mutation = (*ProductConfigMutation)(nil)
+
+// productconfigOption allows management of the mutation configuration using functional options.
+type productconfigOption func(*ProductConfigMutation)
+
+// newProductConfigMutation creates new mutation for the ProductConfig entity.
+func newProductConfigMutation(c config, op Op, opts ...productconfigOption) *ProductConfigMutation {
+	m := &ProductConfigMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeProductConfig,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withProductConfigID sets the ID field of the mutation.
+func withProductConfigID(id uuid.UUID) productconfigOption {
+	return func(m *ProductConfigMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ProductConfig
+		)
+		m.oldValue = func(ctx context.Context) (*ProductConfig, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ProductConfig.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withProductConfig sets the old ProductConfig of the mutation.
+func withProductConfig(node *ProductConfig) productconfigOption {
+	return func(m *ProductConfigMutation) {
+		m.oldValue = func(context.Context) (*ProductConfig, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ProductConfigMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ProductConfigMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ProductConfig entities.
+func (m *ProductConfigMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ProductConfigMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ProductConfigMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ProductConfig.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetProductType sets the "product_type" field.
+func (m *ProductConfigMutation) SetProductType(pt productconfig.ProductType) {
+	m.product_type = &pt
+}
+
+// ProductType returns the value of the "product_type" field in the mutation.
+func (m *ProductConfigMutation) ProductType() (r productconfig.ProductType, exists bool) {
+	v := m.product_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProductType returns the old "product_type" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldProductType(ctx context.Context) (v productconfig.ProductType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProductType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProductType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProductType: %w", err)
+	}
+	return oldValue.ProductType, nil
+}
+
+// ResetProductType resets all changes to the "product_type" field.
+func (m *ProductConfigMutation) ResetProductType() {
+	m.product_type = nil
+}
+
+// SetProductSpec sets the "product_spec" field.
+func (m *ProductConfigMutation) SetProductSpec(s string) {
+	m.product_spec = &s
+}
+
+// ProductSpec returns the value of the "product_spec" field in the mutation.
+func (m *ProductConfigMutation) ProductSpec() (r string, exists bool) {
+	v := m.product_spec
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProductSpec returns the old "product_spec" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldProductSpec(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProductSpec is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProductSpec requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProductSpec: %w", err)
+	}
+	return oldValue.ProductSpec, nil
+}
+
+// ResetProductSpec resets all changes to the "product_spec" field.
+func (m *ProductConfigMutation) ResetProductSpec() {
+	m.product_spec = nil
+}
+
+// SetProcessParams sets the "process_params" field.
+func (m *ProductConfigMutation) SetProcessParams(value map[string]interface{}) {
+	m.process_params = &value
+}
+
+// ProcessParams returns the value of the "process_params" field in the mutation.
+func (m *ProductConfigMutation) ProcessParams() (r map[string]interface{}, exists bool) {
+	v := m.process_params
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProcessParams returns the old "process_params" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldProcessParams(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProcessParams is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProcessParams requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProcessParams: %w", err)
+	}
+	return oldValue.ProcessParams, nil
+}
+
+// ClearProcessParams clears the value of the "process_params" field.
+func (m *ProductConfigMutation) ClearProcessParams() {
+	m.process_params = nil
+	m.clearedFields[productconfig.FieldProcessParams] = struct{}{}
+}
+
+// ProcessParamsCleared returns if the "process_params" field was cleared in this mutation.
+func (m *ProductConfigMutation) ProcessParamsCleared() bool {
+	_, ok := m.clearedFields[productconfig.FieldProcessParams]
+	return ok
+}
+
+// ResetProcessParams resets all changes to the "process_params" field.
+func (m *ProductConfigMutation) ResetProcessParams() {
+	m.process_params = nil
+	delete(m.clearedFields, productconfig.FieldProcessParams)
+}
+
+// SetQualityStandards sets the "quality_standards" field.
+func (m *ProductConfigMutation) SetQualityStandards(value map[string]interface{}) {
+	m.quality_standards = &value
+}
+
+// QualityStandards returns the value of the "quality_standards" field in the mutation.
+func (m *ProductConfigMutation) QualityStandards() (r map[string]interface{}, exists bool) {
+	v := m.quality_standards
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQualityStandards returns the old "quality_standards" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldQualityStandards(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQualityStandards is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQualityStandards requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQualityStandards: %w", err)
+	}
+	return oldValue.QualityStandards, nil
+}
+
+// ClearQualityStandards clears the value of the "quality_standards" field.
+func (m *ProductConfigMutation) ClearQualityStandards() {
+	m.quality_standards = nil
+	m.clearedFields[productconfig.FieldQualityStandards] = struct{}{}
+}
+
+// QualityStandardsCleared returns if the "quality_standards" field was cleared in this mutation.
+func (m *ProductConfigMutation) QualityStandardsCleared() bool {
+	_, ok := m.clearedFields[productconfig.FieldQualityStandards]
+	return ok
+}
+
+// ResetQualityStandards resets all changes to the "quality_standards" field.
+func (m *ProductConfigMutation) ResetQualityStandards() {
+	m.quality_standards = nil
+	delete(m.clearedFields, productconfig.FieldQualityStandards)
+}
+
+// SetGradeSystem sets the "grade_system" field.
+func (m *ProductConfigMutation) SetGradeSystem(value map[string]interface{}) {
+	m.grade_system = &value
+}
+
+// GradeSystem returns the value of the "grade_system" field in the mutation.
+func (m *ProductConfigMutation) GradeSystem() (r map[string]interface{}, exists bool) {
+	v := m.grade_system
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGradeSystem returns the old "grade_system" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldGradeSystem(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGradeSystem is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGradeSystem requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGradeSystem: %w", err)
+	}
+	return oldValue.GradeSystem, nil
+}
+
+// ClearGradeSystem clears the value of the "grade_system" field.
+func (m *ProductConfigMutation) ClearGradeSystem() {
+	m.grade_system = nil
+	m.clearedFields[productconfig.FieldGradeSystem] = struct{}{}
+}
+
+// GradeSystemCleared returns if the "grade_system" field was cleared in this mutation.
+func (m *ProductConfigMutation) GradeSystemCleared() bool {
+	_, ok := m.clearedFields[productconfig.FieldGradeSystem]
+	return ok
+}
+
+// ResetGradeSystem resets all changes to the "grade_system" field.
+func (m *ProductConfigMutation) ResetGradeSystem() {
+	m.grade_system = nil
+	delete(m.clearedFields, productconfig.FieldGradeSystem)
+}
+
+// SetTargetWeight sets the "target_weight" field.
+func (m *ProductConfigMutation) SetTargetWeight(f float64) {
+	m.target_weight = &f
+	m.addtarget_weight = nil
+}
+
+// TargetWeight returns the value of the "target_weight" field in the mutation.
+func (m *ProductConfigMutation) TargetWeight() (r float64, exists bool) {
+	v := m.target_weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTargetWeight returns the old "target_weight" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldTargetWeight(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTargetWeight is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTargetWeight requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTargetWeight: %w", err)
+	}
+	return oldValue.TargetWeight, nil
+}
+
+// AddTargetWeight adds f to the "target_weight" field.
+func (m *ProductConfigMutation) AddTargetWeight(f float64) {
+	if m.addtarget_weight != nil {
+		*m.addtarget_weight += f
+	} else {
+		m.addtarget_weight = &f
+	}
+}
+
+// AddedTargetWeight returns the value that was added to the "target_weight" field in this mutation.
+func (m *ProductConfigMutation) AddedTargetWeight() (r float64, exists bool) {
+	v := m.addtarget_weight
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearTargetWeight clears the value of the "target_weight" field.
+func (m *ProductConfigMutation) ClearTargetWeight() {
+	m.target_weight = nil
+	m.addtarget_weight = nil
+	m.clearedFields[productconfig.FieldTargetWeight] = struct{}{}
+}
+
+// TargetWeightCleared returns if the "target_weight" field was cleared in this mutation.
+func (m *ProductConfigMutation) TargetWeightCleared() bool {
+	_, ok := m.clearedFields[productconfig.FieldTargetWeight]
+	return ok
+}
+
+// ResetTargetWeight resets all changes to the "target_weight" field.
+func (m *ProductConfigMutation) ResetTargetWeight() {
+	m.target_weight = nil
+	m.addtarget_weight = nil
+	delete(m.clearedFields, productconfig.FieldTargetWeight)
+}
+
+// SetWeightTolerance sets the "weight_tolerance" field.
+func (m *ProductConfigMutation) SetWeightTolerance(f float64) {
+	m.weight_tolerance = &f
+	m.addweight_tolerance = nil
+}
+
+// WeightTolerance returns the value of the "weight_tolerance" field in the mutation.
+func (m *ProductConfigMutation) WeightTolerance() (r float64, exists bool) {
+	v := m.weight_tolerance
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldWeightTolerance returns the old "weight_tolerance" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldWeightTolerance(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldWeightTolerance is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldWeightTolerance requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldWeightTolerance: %w", err)
+	}
+	return oldValue.WeightTolerance, nil
+}
+
+// AddWeightTolerance adds f to the "weight_tolerance" field.
+func (m *ProductConfigMutation) AddWeightTolerance(f float64) {
+	if m.addweight_tolerance != nil {
+		*m.addweight_tolerance += f
+	} else {
+		m.addweight_tolerance = &f
+	}
+}
+
+// AddedWeightTolerance returns the value that was added to the "weight_tolerance" field in this mutation.
+func (m *ProductConfigMutation) AddedWeightTolerance() (r float64, exists bool) {
+	v := m.addweight_tolerance
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearWeightTolerance clears the value of the "weight_tolerance" field.
+func (m *ProductConfigMutation) ClearWeightTolerance() {
+	m.weight_tolerance = nil
+	m.addweight_tolerance = nil
+	m.clearedFields[productconfig.FieldWeightTolerance] = struct{}{}
+}
+
+// WeightToleranceCleared returns if the "weight_tolerance" field was cleared in this mutation.
+func (m *ProductConfigMutation) WeightToleranceCleared() bool {
+	_, ok := m.clearedFields[productconfig.FieldWeightTolerance]
+	return ok
+}
+
+// ResetWeightTolerance resets all changes to the "weight_tolerance" field.
+func (m *ProductConfigMutation) ResetWeightTolerance() {
+	m.weight_tolerance = nil
+	m.addweight_tolerance = nil
+	delete(m.clearedFields, productconfig.FieldWeightTolerance)
+}
+
+// SetIsActive sets the "is_active" field.
+func (m *ProductConfigMutation) SetIsActive(b bool) {
+	m.is_active = &b
+}
+
+// IsActive returns the value of the "is_active" field in the mutation.
+func (m *ProductConfigMutation) IsActive() (r bool, exists bool) {
+	v := m.is_active
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsActive returns the old "is_active" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldIsActive(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsActive is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsActive requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsActive: %w", err)
+	}
+	return oldValue.IsActive, nil
+}
+
+// ResetIsActive resets all changes to the "is_active" field.
+func (m *ProductConfigMutation) ResetIsActive() {
+	m.is_active = nil
+}
+
+// SetNotes sets the "notes" field.
+func (m *ProductConfigMutation) SetNotes(s string) {
+	m.notes = &s
+}
+
+// Notes returns the value of the "notes" field in the mutation.
+func (m *ProductConfigMutation) Notes() (r string, exists bool) {
+	v := m.notes
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNotes returns the old "notes" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldNotes(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNotes is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNotes requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNotes: %w", err)
+	}
+	return oldValue.Notes, nil
+}
+
+// ClearNotes clears the value of the "notes" field.
+func (m *ProductConfigMutation) ClearNotes() {
+	m.notes = nil
+	m.clearedFields[productconfig.FieldNotes] = struct{}{}
+}
+
+// NotesCleared returns if the "notes" field was cleared in this mutation.
+func (m *ProductConfigMutation) NotesCleared() bool {
+	_, ok := m.clearedFields[productconfig.FieldNotes]
+	return ok
+}
+
+// ResetNotes resets all changes to the "notes" field.
+func (m *ProductConfigMutation) ResetNotes() {
+	m.notes = nil
+	delete(m.clearedFields, productconfig.FieldNotes)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ProductConfigMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ProductConfigMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ProductConfigMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ProductConfigMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ProductConfigMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ProductConfig entity.
+// If the ProductConfig object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProductConfigMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ProductConfigMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the ProductConfigMutation builder.
+func (m *ProductConfigMutation) Where(ps ...predicate.ProductConfig) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ProductConfigMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ProductConfigMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ProductConfig, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ProductConfigMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ProductConfigMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ProductConfig).
+func (m *ProductConfigMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ProductConfigMutation) Fields() []string {
+	fields := make([]string, 0, 11)
+	if m.product_type != nil {
+		fields = append(fields, productconfig.FieldProductType)
+	}
+	if m.product_spec != nil {
+		fields = append(fields, productconfig.FieldProductSpec)
+	}
+	if m.process_params != nil {
+		fields = append(fields, productconfig.FieldProcessParams)
+	}
+	if m.quality_standards != nil {
+		fields = append(fields, productconfig.FieldQualityStandards)
+	}
+	if m.grade_system != nil {
+		fields = append(fields, productconfig.FieldGradeSystem)
+	}
+	if m.target_weight != nil {
+		fields = append(fields, productconfig.FieldTargetWeight)
+	}
+	if m.weight_tolerance != nil {
+		fields = append(fields, productconfig.FieldWeightTolerance)
+	}
+	if m.is_active != nil {
+		fields = append(fields, productconfig.FieldIsActive)
+	}
+	if m.notes != nil {
+		fields = append(fields, productconfig.FieldNotes)
+	}
+	if m.created_at != nil {
+		fields = append(fields, productconfig.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, productconfig.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ProductConfigMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case productconfig.FieldProductType:
+		return m.ProductType()
+	case productconfig.FieldProductSpec:
+		return m.ProductSpec()
+	case productconfig.FieldProcessParams:
+		return m.ProcessParams()
+	case productconfig.FieldQualityStandards:
+		return m.QualityStandards()
+	case productconfig.FieldGradeSystem:
+		return m.GradeSystem()
+	case productconfig.FieldTargetWeight:
+		return m.TargetWeight()
+	case productconfig.FieldWeightTolerance:
+		return m.WeightTolerance()
+	case productconfig.FieldIsActive:
+		return m.IsActive()
+	case productconfig.FieldNotes:
+		return m.Notes()
+	case productconfig.FieldCreatedAt:
+		return m.CreatedAt()
+	case productconfig.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ProductConfigMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case productconfig.FieldProductType:
+		return m.OldProductType(ctx)
+	case productconfig.FieldProductSpec:
+		return m.OldProductSpec(ctx)
+	case productconfig.FieldProcessParams:
+		return m.OldProcessParams(ctx)
+	case productconfig.FieldQualityStandards:
+		return m.OldQualityStandards(ctx)
+	case productconfig.FieldGradeSystem:
+		return m.OldGradeSystem(ctx)
+	case productconfig.FieldTargetWeight:
+		return m.OldTargetWeight(ctx)
+	case productconfig.FieldWeightTolerance:
+		return m.OldWeightTolerance(ctx)
+	case productconfig.FieldIsActive:
+		return m.OldIsActive(ctx)
+	case productconfig.FieldNotes:
+		return m.OldNotes(ctx)
+	case productconfig.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case productconfig.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ProductConfig field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ProductConfigMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case productconfig.FieldProductType:
+		v, ok := value.(productconfig.ProductType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProductType(v)
+		return nil
+	case productconfig.FieldProductSpec:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProductSpec(v)
+		return nil
+	case productconfig.FieldProcessParams:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProcessParams(v)
+		return nil
+	case productconfig.FieldQualityStandards:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQualityStandards(v)
+		return nil
+	case productconfig.FieldGradeSystem:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGradeSystem(v)
+		return nil
+	case productconfig.FieldTargetWeight:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTargetWeight(v)
+		return nil
+	case productconfig.FieldWeightTolerance:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetWeightTolerance(v)
+		return nil
+	case productconfig.FieldIsActive:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsActive(v)
+		return nil
+	case productconfig.FieldNotes:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNotes(v)
+		return nil
+	case productconfig.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case productconfig.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ProductConfig field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ProductConfigMutation) AddedFields() []string {
+	var fields []string
+	if m.addtarget_weight != nil {
+		fields = append(fields, productconfig.FieldTargetWeight)
+	}
+	if m.addweight_tolerance != nil {
+		fields = append(fields, productconfig.FieldWeightTolerance)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ProductConfigMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case productconfig.FieldTargetWeight:
+		return m.AddedTargetWeight()
+	case productconfig.FieldWeightTolerance:
+		return m.AddedWeightTolerance()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ProductConfigMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case productconfig.FieldTargetWeight:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTargetWeight(v)
+		return nil
+	case productconfig.FieldWeightTolerance:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddWeightTolerance(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ProductConfig numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ProductConfigMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(productconfig.FieldProcessParams) {
+		fields = append(fields, productconfig.FieldProcessParams)
+	}
+	if m.FieldCleared(productconfig.FieldQualityStandards) {
+		fields = append(fields, productconfig.FieldQualityStandards)
+	}
+	if m.FieldCleared(productconfig.FieldGradeSystem) {
+		fields = append(fields, productconfig.FieldGradeSystem)
+	}
+	if m.FieldCleared(productconfig.FieldTargetWeight) {
+		fields = append(fields, productconfig.FieldTargetWeight)
+	}
+	if m.FieldCleared(productconfig.FieldWeightTolerance) {
+		fields = append(fields, productconfig.FieldWeightTolerance)
+	}
+	if m.FieldCleared(productconfig.FieldNotes) {
+		fields = append(fields, productconfig.FieldNotes)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ProductConfigMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ProductConfigMutation) ClearField(name string) error {
+	switch name {
+	case productconfig.FieldProcessParams:
+		m.ClearProcessParams()
+		return nil
+	case productconfig.FieldQualityStandards:
+		m.ClearQualityStandards()
+		return nil
+	case productconfig.FieldGradeSystem:
+		m.ClearGradeSystem()
+		return nil
+	case productconfig.FieldTargetWeight:
+		m.ClearTargetWeight()
+		return nil
+	case productconfig.FieldWeightTolerance:
+		m.ClearWeightTolerance()
+		return nil
+	case productconfig.FieldNotes:
+		m.ClearNotes()
+		return nil
+	}
+	return fmt.Errorf("unknown ProductConfig nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ProductConfigMutation) ResetField(name string) error {
+	switch name {
+	case productconfig.FieldProductType:
+		m.ResetProductType()
+		return nil
+	case productconfig.FieldProductSpec:
+		m.ResetProductSpec()
+		return nil
+	case productconfig.FieldProcessParams:
+		m.ResetProcessParams()
+		return nil
+	case productconfig.FieldQualityStandards:
+		m.ResetQualityStandards()
+		return nil
+	case productconfig.FieldGradeSystem:
+		m.ResetGradeSystem()
+		return nil
+	case productconfig.FieldTargetWeight:
+		m.ResetTargetWeight()
+		return nil
+	case productconfig.FieldWeightTolerance:
+		m.ResetWeightTolerance()
+		return nil
+	case productconfig.FieldIsActive:
+		m.ResetIsActive()
+		return nil
+	case productconfig.FieldNotes:
+		m.ResetNotes()
+		return nil
+	case productconfig.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case productconfig.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ProductConfig field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ProductConfigMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ProductConfigMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ProductConfigMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ProductConfigMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ProductConfigMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ProductConfigMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ProductConfigMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown ProductConfig unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ProductConfigMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown ProductConfig edge %s", name)
 }
 
 // SpinningLineMutation represents an operation that mutates the SpinningLine nodes in the graph.
