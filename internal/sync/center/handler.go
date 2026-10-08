@@ -244,8 +244,11 @@ func (h *UploadHandler) resolveLot(ctx context.Context, id uuid.UUID, lotNumber 
 //
 // 认领时保留 target 的 ID —— Center 侧 lot_id 引用随之继续有效。
 //
-// edgeID 的语义：认领的行（历史/人工创建）可能没有来源设备，权威身份
-// 到达后应补上；仅在非 Nil 时写入，避免把既有 edge_id 冲成 NULL。
+// edge_id 是「来源设备」（哪台设备生产了这条记录），属历史事实，**不可覆盖**：
+// 认领的行若已有来源，说明它本属另一台设备（cmd/seed 或历史人工创建），
+// 而 edge_id 被 LotService.ListLots 与 Center 批次列表的 ?edge_id= 过滤条件
+// 直接使用，覆盖会让运维把 A 设备的记录误判为 B 设备生产。故仅在原本为空时
+// 补上权威身份（历史/人工创建的行可能没有来源设备）。
 func (h *UploadHandler) updateLotRow(ctx context.Context, row *ent.Lot, data map[string]interface{}, edgeID uuid.UUID) error {
 	builder := row.Update().
 		SetProductType(lot.ProductType(getString(data, "product_type"))).
@@ -260,7 +263,8 @@ func (h *UploadHandler) updateLotRow(ctx context.Context, row *ent.Lot, data map
 		SetOrderCode(getString(data, "order_code")).
 		SetProductSpec(getString(data, "product_spec"))
 
-	if edgeID != uuid.Nil {
+	// 仅在既有行没有来源设备时补写；已有来源则保留（见函数注释）。
+	if row.EdgeID == uuid.Nil && edgeID != uuid.Nil {
 		builder.SetEdgeID(edgeID)
 	}
 

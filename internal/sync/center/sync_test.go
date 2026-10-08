@@ -683,11 +683,12 @@ func TestUpsertBobbin_RepublishUpdatesInPlace(t *testing.T) {
 	}
 }
 
-// 载荷未带 grade/tare_weight 时，重传不得抹掉 Center 既有的值。
+// 载荷**不含** grade/tare_weight 键时，重传不写入这两个字段，故 Center 既有的值保留。
 //
-// 这是 Task 3「载荷省略未设字段」+ Nillable setter 为 no-op 的联合契约：
-// SetNillable*(nil) 不写入，故既有值保留。若有人把 Nillable setter 换成
-// 非 Nillable（空值即清空）或加上 Clear*，本用例必须失败。
+// 精确契约：本用例只钉「键缺失 ⇒ 不写」（Task 3 的载荷省略未设字段 + Nillable
+// setter 的 `if v != nil` no-op）。它**不**主张「重传永远不会抹掉既有值」——
+// 若载荷显式带空值，行为另见 TestUpsertBobbin_EmptyGradeClearsStoredValue。
+// 若有人把 Nillable setter 换成非 Nillable（空值即清空）或加上 Clear*，本用例必须失败。
 func TestUpsertBobbin_AbsentGradeLeavesStoredValue(t *testing.T) {
 	client := setupTestClient(t)
 	defer client.Close()
@@ -783,4 +784,285 @@ func edgeRowID(t *testing.T, client *ent.Client) uuid.UUID {
 		t.Fatalf("create edge: %v", err)
 	}
 	return row.ID
+}
+
+// 认领既有行时不得覆盖其来源设备（edge_id 是历史事实，不是当前归属）。
+//
+// 场景：Center 已有一行 LOT-CLAIM-EDGE-1，来源为设备 A（cmd/seed 或人工插入
+// 会 SetEdgeID）。设备 B 上线后上传同编号的批次 —— resolveLot 按 ID 未命中、
+// 按编号命中并认领该行。若 updateLotRow 无条件写 SetEdgeID(edgeID)，
+// edge_id 会被改写成 B，而 LotService.ListLots 与 Center 批次列表的
+// ?edge_id= 过滤直接依赖它，运维按设备筛选批次即会看到 A 的记录挂在 B 名下。
+func TestUpsertLot_ClaimKeepsExistingEdgeID(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	deviceA, err := client.Edge.Create().
+		SetEdgeCode("edge-claim-origin").
+		SetEdgeName("原产设备").
+		SetIPAddress("192.168.2.90").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create device A: %v", err)
+	}
+	deviceB, err := client.Edge.Create().
+		SetEdgeCode("edge-claim-newcomer").
+		SetEdgeName("新上线设备").
+		SetIPAddress("192.168.2.91").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create device B: %v", err)
+	}
+
+	// Center 侧既有行：同编号、来源设备 A、ID 与 Edge 本地不同
+	existing, err := client.Lot.Create().
+		SetLotNumber("LOT-CLAIM-EDGE-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		SetEdgeID(deviceA.ID).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	edgeLocalID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: deviceB.ID.String(), // 上传者是设备 B
+		Entries: []models.UploadEntry{{
+			Table: "lots", Operation: "create", ID: edgeLocalID,
+			Data: map[string]interface{}{
+				"id": edgeLocalID.String(), "lot_number": "LOT-CLAIM-EDGE-1",
+				"product_type": "FDY", "planned_quantity": 20,
+				"actual_quantity": 0, "status": "completed",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.Lot.Get(ctx, existing.ID)
+	if err != nil {
+		t.Fatalf("get existing: %v", err)
+	}
+	if got.EdgeID != deviceA.ID {
+		t.Errorf("EdgeID = %v, want %v（认领不得覆盖既有来源设备）", got.EdgeID, deviceA.ID)
+	}
+	if got.EdgeID == deviceB.ID {
+		t.Error("EdgeID 被改写成上传者 B —— edge_id 是历史来源，不得覆盖")
+	}
+	// 认领本身仍须生效（字段被更新）
+	if got.PlannedQuantity != 20 {
+		t.Errorf("PlannedQuantity = %d, want 20（认领后应更新该行）", got.PlannedQuantity)
+	}
+}
+
+// 认领的行若原本没有来源设备，应补上权威身份 —— 与上一个用例互补。
+//
+// 历史/人工创建的行（无 edge_id）在设备接管后应被归属到该设备，
+// 但仅限「原本为空」的情形。
+func TestUpsertLot_ClaimStampsNilEdgeID(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	// Center 侧既有行：同编号、**无** edge_id、ID 与 Edge 本地不同
+	existing, err := client.Lot.Create().
+		SetLotNumber("LOT-CLAIM-NOEDGE-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if existing.EdgeID != uuid.Nil {
+		t.Fatalf("前提不成立：seed 行的 EdgeID 应为 uuid.Nil，实际 %v", existing.EdgeID)
+	}
+
+	device := edgeRowID(t, client)
+	edgeLocalID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: device.String(),
+		Entries: []models.UploadEntry{{
+			Table: "lots", Operation: "create", ID: edgeLocalID,
+			Data: map[string]interface{}{
+				"id": edgeLocalID.String(), "lot_number": "LOT-CLAIM-NOEDGE-1",
+				"product_type": "FDY", "planned_quantity": 20,
+				"actual_quantity": 0, "status": "completed",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.Lot.Get(ctx, existing.ID)
+	if err != nil {
+		t.Fatalf("get existing: %v", err)
+	}
+	if got.EdgeID != device {
+		t.Errorf("EdgeID = %v, want %v（认领无来源的行时应补上权威身份）", got.EdgeID, device)
+	}
+}
+
+// 丝饼按业务编号认领：Center 已有同编号但不同 UUID 的行 → 认领该行、不新建。
+//
+// 与 lot 侧的 TestUpsertLot_ClaimsExistingByLotNumber 同构，覆盖
+// resolveBobbin 的按编号命中分支（handler.go 的 by-number 查询）——
+// TestUpsertBobbin_RepublishUpdatesInPlace 复用同一个 ID，只走到 ID 命中。
+func TestUpsertBobbin_ClaimsExistingByBobbinNumber(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BOBBIN-CLAIM-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	// Center 侧已有丝饼：同编号、不同 UUID、毛重 5.0
+	existing, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-CLAIM-1").
+		SetLotID(centerLot.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(5.0).
+		SetNetWeight(4.6).
+		SetStatus(bobbin.StatusProducing).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed bobbin: %v", err)
+	}
+
+	edgeLocalID := uuid.New() // Edge 本地是另一个 UUID
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbins", Operation: "create", ID: edgeLocalID,
+			Data: map[string]interface{}{
+				"id":                edgeLocalID.String(),
+				"bobbin_number":     "BOBBIN-CLAIM-1",
+				"lot_id":            centerLot.ID.String(),
+				"lot_number":        "LOT-BOBBIN-CLAIM-1",
+				"spinning_position": 1,
+				"gross_weight":      5.5,
+				"net_weight":        5.1,
+				"status":            "completed",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	n, err := client.Bobbin.Query().Where(bobbin.BobbinNumberEQ("BOBBIN-CLAIM-1")).Count(ctx)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("行数 = %d, want 1（应认领既有行，不得新建重复）", n)
+	}
+
+	// 认领的是 Center 既有行（保留其 ID），且字段被更新
+	got, err := client.Bobbin.Get(ctx, existing.ID)
+	if err != nil {
+		t.Fatalf("get existing: %v", err)
+	}
+	if got.GrossWeight != 5.5 {
+		t.Errorf("GrossWeight = %v, want 5.5（认领后应更新该行）", got.GrossWeight)
+	}
+	// 未命中 Edge 本地 ID —— 证明走的是按编号认领而非按 ID
+	if _, err := client.Bobbin.Get(ctx, edgeLocalID); err == nil {
+		t.Error("以 Edge 本地 UUID 新建了行 —— 应按编号认领既有行")
+	}
+}
+
+// 载荷**显式带** grade:""（键存在、值为空串）时，覆盖函数把它解析为
+// 非 nil 的 *string("")，故 SetNillableGrade 会写入并清空既有值。
+//
+// 这是对 TestUpsertBobbin_AbsentGradeLeavesStoredValue 的补充：那个用例只钉
+// 「键缺失 ⇒ 不写」；本用例钉「键存在且为空 ⇒ 视为清空」。二者共同界定
+// Nillable setter 的实际语义，避免「重传不会抹掉既有值」被误解为无条件成立。
+func TestUpsertBobbin_EmptyGradeClearsStoredValue(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BOBBIN-GRADE-CLEAR-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	handler := center.NewUploadHandler(client)
+	bobbinID := uuid.New()
+
+	mk := func(grade interface{}) *models.UploadRequest {
+		data := map[string]interface{}{
+			"id":                bobbinID.String(),
+			"bobbin_number":     "BOBBIN-GRADE-CLEAR-1",
+			"lot_id":            centerLot.ID.String(),
+			"lot_number":        "LOT-BOBBIN-GRADE-CLEAR-1",
+			"spinning_position": 1,
+			"gross_weight":      5.2,
+			"net_weight":        4.8,
+			"status":            "completed",
+		}
+		if grade != nil {
+			data["grade"] = grade
+		}
+		return &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "bobbins", Operation: "create", ID: bobbinID, Data: data,
+			}},
+		}
+	}
+
+	// 第一次：带 grade "A"
+	if _, err := handler.HandleUpload(ctx, mk("A")); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	// 第二次：显式带空串（键存在、值为 ""）
+	if _, err := handler.HandleUpload(ctx, mk("")); err != nil {
+		t.Fatalf("second upload: %v", err)
+	}
+
+	got, err := client.Bobbin.Query().
+		Where(bobbin.IDEQ(bobbinID)).
+		Select(bobbin.FieldGrade).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Grade != "" {
+		t.Errorf("Grade = %q, want \"\"（载荷显式传空串应清空既有值）", got.Grade)
+	}
 }
