@@ -269,9 +269,21 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 			"net_weight":        r.NetWeight,
 			"status":            string(r.Status),
 			"label_printed":     r.LabelPrinted,
-			"tare_weight":       r.TareWeight,
-			"grade":             r.Grade,
 			"lot_number":        lotNumber, // 父行业务编号，供 Center 解引用
+		}
+		// tare_weight 与 grade 只在有值时才进载荷。
+		//
+		// Center 的 getFloatPtr / getStringPtr（handler.go:300-307 / 268-275）
+		// 是「键存在即取指针」：键在而值为 0.0 / "" 时返回的是指向 0.0 / ""
+		// 的非 nil 指针，Center 会照写 0.0 / ''。而两字段在 schema 里都是
+		// Optional()，即列可空 —— 键缺席才写 NULL。
+		// 「尚未称重/质检」与「称重为 0 / 质检为空串」是两回事，
+		// 无条件带上会把前者写成后者，是不可逆的脏数据。
+		if r.TareWeight != 0 {
+			data["tare_weight"] = r.TareWeight
+		}
+		if r.Grade != "" {
+			data["grade"] = r.Grade
 		}
 		if r.BarrelID != uuid.Nil {
 			data["barrel_id"] = r.BarrelID.String()

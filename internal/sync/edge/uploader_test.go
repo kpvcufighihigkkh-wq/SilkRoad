@@ -571,10 +571,147 @@ func TestUploader_BobbinPayloadCarriesGradeTareAndLotNumber(t *testing.T) {
 	if got := bobbinEntry.Data["grade"]; got != "A" {
 		t.Errorf("grade = %v, want 有值（质检等级必须上传）", got)
 	}
-	if _, ok := bobbinEntry.Data["tare_weight"]; !ok {
+	if got, ok := bobbinEntry.Data["tare_weight"]; !ok {
 		t.Error("载荷缺少 tare_weight")
+	} else if got != 0.3 {
+		t.Errorf("tare_weight = %v, want 0.3（写错字段也会被这条抓住）", got)
 	}
 	if got := bobbinEntry.Data["lot_number"]; got != "LOT-PAYLOAD-1" {
 		t.Errorf("lot_number = %v, want %q（Center 靠它解引用父行）", got, "LOT-PAYLOAD-1")
+	}
+}
+
+// 未称重（皮重 0）、未质检（等级空串）的丝饼**不得**携带这两个键。
+//
+// Center 的 getFloatPtr / getStringPtr 是「键存在即取指针」，键在而值为
+// 0.0 / "" 会返回非 nil 指针并被写进库；两字段列可空，键缺席才写 NULL。
+// 无条件带键会把「尚未称重/质检」永久写成「称重为 0 / 质检为空串」，
+// 是不可逆的脏数据。
+func TestUploader_BobbinPayloadOmitsUnsetGradeAndTare(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotRow, err := client.Lot.Create().
+		SetLotNumber("LOT-UNSET-1").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-UNSET-1").
+		SetLotID(lotRow.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx); err != nil {
+		t.Fatalf("create bobbin: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	var bobbinEntry *models.UploadEntry
+	for i := range entries {
+		if entries[i].Table == "bobbins" {
+			bobbinEntry = &entries[i]
+			break
+		}
+	}
+	if bobbinEntry == nil {
+		t.Fatal("未收集到丝饼条目")
+	}
+
+	if got, ok := bobbinEntry.Data["grade"]; ok {
+		t.Errorf("grade 应为缺失键（未质检需写 NULL），实际存在且为 %#v", got)
+	}
+	if got, ok := bobbinEntry.Data["tare_weight"]; ok {
+		t.Errorf("tare_weight 应为缺失键（未称重需写 NULL），实际存在且为 %#v", got)
+	}
+	// lot_number 相反：即使父批次查得到，也始终带键；此处顺便确认它不是被误删
+	if got := bobbinEntry.Data["lot_number"]; got != "LOT-UNSET-1" {
+		t.Errorf("lot_number = %v, want %q", got, "LOT-UNSET-1")
+	}
+}
+
+// 一批里含多个父批次时，每条丝饼必须拿到**自己**父行的业务编号。
+//
+// 单批次用例无法覆盖去重路径：若 map 的键被写错、或去重时把首个 lot_id
+// 当成全部的下标，单批次下仍会绿。
+func TestUploader_BobbinPayloadResolvesEachRowsOwnLotNumber(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotA, err := client.Lot.Create().
+		SetLotNumber("LOT-MULTI-A").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot A: %v", err)
+	}
+	lotB, err := client.Lot.Create().
+		SetLotNumber("LOT-MULTI-B").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot B: %v", err)
+	}
+
+	for _, spec := range []struct {
+		number string
+		lotID  uuid.UUID
+	}{
+		{"BOBBIN-MULTI-A1", lotA.ID},
+		{"BOBBIN-MULTI-A2", lotA.ID}, // 同批次重复出现，走 seen 去重分支
+		{"BOBBIN-MULTI-B1", lotB.ID},
+	} {
+		if _, err := client.Bobbin.Create().
+			SetBobbinNumber(spec.number).
+			SetLotID(spec.lotID).
+			SetSpinningPosition(1).
+			SetGrossWeight(1.5).
+			SetNetWeight(1.2).
+			Save(ctx); err != nil {
+			t.Fatalf("create bobbin %s: %v", spec.number, err)
+		}
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	want := map[string]string{
+		"BOBBIN-MULTI-A1": "LOT-MULTI-A",
+		"BOBBIN-MULTI-A2": "LOT-MULTI-A",
+		"BOBBIN-MULTI-B1": "LOT-MULTI-B",
+	}
+	seen := 0
+	for i := range entries {
+		if entries[i].Table != "bobbins" {
+			continue
+		}
+		number, _ := entries[i].Data["bobbin_number"].(string)
+		expected, known := want[number]
+		if !known {
+			t.Errorf("收集到意外的丝饼 %q", number)
+			continue
+		}
+		seen++
+		if got := entries[i].Data["lot_number"]; got != expected {
+			t.Errorf("丝饼 %s 的 lot_number = %v, want %q（不得张冠李戴到别的批次）",
+				number, got, expected)
+		}
+	}
+	if seen != len(want) {
+		t.Errorf("收集到 %d 条丝饼，want %d", seen, len(want))
 	}
 }
