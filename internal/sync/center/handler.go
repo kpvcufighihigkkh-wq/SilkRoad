@@ -77,7 +77,7 @@ func (h *UploadHandler) HandleUpload(ctx context.Context, req *models.UploadRequ
 	//
 	// 必须同时排除 uuid.Nil：uuid.Parse("00000000-0000-0000-0000-000000000000")
 	// 返回的是 err == nil，仅靠上面的错误检查拦不住它，它随后会命中
-	// applyEntry → createLot 里的 `if edgeID != uuid.Nil`，跳过 SetEdgeID，
+	// applyEntry → upsertLot 里的 `if edgeID != uuid.Nil`，跳过 SetEdgeID，
 	// 同样得到 edge_id = NULL。所以「能解析」不等于「是有效身份」。
 	authoritativeEdgeID, err := uuid.Parse(req.EdgeID)
 	if err != nil {
@@ -127,77 +127,160 @@ func (h *UploadHandler) applyEntry(ctx context.Context, entry *models.UploadEntr
 	}
 }
 
-// handleCreate 处理创建操作
+// handleCreate 处理创建操作。
+//
+// 两条路径都是 upsert（存在则更新、不存在则插入），非字面意义的插入：
+// Edge 永远发 create，重传/重试/网络重发天然安全。
 func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	switch entry.Table {
 	case "lots":
-		return h.createLot(ctx, entry, edgeID)
+		return h.upsertLot(ctx, entry, edgeID)
 	case "bobbins":
-		return h.createBobbin(ctx, entry, edgeID)
+		return h.upsertBobbin(ctx, entry, edgeID)
 	default:
 		return fmt.Errorf("unknown table: %s", entry.Table)
 	}
 }
 
-// createLot 创建Lot记录。
+// upsertLot 插入或更新批次记录。
+//
+// 幂等与认领：先按 ID 查；未命中再按 lot_number 查（该字段唯一）。
+// 编号命中说明 Center 侧已存在同一业务批次但 UUID 不同（历史数据或人工
+// 创建），此时认领该行并更新字段，**保留 Center 行的 ID** —— 这样 Center
+// 侧既有的 lot_id 引用（落纱/丝饼）继续有效。
+//
+// 为何不能只按 ID 判断：Edge 与 Center 各自用 uuid.New 生成主键，
+// 同一业务批次在两端的 ID 不同，只按 ID 查必然放行，随后撞唯一约束。
 //
 // edgeID 为鉴权层推导的权威设备身份（uuid.Nil 表示未推导出）；
 // 载荷中的 edge_id 一律不采信，避免伪造来源设备。
-func (h *UploadHandler) createLot(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
+func (h *UploadHandler) upsertLot(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	data := entry.Data
 
-	// 检查是否已存在（幂等性）
 	id, err := uuid.Parse(getString(data, "id"))
 	if err != nil {
 		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
 	}
-	exists, err := h.client.Lot.Query().Where(lot.IDEQ(id)).Exist(ctx)
+	lotNumber := getString(data, "lot_number")
+	if lotNumber == "" {
+		// lot_number 是 NotEmpty + Unique；按编号认领也依赖它，缺失即无法处理。
+		return fmt.Errorf("missing lot_number for entry %s（按编号认领需要它）", id)
+	}
+
+	target, err := h.resolveLot(ctx, id, lotNumber)
 	if err != nil {
 		return err
 	}
-	if exists {
-		log.Printf("⚠️  Lot %s already exists, skipping", id)
+
+	// 未命中任何既有行：按 Edge 的 ID 新建
+	if target == nil {
+		builder := h.client.Lot.Create().
+			SetID(id).
+			SetLotNumber(lotNumber).
+			SetProductType(lot.ProductType(getString(data, "product_type"))).
+			SetPlannedQuantity(getInt(data, "planned_quantity")).
+			SetActualQuantity(getInt(data, "actual_quantity")).
+			SetStatus(lot.Status(getString(data, "status"))).
+			SetNillableStartTime(getTimePtr(data, "start_time")).
+			SetNillableEndTime(getTimePtr(data, "end_time"))
+
+		// 可选字段三件套（plc_lot_number/order_code/product_spec）在 Create 侧
+		// 用 Nillable 版本 —— 与 updateLotRow 中的非 Nillable 版本是同一组字段，
+		// 改名/增删需同步另一处（两个 builder 类型不同，无法共用设置函数）。
+		builder.
+			SetNillablePlcLotNumber(getStringPtr(data, "plc_lot_number")).
+			SetNillableOrderCode(getStringPtr(data, "order_code")).
+			SetNillableProductSpec(getStringPtr(data, "product_spec"))
+
+		// 权威设备身份：uuid.Nil 表示上游未推导出身份，此时不写外键
+		// （保留原有语义）。HandleUpload 已拒绝无法解析与全零的 EdgeID，
+		// 故正常路径下 edgeID 恒非 Nil。
+		if edgeID != uuid.Nil {
+			builder.SetEdgeID(edgeID)
+		}
+
+		created, err := builder.Save(ctx)
+		if err != nil {
+			// 并发（两条同编号记录同时到达）或历史数据导致唯一约束冲突：
+			// 重查一次并按编号认领转更新。查不到则说明冲突不是当前批次所致，
+			// 保持原错误，交由上层计重试。
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolveLot(ctx, id, lotNumber); rerr == nil && again != nil {
+					return h.updateLotRow(ctx, again, data, edgeID)
+				}
+			}
+			return fmt.Errorf("create lot: %w", err)
+		}
+		log.Printf("✅ Created lot: %s", created.LotNumber)
 		return nil
 	}
 
-	builder := h.client.Lot.Create().
-		SetID(id).
-		SetLotNumber(getString(data, "lot_number")).
+	return h.updateLotRow(ctx, target, data, edgeID)
+}
+
+// resolveLot 按 ID 再按业务编号定位既有行；都不存在返回 (nil, nil)。
+//
+// 先 ID 后编号的顺序不可交换：ID 命中说明这就是 Edge 那条记录（正常重传），
+// 优先认它是为了在「同 ID 行被改过编号」时仍能正确定位。
+func (h *UploadHandler) resolveLot(ctx context.Context, id uuid.UUID, lotNumber string) (*ent.Lot, error) {
+	byID, err := h.client.Lot.Query().Where(lot.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byNumber, err := h.client.Lot.Query().Where(lot.LotNumberEQ(lotNumber)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byNumber, nil
+}
+
+// updateLotRow 以 Edge 侧数据更新既有行。整行以 Edge 为准（单向归属）。
+//
+// 认领时保留 target 的 ID —— Center 侧 lot_id 引用随之继续有效。
+//
+// edgeID 的语义：认领的行（历史/人工创建）可能没有来源设备，权威身份
+// 到达后应补上；仅在非 Nil 时写入，避免把既有 edge_id 冲成 NULL。
+func (h *UploadHandler) updateLotRow(ctx context.Context, row *ent.Lot, data map[string]interface{}, edgeID uuid.UUID) error {
+	builder := row.Update().
 		SetProductType(lot.ProductType(getString(data, "product_type"))).
 		SetPlannedQuantity(getInt(data, "planned_quantity")).
 		SetActualQuantity(getInt(data, "actual_quantity")).
 		SetStatus(lot.Status(getString(data, "status"))).
 		SetNillableStartTime(getTimePtr(data, "start_time")).
-		SetNillableEndTime(getTimePtr(data, "end_time"))
+		SetNillableEndTime(getTimePtr(data, "end_time")).
+		// 可选字段三件套，Update 侧用非 Nillable 版本（空串即清空），
+		// 与 upsertLot 中的 Nillable 版本是同一组字段，改名/增删需同步另一处。
+		SetPlcLotNumber(getString(data, "plc_lot_number")).
+		SetOrderCode(getString(data, "order_code")).
+		SetProductSpec(getString(data, "product_spec"))
 
 	if edgeID != uuid.Nil {
 		builder.SetEdgeID(edgeID)
 	}
-	if v := getString(data, "plc_lot_number"); v != "" {
-		builder.SetPlcLotNumber(v)
-	}
-	if v := getString(data, "order_code"); v != "" {
-		builder.SetOrderCode(v)
-	}
-	if v := getString(data, "product_spec"); v != "" {
-		builder.SetProductSpec(v)
-	}
 
-	_, err = builder.Save(ctx)
-	if err != nil {
-		return fmt.Errorf("create lot: %w", err)
+	if err := builder.Exec(ctx); err != nil {
+		return fmt.Errorf("update lot: %w", err)
 	}
-
-	log.Printf("✅ Created lot: %s", getString(data, "lot_number"))
+	log.Printf("🔁 Updated lot: %s", row.LotNumber)
 	return nil
 }
 
-// createBobbin 创建Bobbin记录。
+// upsertBobbin 插入或更新丝锭记录（与 upsertLot 同构）。
+//
+// 幂等与认领：先按 ID 查；未命中再按 bobbin_number 查（该字段唯一）。
+// 编号命中说明 Center 侧已存在同一业务丝锭但 UUID 不同，认领该行并更新，
+// **保留 Center 行的 ID**（丝饼的 lot_id 引用随之继续有效）。
 //
 // edgeID 为鉴权层推导的权威设备身份。bobbins 表本身没有 edge_id 列
-// （来源设备经 lot 外键传递），此参数仅为与 createLot 保持一致的调用
+// （来源设备经 lot 外键传递），此参数仅为与 upsertLot 保持一致的调用
 // 链签名而保留，当前未使用。
-func (h *UploadHandler) createBobbin(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
+func (h *UploadHandler) upsertBobbin(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
 	data := entry.Data
 
 	id, err := uuid.Parse(getString(data, "id"))
@@ -208,20 +291,82 @@ func (h *UploadHandler) createBobbin(ctx context.Context, entry *models.UploadEn
 	if err != nil {
 		return fmt.Errorf("invalid lot_id %q: %w", getString(data, "lot_id"), err)
 	}
+	bobbinNumber := getString(data, "bobbin_number")
+	if bobbinNumber == "" {
+		// bobbin_number 是 NotEmpty + Unique；按编号认领也依赖它，缺失即无法处理。
+		return fmt.Errorf("missing bobbin_number for entry %s（按编号认领需要它）", id)
+	}
 
-	// 检查是否已存在（幂等性）
-	exists, err := h.client.Bobbin.Query().Where(bobbin.IDEQ(id)).Exist(ctx)
+	target, err := h.resolveBobbin(ctx, id, bobbinNumber)
 	if err != nil {
 		return err
 	}
-	if exists {
-		log.Printf("⚠️  Bobbin %s already exists, skipping", id)
+
+	// 未命中任何既有行：按 Edge 的 ID 新建
+	if target == nil {
+		_, err = h.client.Bobbin.Create().
+			SetID(id).
+			SetBobbinNumber(bobbinNumber).
+			SetLotID(lotID).
+			SetSpinningPosition(getInt(data, "spinning_position")).
+			SetGrossWeight(getFloat(data, "gross_weight")).
+			SetNetWeight(getFloat(data, "net_weight")).
+			SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
+			SetNillableGrade(getStringPtr(data, "grade")).
+			SetStatus(bobbin.Status(getString(data, "status"))).
+			SetLabelPrinted(getBool(data, "label_printed")).
+			SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+			SetNillableCompletedAt(getTimePtr(data, "completed_at")).
+			Save(ctx)
+		if err != nil {
+			// 并发或历史数据导致唯一约束冲突：重查一次并按编号认领转更新。
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolveBobbin(ctx, id, bobbinNumber); rerr == nil && again != nil {
+					return h.updateBobbinRow(ctx, again, data)
+				}
+			}
+			return fmt.Errorf("create bobbin: %w", err)
+		}
+		log.Printf("✅ Created bobbin: %s", bobbinNumber)
 		return nil
 	}
 
-	_, err = h.client.Bobbin.Create().
-		SetID(id).
-		SetBobbinNumber(getString(data, "bobbin_number")).
+	return h.updateBobbinRow(ctx, target, data)
+}
+
+// resolveBobbin 按 ID 再按业务编号定位既有行；都不存在返回 (nil, nil)。
+// 顺序与理由同 resolveLot：先 ID 后编号。
+func (h *UploadHandler) resolveBobbin(ctx context.Context, id uuid.UUID, bobbinNumber string) (*ent.Bobbin, error) {
+	byID, err := h.client.Bobbin.Query().Where(bobbin.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byNumber, err := h.client.Bobbin.Query().Where(bobbin.BobbinNumberEQ(bobbinNumber)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byNumber, nil
+}
+
+// updateBobbinRow 以 Edge 侧数据更新既有行（整行以 Edge 为准）。
+// 保留 row 的 ID；bobbin_number 是认领依据，不重写。
+//
+// grade/tare_weight 用 Nillable 版本：载荷未带该键时传 nil，Setter 内的
+// `if v != nil` 使其成为 no-op，从而**保留 Center 既有的值**。这是刻意的
+// 取舍（Edge 侧有意抹除该字段不会传播），故此处不加 Clear*。
+func (h *UploadHandler) updateBobbinRow(ctx context.Context, row *ent.Bobbin, data map[string]interface{}) error {
+	lotID, err := uuid.Parse(getString(data, "lot_id"))
+	if err != nil {
+		return fmt.Errorf("invalid lot_id %q: %w", getString(data, "lot_id"), err)
+	}
+
+	err = row.Update().
 		SetLotID(lotID).
 		SetSpinningPosition(getInt(data, "spinning_position")).
 		SetGrossWeight(getFloat(data, "gross_weight")).
@@ -232,13 +377,11 @@ func (h *UploadHandler) createBobbin(ctx context.Context, entry *models.UploadEn
 		SetLabelPrinted(getBool(data, "label_printed")).
 		SetNillablePrintedAt(getTimePtr(data, "printed_at")).
 		SetNillableCompletedAt(getTimePtr(data, "completed_at")).
-		Save(ctx)
-
+		Exec(ctx)
 	if err != nil {
-		return fmt.Errorf("create bobbin: %w", err)
+		return fmt.Errorf("update bobbin: %w", err)
 	}
-
-	log.Printf("✅ Created bobbin: %s", getString(data, "bobbin_number"))
+	log.Printf("🔁 Updated bobbin: %s", row.BobbinNumber)
 	return nil
 }
 

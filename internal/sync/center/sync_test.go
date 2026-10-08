@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/center"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
@@ -508,4 +509,278 @@ func TestHandleUpload_SortsBobbinsAfterLots(t *testing.T) {
 	if got.LotID != lotID {
 		t.Errorf("bobbin.LotID = %v, want %v", got.LotID, lotID)
 	}
+}
+
+// 重传同一批两次：Center 不得出现重复行，且字段应被更新
+func TestUpsertLot_RepublishUpdatesInPlace(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	handler := center.NewUploadHandler(client)
+	lotID := uuid.New()
+
+	mk := func(status string) *models.UploadRequest {
+		return &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "lots", Operation: "create", ID: lotID,
+				Data: map[string]interface{}{
+					"id": lotID.String(), "lot_number": "LOT-UPSERT-1",
+					"product_type": "FDY", "planned_quantity": 10,
+					"actual_quantity": 0, "status": status,
+				},
+			}},
+		}
+	}
+
+	if _, err := handler.HandleUpload(ctx, mk("in_progress")); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	if _, err := handler.HandleUpload(ctx, mk("completed")); err != nil {
+		t.Fatalf("second upload: %v", err)
+	}
+
+	n, err := client.Lot.Query().Where(lot.LotNumberEQ("LOT-UPSERT-1")).Count(ctx)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("行数 = %d, want 1（重传应更新而非新建）", n)
+	}
+
+	got, err := client.Lot.Get(ctx, lotID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if string(got.Status) != "completed" {
+		t.Errorf("Status = %q, want %q（重传应更新字段）", got.Status, "completed")
+	}
+}
+
+// Center 已存在同编号但不同 UUID 的行 → 应认领该行，不新建、不报错
+func TestUpsertLot_ClaimsExistingByLotNumber(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	// Center 侧先存在一行（模拟人工/历史创建），ID 与 Edge 本地不同
+	existing, err := client.Lot.Create().
+		SetLotNumber("LOT-CLAIM-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	edgeLocalID := uuid.New() // Edge 本地是另一个 UUID
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "lots", Operation: "create", ID: edgeLocalID,
+			Data: map[string]interface{}{
+				"id": edgeLocalID.String(), "lot_number": "LOT-CLAIM-1",
+				"product_type": "FDY", "planned_quantity": 20,
+				"actual_quantity": 0, "status": "completed",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	n, err := client.Lot.Query().Where(lot.LotNumberEQ("LOT-CLAIM-1")).Count(ctx)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("行数 = %d, want 1（应认领既有行，不得新建重复）", n)
+	}
+
+	got, err := client.Lot.Get(ctx, existing.ID)
+	if err != nil {
+		t.Fatalf("get existing: %v", err)
+	}
+	if got.PlannedQuantity != 20 {
+		t.Errorf("PlannedQuantity = %d, want 20（认领后应更新该行）", got.PlannedQuantity)
+	}
+}
+
+// 重传同一丝饼两次：Center 不得出现重复行，且字段应被更新。
+//
+// 与 TestUpsertLot_RepublishUpdatesInPlace 同构，覆盖 upsertBobbin 的
+// 「先按 ID 命中再更新」分支 —— Task 5 只测了 bobbin 的插入（解引用）路径，
+// 该更新分支否则无测试。
+//
+// 载荷刻意同时带 lot_id（Center 行的真 ID）与 lot_number：Task 5 会把 lot_id
+// 改为按 lot_number 解引用，带上 lot_number 后本用例在改写前后都成立。
+func TestUpsertBobbin_RepublishUpdatesInPlace(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BOBBIN-UPSERT-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	handler := center.NewUploadHandler(client)
+	bobbinID := uuid.New()
+
+	mk := func(status string) *models.UploadRequest {
+		return &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "bobbins", Operation: "create", ID: bobbinID,
+				Data: map[string]interface{}{
+					"id":                bobbinID.String(),
+					"bobbin_number":     "BOBBIN-UPSERT-1",
+					"lot_id":            centerLot.ID.String(),
+					"lot_number":        "LOT-BOBBIN-UPSERT-1",
+					"spinning_position": 1,
+					"gross_weight":      5.2,
+					"net_weight":        4.8,
+					"status":            status,
+				},
+			}},
+		}
+	}
+
+	if _, err := handler.HandleUpload(ctx, mk("producing")); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	if _, err := handler.HandleUpload(ctx, mk("completed")); err != nil {
+		t.Fatalf("second upload: %v", err)
+	}
+
+	n, err := client.Bobbin.Query().Where(bobbin.BobbinNumberEQ("BOBBIN-UPSERT-1")).Count(ctx)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("行数 = %d, want 1（重传应更新而非新建）", n)
+	}
+
+	got, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if string(got.Status) != "completed" {
+		t.Errorf("Status = %q, want %q（重传应更新字段）", got.Status, "completed")
+	}
+}
+
+// 载荷未带 grade/tare_weight 时，重传不得抹掉 Center 既有的值。
+//
+// 这是 Task 3「载荷省略未设字段」+ Nillable setter 为 no-op 的联合契约：
+// SetNillable*(nil) 不写入，故既有值保留。若有人把 Nillable setter 换成
+// 非 Nillable（空值即清空）或加上 Clear*，本用例必须失败。
+func TestUpsertBobbin_AbsentGradeLeavesStoredValue(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BOBBIN-GRADE-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	handler := center.NewUploadHandler(client)
+	bobbinID := uuid.New()
+
+	withGrade := &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbins", Operation: "create", ID: bobbinID,
+			Data: map[string]interface{}{
+				"id":                bobbinID.String(),
+				"bobbin_number":     "BOBBIN-GRADE-1",
+				"lot_id":            centerLot.ID.String(),
+				"lot_number":        "LOT-BOBBIN-GRADE-1",
+				"spinning_position": 1,
+				"gross_weight":      5.2,
+				"net_weight":        4.8,
+				"tare_weight":       0.4,
+				"grade":             "A",
+				"status":            "completed",
+			},
+		}},
+	}
+
+	// 第二次上传：载荷不含 grade/tare_weight（模拟 Task 3 省略未设字段）
+	withoutGrade := &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbins", Operation: "create", ID: bobbinID,
+			Data: map[string]interface{}{
+				"id":                bobbinID.String(),
+				"bobbin_number":     "BOBBIN-GRADE-1",
+				"lot_id":            centerLot.ID.String(),
+				"lot_number":        "LOT-BOBBIN-GRADE-1",
+				"spinning_position": 1,
+				"gross_weight":      5.2,
+				"net_weight":        4.8,
+				"status":            "completed",
+			},
+		}},
+	}
+
+	if _, err := handler.HandleUpload(ctx, withGrade); err != nil {
+		t.Fatalf("first upload: %v", err)
+	}
+	if _, err := handler.HandleUpload(ctx, withoutGrade); err != nil {
+		t.Fatalf("second upload: %v", err)
+	}
+
+	got, err := client.Bobbin.Query().
+		Where(bobbin.IDEQ(bobbinID)).
+		Select(bobbin.FieldGrade, bobbin.FieldTareWeight).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Grade != "A" {
+		t.Errorf("Grade = %q, want \"A\"（载荷缺该键时应保留既有值）", got.Grade)
+	}
+	if got.TareWeight != 0.4 {
+		t.Errorf("TareWeight = %v, want 0.4（载荷缺该键时应保留既有值）", got.TareWeight)
+	}
+}
+
+// edgeRowID 创建（或复用）一条 Edge 行并返回其 ID。
+// 上传路径要求 req.EdgeID 是设备行的 UUID。
+func edgeRowID(t *testing.T, client *ent.Client) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	if row, err := client.Edge.Query().First(ctx); err == nil {
+		return row.ID
+	}
+	row, err := client.Edge.Create().
+		SetEdgeCode("edge-upsert-test").
+		SetEdgeName("测试设备").
+		SetIPAddress("192.168.2.84").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create edge: %v", err)
+	}
+	return row.ID
 }
