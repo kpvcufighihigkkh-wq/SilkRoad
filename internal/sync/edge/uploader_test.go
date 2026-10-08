@@ -19,6 +19,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/edge"
+	"github.com/yourusername/igh-silkroad/internal/sync/models"
 	_ "modernc.org/sqlite"
 )
 
@@ -520,5 +521,60 @@ func TestUploader_Upload_RejectedIDOutsideBatch_MarksNothingSynced(t *testing.T)
 	}
 	if gotBobbin.SyncRetryCount != 1 {
 		t.Errorf("错误串越界时 bobbin SyncRetryCount = %d, want 1", gotBobbin.SyncRetryCount)
+	}
+}
+
+// 丝饼载荷必须带上 grade、tare_weight，以及父行的 lot_number
+// （Center 靠 lot_number 解引用父行，不采信载荷里的 lot_id）
+func TestUploader_BobbinPayloadCarriesGradeTareAndLotNumber(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotRow, err := client.Lot.Create().
+		SetLotNumber("LOT-PAYLOAD-1").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-PAYLOAD-1").
+		SetLotID(lotRow.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		SetTareWeight(0.3).
+		SetGrade("A").
+		Save(ctx); err != nil {
+		t.Fatalf("create bobbin: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	var bobbinEntry *models.UploadEntry
+	for i := range entries {
+		if entries[i].Table == "bobbins" {
+			bobbinEntry = &entries[i]
+			break
+		}
+	}
+	if bobbinEntry == nil {
+		t.Fatal("未收集到丝饼条目")
+	}
+
+	if got := bobbinEntry.Data["grade"]; got != "A" {
+		t.Errorf("grade = %v, want 有值（质检等级必须上传）", got)
+	}
+	if _, ok := bobbinEntry.Data["tare_weight"]; !ok {
+		t.Error("载荷缺少 tare_weight")
+	}
+	if got := bobbinEntry.Data["lot_number"]; got != "LOT-PAYLOAD-1" {
+		t.Errorf("lot_number = %v, want %q（Center 靠它解引用父行）", got, "LOT-PAYLOAD-1")
 	}
 }

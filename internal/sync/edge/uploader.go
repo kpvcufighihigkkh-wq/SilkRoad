@@ -230,8 +230,36 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 		return nil, fmt.Errorf("query bobbins: %w", err)
 	}
 
+	// >>> 父批次业务编号查询块（Task 6 将把这段抽成共享方法 lotNumbersFor）
+	// 收集本批涉及的 lot ID，一次性查出业务编号，
+	// 供 Center 按编号解引用父行（载荷里的 lot_id 是 Edge 本地 UUID，
+	// Center 认领后 ID 可能不同，故必须带上编号）。
+	lotIDs := make([]uuid.UUID, 0, len(rows))
+	seen := make(map[uuid.UUID]struct{}, len(rows))
+	for _, r := range rows {
+		if _, ok := seen[r.LotID]; !ok {
+			seen[r.LotID] = struct{}{}
+			lotIDs = append(lotIDs, r.LotID)
+		}
+	}
+	lotNumbers := make(map[uuid.UUID]string, len(lotIDs))
+	if len(lotIDs) > 0 {
+		lots, err := u.client.Lot.Query().Where(lot.IDIn(lotIDs...)).All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("query parent lots: %w", err)
+		}
+		for _, l := range lots {
+			lotNumbers[l.ID] = l.LotNumber
+		}
+	}
+	// <<< 父批次业务编号查询块
+
 	out := make([]models.UploadEntry, 0, len(rows))
 	for _, r := range rows {
+		// 父批次查不到时为空串，仍照常上传：Center 解引用时会拒绝该条
+		// 并计入重试，这是预期行为，不在此静默跳过。
+		lotNumber := lotNumbers[r.LotID]
+
 		data := map[string]interface{}{
 			"id":                r.ID.String(),
 			"bobbin_number":     r.BobbinNumber,
@@ -241,6 +269,9 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 			"net_weight":        r.NetWeight,
 			"status":            string(r.Status),
 			"label_printed":     r.LabelPrinted,
+			"tare_weight":       r.TareWeight,
+			"grade":             r.Grade,
+			"lot_number":        lotNumber, // 父行业务编号，供 Center 解引用
 		}
 		if r.BarrelID != uuid.Nil {
 			data["barrel_id"] = r.BarrelID.String()
