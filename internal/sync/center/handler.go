@@ -10,6 +10,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 	"github.com/google/uuid"
 )
@@ -137,6 +138,8 @@ func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEn
 		return h.upsertLot(ctx, entry, edgeID)
 	case "bobbins":
 		return h.upsertBobbin(ctx, entry, edgeID)
+	case "doffings":
+		return h.upsertDoffing(ctx, entry, edgeID)
 	default:
 		return fmt.Errorf("unknown table: %s", entry.Table)
 	}
@@ -411,6 +414,74 @@ func (h *UploadHandler) updateBobbinRow(ctx context.Context, row *ent.Bobbin, da
 		return fmt.Errorf("update bobbin: %w", err)
 	}
 	log.Printf("🔁 Updated bobbin: %s", row.BobbinNumber)
+	return nil
+}
+
+// upsertDoffing 插入或更新落纱记录。
+//
+// 父批次按 lot_number 解引用（见 resolveParentLotID）。
+// spinning_line_id 在 schema 中不是外键（Doffing.Edges() 只声明 lot），
+// 故直接落库，不需要查父行。
+//
+// 状态流转（pending → confirmed → cancelled）走同一行的更新，
+// 故每次状态变更重传都应命中原行。
+func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+	lineID, err := uuid.Parse(getString(data, "spinning_line_id"))
+	if err != nil {
+		return fmt.Errorf("invalid spinning_line_id %q: %w", getString(data, "spinning_line_id"), err)
+	}
+
+	existing, err := h.client.Doffing.Query().Where(doffing.IDEQ(id)).Only(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return err
+	}
+
+	if existing == nil {
+		_, err = h.client.Doffing.Create().
+			SetID(id).
+			SetLotID(lotID).
+			SetSpinningLineID(lineID).
+			SetSpinningPosition(getInt(data, "spinning_position")).
+			SetStatus(doffing.Status(getString(data, "status"))).
+			SetNillableBobbinNumber(getStringPtr(data, "bobbin_number")).
+			SetNillableActualWeight(getFloatPtr(data, "actual_weight")).
+			SetNillableGrade(getStringPtr(data, "grade")).
+			SetNillableCancelReason(getStringPtr(data, "cancel_reason")).
+			SetNillableDoffingTime(getTimePtr(data, "doffing_time")).
+			SetNillableConfirmedAt(getTimePtr(data, "confirmed_at")).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("create doffing: %w", err)
+		}
+		log.Printf("✅ Created doffing: %s", id)
+		return nil
+	}
+
+	if err := existing.Update().
+		SetLotID(lotID).
+		SetSpinningLineID(lineID).
+		SetSpinningPosition(getInt(data, "spinning_position")).
+		SetStatus(doffing.Status(getString(data, "status"))).
+		SetNillableBobbinNumber(getStringPtr(data, "bobbin_number")).
+		SetNillableActualWeight(getFloatPtr(data, "actual_weight")).
+		SetNillableGrade(getStringPtr(data, "grade")).
+		SetNillableCancelReason(getStringPtr(data, "cancel_reason")).
+		SetNillableDoffingTime(getTimePtr(data, "doffing_time")).
+		SetNillableConfirmedAt(getTimePtr(data, "confirmed_at")).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("update doffing: %w", err)
+	}
+	log.Printf("🔁 Updated doffing: %s", id)
 	return nil
 }
 

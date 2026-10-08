@@ -1147,3 +1147,121 @@ func TestUploadBobbin_DereferencesParentByLotNumber(t *testing.T) {
 			got2.LotID, centerLot.ID)
 	}
 }
+
+// 落纱上传：按 lot_number 挂到 Center 的批次，且状态与重量落库
+func TestUpsertDoffing_PersistsWithDereferencedLot(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-DOFF-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	lineID := uuid.New()
+	doffingID := uuid.New()
+	handler := center.NewUploadHandler(client)
+
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "doffings", Operation: "create", ID: doffingID,
+			Data: map[string]interface{}{
+				"id":                doffingID.String(),
+				"lot_id":            uuid.New().String(), // 陷阱：忽略
+				"lot_number":        "LOT-DOFF-1",
+				"spinning_line_id":  lineID.String(),
+				"spinning_position": 3,
+				"bobbin_number":     "BOBBIN-DOFF-1",
+				"actual_weight":     1.75,
+				"grade":             "B",
+				"status":            "confirmed",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.Doffing.Get(ctx, doffingID)
+	if err != nil {
+		t.Fatalf("get doffing: %v", err)
+	}
+	if got.LotID != centerLot.ID {
+		t.Errorf("LotID = %v, want %v", got.LotID, centerLot.ID)
+	}
+	if string(got.Status) != "confirmed" {
+		t.Errorf("Status = %q, want %q", got.Status, "confirmed")
+	}
+	if got.ActualWeight != 1.75 {
+		t.Errorf("ActualWeight = %v, want 1.75", got.ActualWeight)
+	}
+	if got.Grade != "B" {
+		t.Errorf("Grade = %q, want %q", got.Grade, "B")
+	}
+}
+
+// 落纱状态流转：同一落纱重传两次，第二次应更新状态而非新建
+func TestUpsertDoffing_SecondUploadUpdatesStatus(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	if _, err := client.Lot.Create().
+		SetLotNumber("LOT-DOFF-2").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx); err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	doffingID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	mk := func(status string) *models.UploadRequest {
+		return &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "doffings", Operation: "create", ID: doffingID,
+				Data: map[string]interface{}{
+					"id": doffingID.String(), "lot_number": "LOT-DOFF-2",
+					"spinning_line_id": uuid.New().String(), "spinning_position": 1,
+					"status": status,
+				},
+			}},
+		}
+	}
+
+	if _, err := handler.HandleUpload(ctx, mk("pending")); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if _, err := handler.HandleUpload(ctx, mk("cancelled")); err != nil {
+		t.Fatalf("second: %v", err)
+	}
+
+	n, err := client.Doffing.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("落纱行数 = %d, want 1（状态流转应更新同一行）", n)
+	}
+	got, err := client.Doffing.Get(ctx, doffingID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if string(got.Status) != "cancelled" {
+		t.Errorf("Status = %q, want %q", got.Status, "cancelled")
+	}
+}

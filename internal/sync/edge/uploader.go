@@ -77,8 +77,8 @@ func NewUploader(client *ent.Client, edgeID, centerURL, token string) *Uploader 
 
 // collectors 返回启用采集的实体，顺序即外键依赖顺序：被引用者先上传。
 //
-// 只采集 Center 的 handleCreate（center/handler.go:121-130）真正接受的表：
-// 目前是 lots 与 bobbins。
+// 只采集 Center 的 handleCreate（center/handler.go:134-143）真正接受的表：
+// 目前是 lots、doffings 与 bobbins。
 //
 // 不在此列表中的表不会被采集，因而其记录保持 pending 且 retry_count 不变 ——
 // 这是「延后」而非「丢弃」，等 Center 支持后加上来即可同步。
@@ -86,13 +86,14 @@ func NewUploader(client *ent.Client, edgeID, centerURL, token string) *Uploader 
 // 被标记为 failed，而本仓库没有任何回收路径 —— 那才是真正的数据丢失。
 //
 // 重新加入的条件（两者都必须满足）：
-//   - doffings：Center 的 handleCreate 增加 "doffings" 分支
-//   - barrels：Center 的 handleCreate 增加 "barrels" 分支
+//   - doffings：Center 的 handleCreate 已增加 "doffings" 分支 —— 已满足，故已加入
+//   - barrels：Center 的 handleCreate 增加 "barrels" 分支 —— 仍未满足
 //
-// 在此之前不得把它们加回本列表。
+// barrels 仍不得加回本列表。
 func (u *Uploader) collectors() []uploadableEntity {
 	return []uploadableEntity{
 		{table: "lots", collect: u.collectLots},
+		{table: "doffings", collect: u.collectDoffings}, // Center 已实现接收
 		{table: "bobbins", collect: u.BobbinQuery},
 	}
 }
@@ -141,11 +142,11 @@ func (u *Uploader) collectLots(ctx context.Context, limit int) ([]models.UploadE
 
 // collectDoffings 查询待同步落纱记录。
 //
-// 当前未被 collectors() 调用：Center 的 handleCreate 还只有 lots/bobbins 分支，
-// doffings 上传会被判 unknown table 并永久走向 failed。保留此函数是**重新接入的
-// 脚手架** —— 等 Center 的 handleCreate 增加 "doffings" 分支（并实现对应的落库
-// 逻辑）后，把它加回 collectors() 即可，无需重写采集逻辑。
-// 在此之前不要加回 collectors()。
+// Center 已实现接收（handleCreate 的 "doffings" 分支 + upsertDoffing），
+// 故已加入 collectors()。
+//
+// 载荷必须带 lot_number：Center 按业务编号解引用父批次，不采信载荷里的
+// lot_id（那是 Edge 本地 UUID，认领后可能与 Center 行不同）。
 func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.UploadEntry, error) {
 	rows, err := u.client.Doffing.Query().
 		Where(
@@ -159,6 +160,16 @@ func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.Upl
 		return nil, fmt.Errorf("query doffings: %w", err)
 	}
 
+	// 收集本批涉及的批次 ID，批量查出业务编号
+	doffingLotIDs := make([]uuid.UUID, 0, len(rows))
+	for _, r := range rows {
+		doffingLotIDs = append(doffingLotIDs, r.LotID)
+	}
+	lotNumbers, err := u.lotNumbersFor(ctx, doffingLotIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]models.UploadEntry, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, models.UploadEntry{
@@ -168,12 +179,40 @@ func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.Upl
 			Data: map[string]interface{}{
 				"id":                r.ID.String(),
 				"lot_id":            r.LotID.String(),
+				"lot_number":        lotNumbers[r.LotID],
 				"spinning_line_id":  r.SpinningLineID.String(),
 				"spinning_position": r.SpinningPosition,
 				"status":            string(r.Status),
 			},
 			CreatedAt: r.CreatedAt,
 		})
+	}
+	return out, nil
+}
+
+// lotNumbersFor 批量查出给定记录的父批次业务编号。
+// Center 靠 lot_number 解引用父行（载荷里的 lot_id 是 Edge 本地 UUID）。
+// 查不到的批次返回空串，由 Center 拒绝该条并计重试 —— 不在此静默跳过。
+func (u *Uploader) lotNumbersFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	uniq := make(map[uuid.UUID]struct{}, len(ids))
+	list := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		list = append(list, id)
+	}
+	out := make(map[uuid.UUID]string, len(list))
+	if len(list) == 0 {
+		return out, nil
+	}
+	lots, err := u.client.Lot.Query().Where(lot.IDIn(list...)).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query parent lots: %w", err)
+	}
+	for _, l := range lots {
+		out[l.ID] = l.LotNumber
 	}
 	return out, nil
 }
@@ -230,7 +269,6 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 		return nil, fmt.Errorf("query bobbins: %w", err)
 	}
 
-	// >>> 父批次业务编号查询块（Task 6 将把这段抽成共享方法 lotNumbersFor）
 	// 收集本批涉及的 lot ID，一次性查出业务编号，
 	// 供 Center 按编号解引用父行（载荷里的 lot_id 是 Edge 本地 UUID，
 	// Center 认领后 ID 可能不同，故必须带上编号）。
@@ -242,17 +280,10 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 			lotIDs = append(lotIDs, r.LotID)
 		}
 	}
-	lotNumbers := make(map[uuid.UUID]string, len(lotIDs))
-	if len(lotIDs) > 0 {
-		lots, err := u.client.Lot.Query().Where(lot.IDIn(lotIDs...)).All(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("query parent lots: %w", err)
-		}
-		for _, l := range lots {
-			lotNumbers[l.ID] = l.LotNumber
-		}
+	lotNumbers, err := u.lotNumbersFor(ctx, lotIDs)
+	if err != nil {
+		return nil, err
 	}
-	// <<< 父批次业务编号查询块
 
 	out := make([]models.UploadEntry, 0, len(rows))
 	for _, r := range rows {

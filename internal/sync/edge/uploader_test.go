@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/edge"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
@@ -169,11 +170,14 @@ func TestUploader_CollectPending_OrderedByDependency(t *testing.T) {
 
 // 未接入 Center 的表不得被采集。
 //
-// Center 的 handleCreate 只支持 lots 与 bobbins，其余表一律返回
-// "unknown table" 而被拒绝。若把 doffings / barrels 采集进来，它们会被
-// 反复拒绝、累加重试次数，最终被 markExhausted 标记为 failed ——
-// 而本仓库没有回收路径。不采集则保持 pending/retry_count=0，
-// 是「延后」而非「丢失」，等 Center 支持后仍能同步。
+// Center 的 handleCreate 支持 lots、doffings 与 bobbins，其余表（当前仅 barrels）
+// 一律返回 "unknown table" 而被拒绝。若把 barrels 采集进来，它会被反复拒绝、
+// 累加重试次数，最终被 markExhausted 标记为 failed —— 而本仓库没有回收路径。
+// 不采集则保持 pending/retry_count=0，是「延后」而非「丢失」，等 Center 支持后
+// 仍能同步。
+//
+// doffings 已不在未支持之列：Task 6 为其补上了 handleCreate 分支与 upsertDoffing，
+// 故本用例的期望从 1 条（仅 lots）改为 2 条（lots + doffings）。
 func TestUploader_CollectPending_SkipsUnsupportedTables(t *testing.T) {
 	client := setupEdgeClient(t)
 	ctx := context.Background()
@@ -209,12 +213,15 @@ func TestUploader_CollectPending_SkipsUnsupportedTables(t *testing.T) {
 		t.Fatalf("CollectPending failed: %v", err)
 	}
 
-	// 只有 lot 应被采集
-	if len(entries) != 1 {
-		t.Fatalf("收集到 %d 条，want 1（barrels/doffings 尚未被 Center 支持）", len(entries))
+	// lot 与 doffing 应被采集，barrel 不应
+	if len(entries) != 2 {
+		t.Fatalf("收集到 %d 条，want 2（lots + doffings；barrels 尚未被 Center 支持）", len(entries))
 	}
 	if entries[0].Table != "lots" {
 		t.Errorf("被采集的表 = %q, want %q", entries[0].Table, "lots")
+	}
+	if entries[1].Table != "doffings" {
+		t.Errorf("第二个被采集的表 = %q, want %q", entries[1].Table, "doffings")
 	}
 }
 
@@ -713,5 +720,47 @@ func TestUploader_BobbinPayloadResolvesEachRowsOwnLotNumber(t *testing.T) {
 	}
 	if seen != len(want) {
 		t.Errorf("收集到 %d 条丝饼，want %d", seen, len(want))
+	}
+}
+
+// collectors 必须包含 doffings（Center 已实现接收）
+func TestUploader_CollectsDoffings(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotRow, err := client.Lot.Create().
+		SetLotNumber("LOT-COLLECT-DOFF").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+	if _, err := client.Doffing.Create().
+		SetSpinningLineID(uuid.New()).
+		SetSpinningPosition(1).
+		SetLotID(lotRow.ID).
+		SetStatus(doffing.StatusPending).
+		Save(ctx); err != nil {
+		t.Fatalf("create doffing: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	found := false
+	for _, e := range entries {
+		if e.Table == "doffings" {
+			found = true
+			if e.Data["lot_number"] == nil {
+				t.Error("落纱载荷缺少 lot_number（Center 靠它解引用父批次）")
+			}
+		}
+	}
+	if !found {
+		t.Error("未收集到 doffings —— Center 已实现接收，应当被采集")
 	}
 }
