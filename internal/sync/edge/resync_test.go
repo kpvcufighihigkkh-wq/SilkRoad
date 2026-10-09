@@ -1,0 +1,411 @@
+package edge_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/sync/edge"
+)
+
+func TestResyncFailed_ResetsFailedToPending(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	row, err := client.Lot.Create().
+		SetLotNumber("LOT-RESYNC-1").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		SetSyncStatus(lot.SyncStatusFailed).
+		SetSyncRetryCount(5).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	n, err := u.ResyncFailed(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncFailed: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("重置条数 = %d, want 1", n)
+	}
+
+	got, err := client.Lot.Get(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.SyncStatus != lot.SyncStatusPending {
+		t.Errorf("SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusPending)
+	}
+	if got.SyncRetryCount != 0 {
+		t.Errorf("SyncRetryCount = %d, want 0", got.SyncRetryCount)
+	}
+}
+
+func TestResyncAll_ResetsSyncedToPending(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	row, err := client.Lot.Create().
+		SetLotNumber("LOT-RESYNC-2").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		SetSyncStatus(lot.SyncStatusSynced).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	n, err := u.ResyncAll(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncAll: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("重置条数 = %d, want 1", n)
+	}
+
+	got, err := client.Lot.Get(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.SyncStatus != lot.SyncStatusPending {
+		t.Errorf("SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusPending)
+	}
+	if !got.SyncedAt.IsZero() {
+		t.Errorf("SyncedAt 应被清空，实际 %v", got.SyncedAt)
+	}
+}
+
+// collectableSyncCase 描述一张可采集表的播种与读回方式，
+// 供「每张可采集表都要能被重置」的表驱动用例复用。
+type collectableSyncCase struct {
+	table  string
+	seed   func(t *testing.T, c *ent.Client, ctx context.Context, status string, retries int, syncedAt time.Time) uuid.UUID
+	reload func(t *testing.T, c *ent.Client, ctx context.Context, id uuid.UUID) (string, int, time.Time)
+}
+
+// collectableSyncCases 与 collectors() 同集（lots / doffings / bobbins /
+// bobbin_grades）。collectors() 是「真正会被采集」的权威定义，重置端点必须
+// 与它同集：多一张（如 barrels）会造出永远排不出去的积压，少一张则该表的
+// failed 记录仍无回收路径。
+func collectableSyncCases() []collectableSyncCase {
+	return []collectableSyncCase{
+		{
+			table: "lots",
+			seed: func(t *testing.T, c *ent.Client, ctx context.Context, status string, retries int, syncedAt time.Time) uuid.UUID {
+				t.Helper()
+				row, err := c.Lot.Create().
+					SetLotNumber("LOT-" + uuid.NewString()).
+					SetProductType("FDY").
+					SetPlannedQuantity(1).
+					SetSyncStatus(lot.SyncStatus(status)).
+					SetSyncRetryCount(retries).
+					SetSyncedAt(syncedAt).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed lot: %v", err)
+				}
+				return row.ID
+			},
+			reload: func(t *testing.T, c *ent.Client, ctx context.Context, id uuid.UUID) (string, int, time.Time) {
+				t.Helper()
+				row, err := c.Lot.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload lot: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount, row.SyncedAt
+			},
+		},
+		{
+			table: "doffings",
+			seed: func(t *testing.T, c *ent.Client, ctx context.Context, status string, retries int, syncedAt time.Time) uuid.UUID {
+				t.Helper()
+				parent, err := c.Lot.Create().
+					SetLotNumber("LOT-PARENT-" + uuid.NewString()).
+					SetProductType("FDY").
+					SetPlannedQuantity(1).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed parent lot: %v", err)
+				}
+				row, err := c.Doffing.Create().
+					SetSpinningLineID(uuid.New()).
+					SetSpinningPosition(1).
+					SetLotID(parent.ID).
+					SetSyncStatus(doffing.SyncStatus(status)).
+					SetSyncRetryCount(retries).
+					SetSyncedAt(syncedAt).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed doffing: %v", err)
+				}
+				return row.ID
+			},
+			reload: func(t *testing.T, c *ent.Client, ctx context.Context, id uuid.UUID) (string, int, time.Time) {
+				t.Helper()
+				row, err := c.Doffing.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload doffing: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount, row.SyncedAt
+			},
+		},
+		{
+			table: "bobbins",
+			seed: func(t *testing.T, c *ent.Client, ctx context.Context, status string, retries int, syncedAt time.Time) uuid.UUID {
+				t.Helper()
+				parent, err := c.Lot.Create().
+					SetLotNumber("LOT-PARENT-" + uuid.NewString()).
+					SetProductType("FDY").
+					SetPlannedQuantity(1).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed parent lot: %v", err)
+				}
+				row, err := c.Bobbin.Create().
+					SetBobbinNumber("BOBBIN-" + uuid.NewString()).
+					SetLotID(parent.ID).
+					SetSpinningPosition(1).
+					SetGrossWeight(1.5).
+					SetNetWeight(1.2).
+					SetSyncStatus(bobbin.SyncStatus(status)).
+					SetSyncRetryCount(retries).
+					SetSyncedAt(syncedAt).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed bobbin: %v", err)
+				}
+				return row.ID
+			},
+			reload: func(t *testing.T, c *ent.Client, ctx context.Context, id uuid.UUID) (string, int, time.Time) {
+				t.Helper()
+				row, err := c.Bobbin.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload bobbin: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount, row.SyncedAt
+			},
+		},
+		{
+			// bobbin_grades 没有外键，bobbin_id 直接给一个 UUID。
+			// 这正好复现 Ruling V 的场景：父丝饼从未同步的孤儿质检记录
+			// 耗尽 5 次重试后落在 failed，本端点要能把它捞回来。
+			table: "bobbin_grades",
+			seed: func(t *testing.T, c *ent.Client, ctx context.Context, status string, retries int, syncedAt time.Time) uuid.UUID {
+				t.Helper()
+				row, err := c.BobbinGrade.Create().
+					SetBobbinID(uuid.New()).
+					SetGrade("A").
+					SetSyncStatus(bobbingrade.SyncStatus(status)).
+					SetSyncRetryCount(retries).
+					SetSyncedAt(syncedAt).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed bobbin grade: %v", err)
+				}
+				return row.ID
+			},
+			reload: func(t *testing.T, c *ent.Client, ctx context.Context, id uuid.UUID) (string, int, time.Time) {
+				t.Helper()
+				row, err := c.BobbinGrade.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload bobbin grade: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount, row.SyncedAt
+			},
+		},
+	}
+}
+
+// 每张可采集表都要能被两种模式重置，且计数归零、synced_at 清空。
+//
+// 只测 lots 时，删掉 bobbin_grades 的 switch 分支不会有任何测试变红 ——
+// 而孤儿质检记录正是本端点存在的理由（Ruling V）。
+func TestResync_CoversEveryCollectableTable(t *testing.T) {
+	now := time.Now()
+
+	for _, tc := range collectableSyncCases() {
+		t.Run(tc.table+"/failed", func(t *testing.T) {
+			client := setupEdgeClient(t)
+			ctx := context.Background()
+			id := tc.seed(t, client, ctx, "failed", 5, now)
+
+			u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+			n, err := u.ResyncFailed(ctx, tc.table)
+			if err != nil {
+				t.Fatalf("ResyncFailed(%q): %v", tc.table, err)
+			}
+			if n != 1 {
+				t.Errorf("重置条数 = %d, want 1", n)
+			}
+
+			status, retries, syncedAt := tc.reload(t, client, ctx, id)
+			if status != "pending" {
+				t.Errorf("SyncStatus = %q, want %q", status, "pending")
+			}
+			if retries != 0 {
+				t.Errorf("SyncRetryCount = %d, want 0", retries)
+			}
+			if !syncedAt.IsZero() {
+				t.Errorf("SyncedAt 应被清空，实际 %v", syncedAt)
+			}
+		})
+
+		t.Run(tc.table+"/all", func(t *testing.T) {
+			client := setupEdgeClient(t)
+			ctx := context.Background()
+			id := tc.seed(t, client, ctx, "synced", 0, now)
+
+			u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+			n, err := u.ResyncAll(ctx, tc.table)
+			if err != nil {
+				t.Fatalf("ResyncAll(%q): %v", tc.table, err)
+			}
+			if n != 1 {
+				t.Errorf("重置条数 = %d, want 1", n)
+			}
+
+			status, retries, syncedAt := tc.reload(t, client, ctx, id)
+			if status != "pending" {
+				t.Errorf("SyncStatus = %q, want %q", status, "pending")
+			}
+			if retries != 0 {
+				t.Errorf("SyncRetryCount = %d, want 0", retries)
+			}
+			if !syncedAt.IsZero() {
+				t.Errorf("SyncedAt 应被清空，实际 %v", syncedAt)
+			}
+		})
+	}
+}
+
+// 只重置目标状态：ResyncFailed 不得碰 synced 记录，ResyncAll 不得碰 failed 记录。
+//
+// 可证伪：WHERE 里漏掉状态过滤时，两种模式都会把全部记录重置，
+// 计数 n 与「另一行保持原状」的断言会同时失败。
+func TestResync_OnlyTargetStatusIsReset(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	seed := func(t *testing.T, status string, retries int) uuid.UUID {
+		t.Helper()
+		row, err := client.Lot.Create().
+			SetLotNumber("LOT-SCOPE-" + uuid.NewString()).
+			SetProductType("FDY").
+			SetPlannedQuantity(1).
+			SetSyncStatus(lot.SyncStatus(status)).
+			SetSyncRetryCount(retries).
+			Save(ctx)
+		if err != nil {
+			t.Fatalf("seed %s lot: %v", status, err)
+		}
+		return row.ID
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+
+	load := func(t *testing.T, id uuid.UUID) *ent.Lot {
+		t.Helper()
+		row, err := client.Lot.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("reload lot %s: %v", id, err)
+		}
+		return row
+	}
+
+	failedID := seed(t, "failed", 5)
+	pendingID := seed(t, "pending", 3)
+	syncedID := seed(t, "synced", 0)
+
+	n, err := u.ResyncFailed(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncFailed: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("ResyncFailed 重置条数 = %d, want 1（只有 failed 记录）", n)
+	}
+
+	if got := load(t, failedID); got.SyncStatus != lot.SyncStatusPending {
+		t.Errorf("failed 记录 SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusPending)
+	}
+	if got := load(t, pendingID); got.SyncStatus != lot.SyncStatusPending || got.SyncRetryCount != 3 {
+		t.Errorf("pending 记录被误改：status=%q retry=%d, want pending/3", got.SyncStatus, got.SyncRetryCount)
+	}
+	if got := load(t, syncedID); got.SyncStatus != lot.SyncStatusSynced {
+		t.Errorf("synced 记录被误改：status=%q, want synced", got.SyncStatus)
+	}
+
+	n, err = u.ResyncAll(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncAll: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("ResyncAll 重置条数 = %d, want 1（只有 synced 记录）", n)
+	}
+	if got := load(t, pendingID); got.SyncStatus != lot.SyncStatusPending || got.SyncRetryCount != 3 {
+		t.Errorf("pending 记录被 ResyncAll 误改：status=%q retry=%d, want pending/3", got.SyncStatus, got.SyncRetryCount)
+	}
+	if got := load(t, syncedID); got.SyncStatus != lot.SyncStatusPending {
+		t.Errorf("synced 记录 SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusPending)
+	}
+}
+
+// table 为空表示全部可采集表：每张表都要被重置到。
+func TestResync_EmptyTableMeansAll(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	cases := collectableSyncCases()
+	ids := make(map[string]uuid.UUID, len(cases))
+	for _, tc := range cases {
+		ids[tc.table] = tc.seed(t, client, ctx, "failed", 5, time.Time{})
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	n, err := u.ResyncFailed(ctx, "")
+	if err != nil {
+		t.Fatalf("ResyncFailed(\"\"): %v", err)
+	}
+	if n != len(cases) {
+		t.Errorf("重置条数 = %d, want %d（全部可采集表）", n, len(cases))
+	}
+
+	for _, tc := range cases {
+		status, retries, _ := tc.reload(t, client, ctx, ids[tc.table])
+		if status != "pending" {
+			t.Errorf("%s 未被重置：SyncStatus = %q, want pending", tc.table, status)
+		}
+		if retries != 0 {
+			t.Errorf("%s 重试计数未归零：%d", tc.table, retries)
+		}
+	}
+}
+
+// 未知表名是错误，而非静默 no-op。
+//
+// 尤其 barrels：它在 markableTables 里但**不被采集**，重置它只会造出
+// 永远排不出去的积压（采集器不取、计数不增、markExhausted 也碰不到）。
+func TestResync_UnknownTableIsError(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+
+	for _, table := range []string{"barrels", "no_such_table", "Lots"} {
+		if _, err := u.ResyncFailed(ctx, table); err == nil {
+			t.Errorf("ResyncFailed(%q) 应返回错误，实际为 nil", table)
+		}
+		if _, err := u.ResyncAll(ctx, table); err == nil {
+			t.Errorf("ResyncAll(%q) 应返回错误，实际为 nil", table)
+		}
+	}
+}

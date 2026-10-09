@@ -147,6 +147,7 @@ func (s *EdgeServer) registerRoutes() {
 		{
 			sync.POST("/upload", s.handleSyncUpload)     // 上传数据到中心
 			sync.POST("/download", s.handleSyncDownload) // 从中心下载数据
+			sync.POST("/resync", s.handleSyncResync)     // 重置同步状态（failed 重传 / 全量重传）
 		}
 	}
 }
@@ -238,6 +239,42 @@ func (s *EdgeServer) handleSyncDownload(c *gin.Context) {
 		"downloaded": 0,
 		"applied":    0,
 	}))
+}
+
+// handleSyncResync 重置本地同步状态，触发重传。
+//
+// mode=failed：把 failed 记录重置为 pending（回收重试超限的积压）
+// mode=all：把 synced 记录也一并重置（载荷新增字段后的存量回填）
+// table 省略或为空表示全部可采集表；未知表名由 uploader 报错，返回 500。
+//
+// 需要显式调用而非自动重试：不给自动化开无限重试的口子，
+// failed 的定位是「等人看一眼」，而非数据终点。
+func (s *EdgeServer) handleSyncResync(c *gin.Context) {
+	var req struct {
+		Mode  string `json:"mode" binding:"required,oneof=failed all"`
+		Table string `json:"table"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, "参数错误"))
+		return
+	}
+
+	var (
+		n   int
+		err error
+	)
+	switch req.Mode {
+	case "failed":
+		n, err = s.uploader.ResyncFailed(c.Request.Context(), req.Table)
+	case "all":
+		n, err = s.uploader.ResyncAll(c.Request.Context(), req.Table)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(gin.H{"reset": n, "mode": req.Mode, "table": req.Table}))
 }
 
 // Start 启动服务器
