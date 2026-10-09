@@ -147,6 +147,12 @@ func (u *Uploader) collectLots(ctx context.Context, limit int) ([]models.UploadE
 //
 // 载荷必须带 lot_number：Center 按业务编号解引用父批次，不采信载荷里的
 // lot_id（那是 Edge 本地 UUID，认领后可能与 Center 行不同）。
+//
+// 同时必须带上落纱的状态流转字段（bobbin_number / actual_weight / grade /
+// cancel_reason / confirmed_at / doffing_time）—— 这些是 ConfirmDoffing /
+// CancelDoffing 写下的业务数据，Center 的 upsertDoffing 会逐个读取。
+// 只发 status 会让 Center 落下一排「已确认但无重量、无丝锭编号、无确认时间」
+// 的空壳行。
 func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.UploadEntry, error) {
 	rows, err := u.client.Doffing.Query().
 		Where(
@@ -172,18 +178,50 @@ func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.Upl
 
 	out := make([]models.UploadEntry, 0, len(rows))
 	for _, r := range rows {
+		data := map[string]interface{}{
+			"id":                r.ID.String(),
+			"lot_id":            r.LotID.String(),
+			"lot_number":        lotNumbers[r.LotID],
+			"spinning_line_id":  r.SpinningLineID.String(),
+			"spinning_position": r.SpinningPosition,
+			"status":            string(r.Status),
+			// doffing_time 非 Optional（schema 内 Default(time.Now)），Edge 侧
+			// 恒有值，且是落纱操作的历史事实，无条件带上。
+			"doffing_time": r.DoffingTime,
+		}
+		// 其余可选字段只在有值时才进载荷。
+		//
+		// 这是 Task 3 为丝饼 grade/tare_weight 立下的规则，理由相同：
+		// 它们都是 Optional() 列（可空），而 Center 的 getXPtr 是「键存在即取
+		// 指针」—— 键在而值为 0.0 / "" 时 Center 会照写 0.0 / ''，把「尚未确认」
+		// 写成「确认了但重量为 0 / 编号为空 / 等级为空」，是不可逆的脏数据。
+		// 键缺席则 Center 的 SetNillable* 成为 no-op，新建时留 NULL。
+		//
+		// 各字段的 Edge 侧写入者（载荷必须覆盖它们，否则 Center 收到的是空壳）：
+		//   - ConfirmDoffing：ActualWeight / BobbinNumber / ConfirmedAt / Grade
+		//   - CancelDoffing：CancelReason
+		// （internal/service/doffing.go:176-188 / :211-217）
+		if r.BobbinNumber != "" {
+			data["bobbin_number"] = r.BobbinNumber
+		}
+		if r.ActualWeight != 0 {
+			data["actual_weight"] = r.ActualWeight
+		}
+		if r.Grade != "" {
+			data["grade"] = r.Grade
+		}
+		if r.CancelReason != "" {
+			data["cancel_reason"] = r.CancelReason
+		}
+		if !r.ConfirmedAt.IsZero() {
+			data["confirmed_at"] = r.ConfirmedAt
+		}
+
 		out = append(out, models.UploadEntry{
 			Table:     "doffings",
 			Operation: "create",
 			ID:        r.ID,
-			Data: map[string]interface{}{
-				"id":                r.ID.String(),
-				"lot_id":            r.LotID.String(),
-				"lot_number":        lotNumbers[r.LotID],
-				"spinning_line_id":  r.SpinningLineID.String(),
-				"spinning_position": r.SpinningPosition,
-				"status":            string(r.Status),
-			},
+			Data:      data,
 			CreatedAt: r.CreatedAt,
 		})
 	}

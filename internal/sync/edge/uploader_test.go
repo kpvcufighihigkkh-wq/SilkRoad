@@ -19,6 +19,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/sync/center"
 	"github.com/yourusername/igh-silkroad/internal/sync/edge"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 	_ "modernc.org/sqlite"
@@ -762,5 +763,214 @@ func TestUploader_CollectsDoffings(t *testing.T) {
 	}
 	if !found {
 		t.Error("未收集到 doffings —— Center 已实现接收，应当被采集")
+	}
+}
+
+// 契约测试：真实采集器 → 真实 HandleUpload。
+//
+// 这是本项目此前缺失的那一层。所有既有同步用例都手工构造载荷，于是
+// 「采集器发出的键」与「Center 读取的键」不一致时，没有任何测试会变红 ——
+// 落纱与丝饼都曾因此漏字段（Task 3 的 grade/tare_weight、Task 6 的五个
+// 状态流转字段）。本用例只走真实路径：造数据 → collectDoffings（经
+// CollectPending）→ center.HandleUpload → 断言业务字段落到 Center。
+//
+// 两个包之间没有 import 环（center 不 import edge，反之亦然），故可在
+// edge_test 里直接构造 center.UploadHandler。
+//
+// **必须用两个独立的库**（edgeClient / centerClient）。若共用一个 client，
+// Center 的写入是 upsert 且可选字段走 SetNillable（键缺席即 no-op），
+// 于是「Center 行 == Edge 行」时漏发的键会被既有值悄悄顶住，测试即便
+// 采集器漏字段也照绿 —— 那是假绿。生产中两端是两个库，Center 侧走的是
+// Create 路径，漏发的键会落成 NULL。两库才还原这个事实。
+func TestDoffingPayload_ReachesCenterThroughRealSeam(t *testing.T) {
+	edgeClient := setupEdgeClient(t)
+	centerClient := setupEdgeClient(t) // 独立的 Center 库
+	ctx := context.Background()
+
+	// Edge 侧：一个批次 + 一条已确认（即业务数据齐全）的落纱。
+	// 字段组合照着 ConfirmDoffing 的写入面取材 —— 它恰好是「生产中会
+	// 真实出现的那一行」，而不是随手编的极端值。
+	lotRow, err := edgeClient.Lot.Create().
+		SetLotNumber("LOT-SEAM-1").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+
+	lineID := uuid.New()
+	confirmedAt := time.Now().Add(-time.Minute).Truncate(time.Second)
+	doffingRow, err := edgeClient.Doffing.Create().
+		SetSpinningLineID(lineID).
+		SetSpinningPosition(4).
+		SetLotID(lotRow.ID).
+		SetStatus(doffing.StatusConfirmed).
+		SetBobbinNumber("BOBBIN-SEAM-1").
+		SetActualWeight(1.75).
+		SetGrade("B").
+		SetConfirmedAt(confirmedAt).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create doffing: %v", err)
+	}
+
+	// EdgeID 必须是 Center 侧已存在的设备行 UUID，否则 batch 里 lot 的
+	// edge_id 外键会失败（Edge 与 Center 的设备行是两套记录）。
+	edgeRow, err := centerClient.Edge.Create().
+		SetEdgeCode("edge-seam-1").
+		SetEdgeName("契约测试设备").
+		SetIPAddress("192.168.9.1").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create edge: %v", err)
+	}
+
+	// 真实采集
+	u := edge.NewUploader(edgeClient, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	// 真实落库到 Center 的库。整批提交，让 Center 自己按依赖排序。
+	resp, err := center.NewUploadHandler(centerClient).HandleUpload(ctx, &models.UploadRequest{
+		EdgeID:  edgeRow.ID.String(),
+		Entries: entries,
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != len(entries) || resp.Rejected != 0 {
+		t.Fatalf("applied=%d rejected=%d, want 全部应用（%d）; errors=%v",
+			resp.Applied, resp.Rejected, len(entries), resp.Errors)
+	}
+
+	// Center 侧应当拿到一条「完整体」的落纱，而不是只有 status 的空壳。
+	got, err := centerClient.Doffing.Get(ctx, doffingRow.ID)
+	if err != nil {
+		t.Fatalf("get doffing: %v", err)
+	}
+	if string(got.Status) != "confirmed" {
+		t.Errorf("Status = %q, want %q", got.Status, "confirmed")
+	}
+	if got.ActualWeight != 1.75 {
+		t.Errorf("ActualWeight = %v, want 1.75（采集器漏发 actual_weight 会落成 0）", got.ActualWeight)
+	}
+	if got.BobbinNumber != "BOBBIN-SEAM-1" {
+		t.Errorf("BobbinNumber = %q, want %q（漏发即空串）", got.BobbinNumber, "BOBBIN-SEAM-1")
+	}
+	if got.Grade != "B" {
+		t.Errorf("Grade = %q, want %q（漏发即空串）", got.Grade, "B")
+	}
+	if got.ConfirmedAt.IsZero() {
+		t.Error("ConfirmedAt 为零值 —— 采集器漏发 confirmed_at，确认时间丢失")
+	} else if !got.ConfirmedAt.UTC().Equal(confirmedAt.UTC()) {
+		t.Errorf("ConfirmedAt = %v, want %v", got.ConfirmedAt.UTC(), confirmedAt.UTC())
+	}
+	if got.DoffingTime.IsZero() {
+		t.Error("DoffingTime 为零值 —— 采集器漏发 doffing_time")
+	}
+	if got.SpinningLineID != lineID {
+		t.Errorf("SpinningLineID = %v, want %v", got.SpinningLineID, lineID)
+	}
+	if got.SpinningPosition != 4 {
+		t.Errorf("SpinningPosition = %d, want 4", got.SpinningPosition)
+	}
+	// 父批次须按 lot_number 解引用到 Center 自己那一行（两库 ID 不同）。
+	centerLot, err := centerClient.Lot.Query().Where(lot.LotNumberEQ("LOT-SEAM-1")).Only(ctx)
+	if err != nil {
+		t.Fatalf("center lot not found: %v", err)
+	}
+	if got.LotID != centerLot.ID {
+		t.Errorf("LotID = %v, want %v（应按 lot_number 解引用到 Center 的批次行，而非 Edge 本地 UUID %v）",
+			got.LotID, centerLot.ID, lotRow.ID)
+	}
+
+	// 取消路径同样会漏 cancel_reason，一并走真实链路验证。
+	cancelRow, err := edgeClient.Doffing.Create().
+		SetSpinningLineID(uuid.New()).
+		SetSpinningPosition(5).
+		SetLotID(lotRow.ID).
+		SetStatus(doffing.StatusCancelled).
+		SetCancelReason("断丝").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create cancelled doffing: %v", err)
+	}
+	entries2, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending (2): %v", err)
+	}
+	resp2, err := center.NewUploadHandler(centerClient).HandleUpload(ctx, &models.UploadRequest{
+		EdgeID:  edgeRow.ID.String(),
+		Entries: entries2,
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload (2): %v", err)
+	}
+	if resp2.Applied != len(entries2) || resp2.Rejected != 0 {
+		t.Fatalf("second: applied=%d rejected=%d; errors=%v", resp2.Applied, resp2.Rejected, resp2.Errors)
+	}
+	cancelled, err := centerClient.Doffing.Get(ctx, cancelRow.ID)
+	if err != nil {
+		t.Fatalf("get cancelled doffing: %v", err)
+	}
+	if cancelled.CancelReason != "断丝" {
+		t.Errorf("CancelReason = %q, want %q（采集器漏发 cancel_reason 即空串）",
+			cancelled.CancelReason, "断丝")
+	}
+}
+
+// 契约测试的负向面：未确认的落纱不得把可选字段写成零值。
+//
+// Center 的 getXPtr 是「键存在即取指针」，若采集器无条件带上 actual_weight /
+// bobbin_number 等，Center 会把「尚未确认」写成「确认了但重量 0 / 编号空」——
+// 这正是 Task 3 为丝饼 grade/tare_weight 立下的规则要防的情况。
+func TestDoffingPayload_PendingDoffingOmitsOptionalKeys(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotRow, err := client.Lot.Create().
+		SetLotNumber("LOT-SEAM-PENDING").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+	if _, err := client.Doffing.Create().
+		SetSpinningLineID(uuid.New()).
+		SetSpinningPosition(1).
+		SetLotID(lotRow.ID).
+		SetStatus(doffing.StatusPending).
+		Save(ctx); err != nil {
+		t.Fatalf("create doffing: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	var doffingEntry *models.UploadEntry
+	for i := range entries {
+		if entries[i].Table == "doffings" {
+			doffingEntry = &entries[i]
+		}
+	}
+	if doffingEntry == nil {
+		t.Fatal("未收集到 doffings")
+	}
+
+	for _, key := range []string{"bobbin_number", "actual_weight", "grade", "cancel_reason", "confirmed_at"} {
+		if _, present := doffingEntry.Data[key]; present {
+			t.Errorf("未确认的落纱不应带 %q（Center 会把零值当成真值写入）", key)
+		}
+	}
+	// 非 Optional 的 doffing_time 仍应带上（Edge 侧恒有值）。
+	if _, present := doffingEntry.Data["doffing_time"]; !present {
+		t.Error("载荷缺少 doffing_time")
 	}
 }

@@ -139,7 +139,7 @@ func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEn
 	case "bobbins":
 		return h.upsertBobbin(ctx, entry, edgeID)
 	case "doffings":
-		return h.upsertDoffing(ctx, entry, edgeID)
+		return h.upsertDoffing(ctx, entry)
 	default:
 		return fmt.Errorf("unknown table: %s", entry.Table)
 	}
@@ -425,7 +425,10 @@ func (h *UploadHandler) updateBobbinRow(ctx context.Context, row *ent.Bobbin, da
 //
 // 状态流转（pending → confirmed → cancelled）走同一行的更新，
 // 故每次状态变更重传都应命中原行。
-func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
+//
+// 不带 edgeID 参数：doffings 表没有 edge_id 列（来源设备经 lot 外键传递），
+// 与 upsertBobbin 同 —— 那里为对齐调用链签名而保留该参数，此处径行去掉。
+func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadEntry) error {
 	data := entry.Data
 
 	id, err := uuid.Parse(getString(data, "id"))
