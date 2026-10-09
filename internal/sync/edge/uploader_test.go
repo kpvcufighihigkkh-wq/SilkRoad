@@ -974,3 +974,175 @@ func TestDoffingPayload_PendingDoffingOmitsOptionalKeys(t *testing.T) {
 		t.Error("载荷缺少 doffing_time")
 	}
 }
+
+// 契约测试：BobbinGrade 的真实采集器 → 真实 HandleUpload。
+//
+// 与 TestDoffingPayload_ReachesCenterThroughRealSeam 同源的理由：
+// 所有既有同步用例都手工构造载荷，于是「采集器发出的键」与「Center 读取的键」
+// 不一致时整个套件不会有任何测试变红 —— 这个缺陷已经两次溜过（Task 3 的
+// 丝饼 grade/tare_weight、Task 6 的落纱状态流转字段）。BobbinGrade 是
+// 本轮新接入的表，必须由真实链路背书：造数据 → collectBobbinGrades（经
+// CollectPending）→ center.HandleUpload → 断言质检明细落到 Center。
+//
+// **必须用两个独立的库**（edgeClient / centerClient）。若共用一个 client，
+// Center 的写入是 upsert 且可选字段走 SetNillable（键缺席即 no-op），
+// 于是「Center 行 == Edge 行」时漏发的键会被既有值悄悄顶住，测试即便采集器
+// 漏字段也照绿 —— 那是假绿。生产中两端是两个库，两库才还原这个事实。
+func TestBobbinGradePayload_ReachesCenterThroughRealSeam(t *testing.T) {
+	edgeClient := setupEdgeClient(t)
+	centerClient := setupEdgeClient(t) // 独立的 Center 库
+	ctx := context.Background()
+
+	// Edge 侧：一个批次 + 一条丝饼 + 两条质检记录（其中一条带缺陷与质检员）。
+	lotRow, err := edgeClient.Lot.Create().
+		SetLotNumber("LOT-GRADE-SEAM-1").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+	bobbinRow, err := edgeClient.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-GRADE-SEAM-1").
+		SetLotID(lotRow.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create bobbin: %v", err)
+	}
+
+	inspectorID := uuid.New()
+	inspectedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
+	gradeRow, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("B").
+		SetIsQualified(false).
+		SetInspectorID(inspectorID).
+		SetDefectReason("断丝").
+		SetInspectedAt(inspectedAt).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create bobbin grade: %v", err)
+	}
+
+	// 同一丝饼的第二次质检（只增历史）
+	gradeRow2, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("A").
+		SetIsQualified(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create second bobbin grade: %v", err)
+	}
+
+	// EdgeID 必须是 Center 侧已存在的设备行 UUID（Edge 与 Center 的设备行是两套记录），
+	// 否则该批 lots 的 edge_id 外键会失败。
+	edgeRow, err := centerClient.Edge.Create().
+		SetEdgeCode("edge-grade-seam").
+		SetEdgeName("质检契约测试设备").
+		SetIPAddress("192.168.9.2").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create edge: %v", err)
+	}
+
+	// 真实采集：CollectPending 会把 lots / bobbins / bobbin_grades 一并发出。
+	u := edge.NewUploader(edgeClient, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	collectedGrades := 0
+	for _, e := range entries {
+		if e.Table == "bobbin_grades" {
+			collectedGrades++
+			if _, present := e.Data["bobbin_number"]; !present {
+				t.Error("质检载荷缺少 bobbin_number（Center 靠它解引用父丝饼）")
+			}
+		}
+	}
+	if collectedGrades != 2 {
+		t.Fatalf("收集到 %d 条质检记录，want 2", collectedGrades)
+	}
+
+	// 真实落库到 Center 的库。整批提交，让 Center 自己按依赖排序
+	// （bobbin_grades 不在 entityDependencyOrder 中，排在已知表之后）。
+	resp, err := center.NewUploadHandler(centerClient).HandleUpload(ctx, &models.UploadRequest{
+		EdgeID:  edgeRow.ID.String(),
+		Entries: entries,
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != len(entries) || resp.Rejected != 0 {
+		t.Fatalf("applied=%d rejected=%d, want 全部应用（%d）; errors=%v",
+			resp.Applied, resp.Rejected, len(entries), resp.Errors)
+	}
+
+	// 两条质检都须落到 Center（只增历史，不合并）
+	centerGrades, err := centerClient.BobbinGrade.Query().All(ctx)
+	if err != nil {
+		t.Fatalf("query center bobbin grades: %v", err)
+	}
+	if len(centerGrades) != 2 {
+		t.Fatalf("Center 质检记录数 = %d, want 2（只增历史）", len(centerGrades))
+	}
+
+	// 父丝饼须按 bobbin_number 解引用到 Center 自己那一行（两库 ID 不同）
+	centerBobbin, err := centerClient.Bobbin.Query().
+		Where(bobbin.BobbinNumberEQ("BOBBIN-GRADE-SEAM-1")).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("center bobbin not found: %v", err)
+	}
+
+	// 逐条核对业务字段（漏发即零值，可证伪）
+	byID := map[uuid.UUID]*ent.BobbinGrade{}
+	for _, g := range centerGrades {
+		byID[g.ID] = g
+	}
+
+	got, ok := byID[gradeRow.ID]
+	if !ok {
+		t.Fatalf("Center 缺少质检记录 %s（采集器未发出该条）", gradeRow.ID)
+	}
+	if got.BobbinID != centerBobbin.ID {
+		t.Errorf("BobbinID = %v, want %v（应按 bobbin_number 解引用到 Center 的丝饼行，而非 Edge 本地 UUID %v）",
+			got.BobbinID, centerBobbin.ID, bobbinRow.ID)
+	}
+	if got.Grade != "B" {
+		t.Errorf("Grade = %q, want %q（漏发即空串）", got.Grade, "B")
+	}
+	if got.IsQualified {
+		t.Error("IsQualified = true, want false（漏发 is_qualified 会落成 schema 默认 true）")
+	}
+	if got.InspectorID != inspectorID {
+		t.Errorf("InspectorID = %v, want %v（漏发即 uuid.Nil）", got.InspectorID, inspectorID)
+	}
+	if got.DefectReason != "断丝" {
+		t.Errorf("DefectReason = %q, want %q（漏发即空串）", got.DefectReason, "断丝")
+	}
+	if got.InspectedAt.IsZero() {
+		t.Error("InspectedAt 为零值 —— 采集器漏发 inspected_at")
+	} else if !got.InspectedAt.UTC().Equal(inspectedAt.UTC()) {
+		t.Errorf("InspectedAt = %v, want %v", got.InspectedAt.UTC(), inspectedAt.UTC())
+	}
+
+	// 第二条（合格、无缺陷）须保持其自身取值，不被第一条污染
+	got2, ok := byID[gradeRow2.ID]
+	if !ok {
+		t.Fatalf("Center 缺少第二条质检记录 %s", gradeRow2.ID)
+	}
+	if got2.Grade != "A" {
+		t.Errorf("第二条 Grade = %q, want %q", got2.Grade, "A")
+	}
+	if !got2.IsQualified {
+		t.Error("第二条 IsQualified = false, want true")
+	}
+	if got2.BobbinID != centerBobbin.ID {
+		t.Errorf("第二条 BobbinID = %v, want %v", got2.BobbinID, centerBobbin.ID)
+	}
+}

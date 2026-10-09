@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
-	"github.com/google/uuid"
 )
 
 // BobbinService 丝锭服务
@@ -213,9 +213,9 @@ type WeighBobbinRequest struct {
 
 // InspectBobbinRequest 丝锭质检请求
 type InspectBobbinRequest struct {
-	Grade        string `json:"grade" binding:"required"`
-	InspectorID  string `json:"inspector_id"`
-	DefectNote   string `json:"defect_note"`
+	Grade       string `json:"grade" binding:"required"`
+	InspectorID string `json:"inspector_id"`
+	DefectNote  string `json:"defect_note"`
 }
 
 // WeighBobbin 丝锭称重
@@ -261,15 +261,36 @@ func (s *BobbinService) InspectBobbin(ctx context.Context, id string, req *Inspe
 		return err
 	}
 
-	builder := b.Update().SetGrade(req.Grade)
-
-	// 如果质检不合格，可以添加缺陷备注
+	// 质检员与缺陷原因是可选字段：空串时传 nil，让列保持 NULL。
+	var inspectorID *uuid.UUID
+	if req.InspectorID != "" {
+		parsed, err := uuid.Parse(req.InspectorID)
+		if err != nil {
+			return &ServiceError{Code: 10001, Message: "无效的质检员ID"}
+		}
+		inspectorID = &parsed
+	}
+	var defectReason *string
 	if req.DefectNote != "" {
-		// TODO: 需要在schema中添加defect_note字段
-		// builder.SetDefectNote(req.DefectNote)
+		defectReason = &req.DefectNote
 	}
 
-	return builder.Exec(ctx)
+	if err := b.Update().SetGrade(req.Grade).Exec(ctx); err != nil {
+		return err
+	}
+
+	// 保留完整质检历史（每次质检新增一条），同时把最新等级同步到 bobbin.grade。
+	// 不覆盖历史：缺陷原因、评分等在现场只产生一次，丢失即不可恢复。
+	if _, err := s.client.BobbinGrade.Create().
+		SetBobbinID(bobbinID).
+		SetGrade(req.Grade).
+		SetNillableInspectorID(inspectorID).
+		SetNillableDefectReason(defectReason).
+		Save(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // abs 返回浮点数的绝对值

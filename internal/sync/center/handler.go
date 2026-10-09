@@ -7,12 +7,13 @@ import (
 	"sort"
 	"time"
 
-	"github.com/yourusername/igh-silkroad/internal/database/ent"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
-	"github.com/yourusername/igh-silkroad/internal/sync/models"
 	"github.com/google/uuid"
+	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
 
 // entityDependencyOrder 定义上传实体的依赖顺序。
@@ -140,6 +141,8 @@ func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEn
 		return h.upsertBobbin(ctx, entry, edgeID)
 	case "doffings":
 		return h.upsertDoffing(ctx, entry)
+	case "bobbin_grades":
+		return h.upsertBobbinGrade(ctx, entry)
 	default:
 		return fmt.Errorf("unknown table: %s", entry.Table)
 	}
@@ -486,6 +489,88 @@ func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadE
 	}
 	log.Printf("🔁 Updated doffing: %s", id)
 	return nil
+}
+
+// upsertBobbinGrade 插入质检记录（只增不改）。
+//
+// 质检明细是历史事实，重传同一条不应覆盖已有的结论，故存在即视为已处理。
+//
+// Center 侧不采信载荷的 bobbin_id 直接落库，而是按 bobbin_number 找到
+// 本地丝饼行 —— 与 lot 同理，两端 UUID 不同。
+//
+// 不带 edgeID 参数：bobbin_grades 表没有 edge_id 列，与 upsertDoffing 同。
+func (h *UploadHandler) upsertBobbinGrade(ctx context.Context, entry *models.UploadEntry) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+
+	exists, err := h.client.BobbinGrade.Query().Where(bobbingrade.IDEQ(id)).Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		// 只增语义：同 ID 重传视为已处理，不更新（质检结论不应被覆盖）
+		return nil
+	}
+
+	bobbinNumber := getString(data, "bobbin_number")
+	if bobbinNumber == "" {
+		return fmt.Errorf("missing bobbin_number for entry %s（无法定位质检对象）", id)
+	}
+	parent, err := h.client.Bobbin.Query().Where(bobbin.BobbinNumberEQ(bobbinNumber)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			// 父丝饼尚未到达：让本条目计重试，等丝饼上传后再挂载。
+			return fmt.Errorf("parent bobbin %q not found: %w", bobbinNumber, err)
+		}
+		return err
+	}
+
+	// inspector_id 是 UUID 列且可选：载荷带该键时必须是合法 UUID，
+	// 解析失败按无效参数拒绝该条（不静默丢弃质检员）。
+	var inspectorID *uuid.UUID
+	if raw := getString(data, "inspector_id"); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("invalid inspector_id %q: %w", raw, err)
+		}
+		inspectorID = &parsed
+	}
+
+	// inspected_at 非 Optional（schema 内 Default(time.Now)），用 SetInspectedAt；
+	// 键缺席时以当前时间兜底（Center 无法回溯 Edge 的质检时刻）。
+	_, err = h.client.BobbinGrade.Create().
+		SetID(id).
+		SetBobbinID(parent.ID).
+		SetGrade(getString(data, "grade")).
+		SetIsQualified(getBool(data, "is_qualified")).
+		SetNillableInspectorID(inspectorID).
+		SetNillableDefectReason(getStringPtr(data, "defect_reason")).
+		SetInspectedAt(getTimeOrNow(data, "inspected_at")).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("create bobbin grade: %w", err)
+	}
+	return nil
+}
+
+// getTimeOrNow 读取时间字段；缺失或无法解析时返回当前时间。
+// 供非 Optional 的时间列使用（如 BobbinGrade.inspected_at）。
+func getTimeOrNow(m map[string]interface{}, key string) time.Time {
+	if v, ok := m[key]; ok {
+		switch t := v.(type) {
+		case time.Time:
+			return t
+		case string:
+			if parsed, err := time.Parse(time.RFC3339, t); err == nil {
+				return parsed
+			}
+		}
+	}
+	return time.Now()
 }
 
 // handleUpdate 处理更新操作

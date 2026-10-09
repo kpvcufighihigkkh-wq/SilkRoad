@@ -205,6 +205,30 @@ func TestUploader_MarksEveryMarkableTable(t *testing.T) {
 				return string(row.SyncStatus), row.SyncRetryCount
 			},
 		},
+		{
+			// bobbin_grades 无外键（BobbinGrade.Edges() 为 nil），bobbin_id
+			// 直接给一个 UUID 即可，无需先造父丝饼。
+			table: "bobbin_grades",
+			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
+				t.Helper()
+				row, err := client.BobbinGrade.Create().
+					SetBobbinID(uuid.New()).
+					SetGrade("A").
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed bobbin grade: %v", err)
+				}
+				return row.ID
+			},
+			check: func(t *testing.T, client *ent.Client, ctx context.Context, id uuid.UUID) (string, int) {
+				t.Helper()
+				row, err := client.BobbinGrade.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload bobbin grade: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -253,13 +277,13 @@ func TestUploader_MarksEveryMarkableTable(t *testing.T) {
 	}
 }
 
-// markExhausted 必须覆盖全部四张表：重试超限的 pending 行要翻成 failed，
+// markExhausted 必须覆盖全部五张表：重试超限的 pending 行要翻成 failed，
 // 否则会永远停留在 pending 且不被采集，成为不可见的积压。
 func TestUploader_MarkExhausted_CoversEveryMarkableTable(t *testing.T) {
 	client := newInternalEdgeClient(t)
 	ctx := context.Background()
 
-	// 四张表各造一条已达上限的 pending 记录
+	// 五张表各造一条已达上限的 pending 记录
 	lotRow, err := client.Lot.Create().
 		SetLotNumber("LOT-EXHAUST-MARK").
 		SetProductType("FDY").
@@ -301,6 +325,16 @@ func TestUploader_MarkExhausted_CoversEveryMarkableTable(t *testing.T) {
 		t.Fatalf("seed bobbin: %v", err)
 	}
 
+	// BobbinGrade 无外键（BobbinGrade.Edges() 为 nil），直接给 UUID 即可
+	gradeRow, err := client.BobbinGrade.Create().
+		SetBobbinID(uuid.New()).
+		SetGrade("A").
+		SetSyncRetryCount(maxRetryCount).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed bobbin grade: %v", err)
+	}
+
 	u := NewUploader(client, "edge-001", "http://center:8080", "test-token")
 	if err := u.markExhausted(ctx); err != nil {
 		t.Fatalf("markExhausted failed: %v", err)
@@ -328,6 +362,12 @@ func TestUploader_MarkExhausted_CoversEveryMarkableTable(t *testing.T) {
 		t.Fatalf("reload bobbin: %v", err)
 	} else if row.SyncStatus != "failed" {
 		t.Errorf("bobbins SyncStatus = %q, want failed", row.SyncStatus)
+	}
+
+	if row, err := client.BobbinGrade.Get(ctx, gradeRow.ID); err != nil {
+		t.Fatalf("reload bobbin grade: %v", err)
+	} else if row.SyncStatus != "failed" {
+		t.Errorf("bobbin_grades SyncStatus = %q, want failed", row.SyncStatus)
 	}
 }
 

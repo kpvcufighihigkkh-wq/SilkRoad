@@ -18,6 +18,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
@@ -38,7 +39,7 @@ const (
 // 但历史上（或人工修补后）已存在的 pending 行仍需被正确标记 ——
 // 尤其是 markExhausted 要把重试超限的行翻成 failed，否则它们会
 // 永远停留在 pending 且不被采集，成为不可见的积压。
-var markableTables = []string{"lots", "doffings", "barrels", "bobbins"}
+var markableTables = []string{"lots", "doffings", "barrels", "bobbins", "bobbin_grades"}
 
 // uploadableEntity 一个可上传实体：表名与采集函数
 type uploadableEntity struct {
@@ -77,8 +78,8 @@ func NewUploader(client *ent.Client, edgeID, centerURL, token string) *Uploader 
 
 // collectors 返回启用采集的实体，顺序即外键依赖顺序：被引用者先上传。
 //
-// 只采集 Center 的 handleCreate（center/handler.go:134-143）真正接受的表：
-// 目前是 lots、doffings 与 bobbins。
+// 只采集 Center 的 handleCreate（center/handler.go）真正接受的表：
+// 目前是 lots、doffings、bobbins 与 bobbin_grades。
 //
 // 不在此列表中的表不会被采集，因而其记录保持 pending 且 retry_count 不变 ——
 // 这是「延后」而非「丢弃」，等 Center 支持后加上来即可同步。
@@ -87,6 +88,7 @@ func NewUploader(client *ent.Client, edgeID, centerURL, token string) *Uploader 
 //
 // 重新加入的条件（两者都必须满足）：
 //   - doffings：Center 的 handleCreate 已增加 "doffings" 分支 —— 已满足，故已加入
+//   - bobbin_grades：Center 的 handleCreate 已增加 "bobbin_grades" 分支 —— 已满足，故已加入
 //   - barrels：Center 的 handleCreate 增加 "barrels" 分支 —— 仍未满足
 //
 // barrels 仍不得加回本列表。
@@ -95,6 +97,8 @@ func (u *Uploader) collectors() []uploadableEntity {
 		{table: "lots", collect: u.collectLots},
 		{table: "doffings", collect: u.collectDoffings}, // Center 已实现接收
 		{table: "bobbins", collect: u.BobbinQuery},
+		// 放在 bobbins 之后：bobbin_grades.bobbin_id 引用丝饼，父先子后。
+		{table: "bobbin_grades", collect: u.collectBobbinGrades},
 	}
 }
 
@@ -251,6 +255,96 @@ func (u *Uploader) lotNumbersFor(ctx context.Context, ids []uuid.UUID) (map[uuid
 	}
 	for _, l := range lots {
 		out[l.ID] = l.LotNumber
+	}
+	return out, nil
+}
+
+// collectBobbinGrades 查询待同步质检记录。
+//
+// 质检记录只增不改（每次质检新增一条），故上传语义天然是 create，
+// 无需 upsert 与字段认领。
+//
+// 载荷必须带 bobbin_number：BobbinGrade 本地表没有该字段，它是 Edge 侧为让
+// Center 定位父丝饼行而附加的（与 lot 同理，两端 UUID 不同）。
+func (u *Uploader) collectBobbinGrades(ctx context.Context, limit int) ([]models.UploadEntry, error) {
+	rows, err := u.client.BobbinGrade.Query().
+		Where(
+			bobbingrade.SyncStatusEQ(bobbingrade.SyncStatusPending),
+			bobbingrade.SyncRetryCountLT(maxRetryCount),
+		).
+		Order(ent.Asc(bobbingrade.FieldCreatedAt)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query bobbin_grades: %w", err)
+	}
+
+	// 收集本批涉及的丝饼 ID，批量查出业务编号（载荷里不能没有它）
+	parentIDs := make([]uuid.UUID, 0, len(rows))
+	for _, r := range rows {
+		parentIDs = append(parentIDs, r.BobbinID)
+	}
+	bobbinNumbers, err := u.bobbinNumbersFor(ctx, parentIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]models.UploadEntry, 0, len(rows))
+	for _, r := range rows {
+		data := map[string]interface{}{
+			"id":            r.ID.String(),
+			"bobbin_id":     r.BobbinID.String(),
+			"bobbin_number": bobbinNumbers[r.BobbinID],
+			"grade":         r.Grade,
+			"is_qualified":  r.IsQualified,
+			// inspected_at 在 schema 中非 Optional（Default(time.Now)），
+			// Edge 侧恒有值，无条件带上。
+			"inspected_at": r.InspectedAt,
+		}
+		// 可选字段只在有值时才进载荷：Center 的 getStringPtr 是「键存在即取
+		// 指针」，键在而值为空串时 Center 会照写空串，把「未指定」写成
+		// 「指定了空值」。
+		if r.InspectorID != uuid.Nil {
+			data["inspector_id"] = r.InspectorID.String()
+		}
+		if r.DefectReason != "" {
+			data["defect_reason"] = r.DefectReason
+		}
+		out = append(out, models.UploadEntry{
+			Table:     "bobbin_grades",
+			Operation: "create",
+			ID:        r.ID,
+			Data:      data,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+	return out, nil
+}
+
+// bobbinNumbersFor 批量查出给定丝饼的业务编号。
+// BobbinGrade 本地表没有 bobbin_number 字段，Center 需要它来定位父丝饼行
+// （两端 UUID 不同，与 lot 同理）。查不到的丝饼返回空串，由 Center 拒绝该条
+// 并计重试 —— 不在此静默跳过。
+func (u *Uploader) bobbinNumbersFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	uniq := make(map[uuid.UUID]struct{}, len(ids))
+	list := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		list = append(list, id)
+	}
+	out := make(map[uuid.UUID]string, len(list))
+	if len(list) == 0 {
+		return out, nil
+	}
+	rows, err := u.client.Bobbin.Query().Where(bobbin.IDIn(list...)).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query parent bobbins: %w", err)
+	}
+	for _, r := range rows {
+		out[r.ID] = r.BobbinNumber
 	}
 	return out, nil
 }
@@ -685,6 +779,12 @@ func (u *Uploader) markSynced(ctx context.Context, byTable map[string][]uuid.UUI
 				SetSyncStatus(bobbin.SyncStatusSynced).
 				SetSyncedAt(now).
 				Exec(ctx)
+		case "bobbin_grades":
+			return u.client.BobbinGrade.Update().
+				Where(bobbingrade.IDIn(ids...)).
+				SetSyncStatus(bobbingrade.SyncStatusSynced).
+				SetSyncedAt(now).
+				Exec(ctx)
 		}
 		return nil
 	})
@@ -705,6 +805,8 @@ func (u *Uploader) markRetried(ctx context.Context, byTable map[string][]uuid.UU
 			return u.client.Barrel.Update().Where(barrel.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
 		case "bobbins":
 			return u.client.Bobbin.Update().Where(bobbin.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
+		case "bobbin_grades":
+			return u.client.BobbinGrade.Update().Where(bobbingrade.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
 		}
 		return nil
 	})
@@ -719,7 +821,7 @@ func (u *Uploader) markRetried(ctx context.Context, byTable map[string][]uuid.UU
 // markExhausted 把重试超限的 pending 记录标记为 failed，
 // 避免它们被无限次重新收集。
 //
-// 覆盖 markableTables 中的全部四张表（而非仅当前被采集的两张）：不被采集的表
+// 覆盖 markableTables 中的全部五张表（而非仅当前被采集的几张）：不被采集的表
 // 其 retry_count 不会增长，但历史上（或人工写入）已达上限的行仍需被翻成 failed，
 // 否则会永远停在 pending 且无人可见。
 func (u *Uploader) markExhausted(ctx context.Context) error {
@@ -759,6 +861,16 @@ func (u *Uploader) markExhausted(ctx context.Context) error {
 			bobbin.SyncStatusEQ(bobbin.SyncStatusPending),
 		).
 		SetSyncStatus(bobbin.SyncStatusFailed).
+		Save(ctx); err != nil {
+		return err
+	}
+
+	if _, err := u.client.BobbinGrade.Update().
+		Where(
+			bobbingrade.SyncRetryCountGTE(maxRetryCount),
+			bobbingrade.SyncStatusEQ(bobbingrade.SyncStatusPending),
+		).
+		SetSyncStatus(bobbingrade.SyncStatusFailed).
 		Save(ctx); err != nil {
 		return err
 	}

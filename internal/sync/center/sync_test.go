@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
@@ -1263,5 +1264,232 @@ func TestUpsertDoffing_SecondUploadUpdatesStatus(t *testing.T) {
 	}
 	if string(got.Status) != "cancelled" {
 		t.Errorf("Status = %q, want %q", got.Status, "cancelled")
+	}
+}
+
+// 质检记录落库：按 bobbin_number 解引用父丝饼（不采信载荷的 bobbin_id）。
+func TestUpsertBobbinGrade_PersistsWithDereferencedBobbin(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BG-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+	centerBobbin, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-BG-1").
+		SetLotID(centerLot.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed bobbin: %v", err)
+	}
+
+	gradeID := uuid.New()
+	inspectorID := uuid.New()
+	inspectedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
+
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbin_grades", Operation: "create", ID: gradeID,
+			Data: map[string]interface{}{
+				"id":            gradeID.String(),
+				"bobbin_id":     uuid.New().String(), // 陷阱：Edge 本地 UUID，必须忽略
+				"bobbin_number": "BOBBIN-BG-1",
+				"grade":         "B",
+				"is_qualified":  false,
+				"inspector_id":  inspectorID.String(),
+				"defect_reason": "断丝",
+				"inspected_at":  inspectedAt,
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.BobbinGrade.Get(ctx, gradeID)
+	if err != nil {
+		t.Fatalf("get bobbin grade: %v", err)
+	}
+	if got.BobbinID != centerBobbin.ID {
+		t.Errorf("BobbinID = %v, want %v（应按 bobbin_number 解引用）", got.BobbinID, centerBobbin.ID)
+	}
+	if got.Grade != "B" {
+		t.Errorf("Grade = %q, want %q", got.Grade, "B")
+	}
+	if got.IsQualified {
+		t.Error("IsQualified = true, want false")
+	}
+	if got.InspectorID != inspectorID {
+		t.Errorf("InspectorID = %v, want %v", got.InspectorID, inspectorID)
+	}
+	if got.DefectReason != "断丝" {
+		t.Errorf("DefectReason = %q, want %q", got.DefectReason, "断丝")
+	}
+	if !got.InspectedAt.UTC().Equal(inspectedAt.UTC()) {
+		t.Errorf("InspectedAt = %v, want %v", got.InspectedAt.UTC(), inspectedAt.UTC())
+	}
+}
+
+// 质检只增不改：同 ID 重传不得新建第二行，也不得覆盖既有结论。
+func TestUpsertBobbinGrade_RepublishDoesNotOverwrite(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BG-2").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-BG-2").
+		SetLotID(centerLot.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx); err != nil {
+		t.Fatalf("seed bobbin: %v", err)
+	}
+
+	gradeID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	mk := func(grade string) *models.UploadRequest {
+		return &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "bobbin_grades", Operation: "create", ID: gradeID,
+				Data: map[string]interface{}{
+					"id":            gradeID.String(),
+					"bobbin_number": "BOBBIN-BG-2",
+					"grade":         grade,
+					"is_qualified":  true,
+					"inspected_at":  time.Now(),
+				},
+			}},
+		}
+	}
+
+	if _, err := handler.HandleUpload(ctx, mk("B")); err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	if _, err := handler.HandleUpload(ctx, mk("A")); err != nil {
+		t.Fatalf("second: %v", err)
+	}
+
+	n, err := client.BobbinGrade.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("质检行数 = %d, want 1（同 ID 重传不得新建）", n)
+	}
+	got, err := client.BobbinGrade.Get(ctx, gradeID)
+	if err != nil {
+		t.Fatalf("get bobbin grade: %v", err)
+	}
+	if got.Grade != "B" {
+		t.Errorf("Grade = %q, want %q（首次结论不得被重传覆盖）", got.Grade, "B")
+	}
+}
+
+// 父丝饼未到达：该条必须被拒并计重试，而不是写入空外键。
+func TestUpsertBobbinGrade_MissingParentRejected(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	gradeID := uuid.New()
+	resp, err := center.NewUploadHandler(client).HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbin_grades", Operation: "create", ID: gradeID,
+			Data: map[string]interface{}{
+				"id":            gradeID.String(),
+				"bobbin_number": "BOBBIN-NOT-YET",
+				"grade":         "A",
+				"is_qualified":  true,
+				"inspected_at":  time.Now(),
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Rejected != 1 || resp.Applied != 0 {
+		t.Fatalf("applied=%d rejected=%d, want 0/1（父行未到应计重试）", resp.Applied, resp.Rejected)
+	}
+	if n, err := client.BobbinGrade.Query().Count(ctx); err != nil {
+		t.Fatalf("count: %v", err)
+	} else if n != 0 {
+		t.Errorf("质检行数 = %d, want 0（不得写入无父行的记录）", n)
+	}
+}
+
+// inspector_id 是 UUID 列：载荷带非法值时必须拒绝该条，而不是静默丢弃质检员。
+func TestUpsertBobbinGrade_InvalidInspectorIDRejected(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BG-3").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-BG-3").
+		SetLotID(centerLot.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx); err != nil {
+		t.Fatalf("seed bobbin: %v", err)
+	}
+
+	gradeID := uuid.New()
+	resp, err := center.NewUploadHandler(client).HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbin_grades", Operation: "create", ID: gradeID,
+			Data: map[string]interface{}{
+				"id":            gradeID.String(),
+				"bobbin_number": "BOBBIN-BG-3",
+				"grade":         "A",
+				"is_qualified":  true,
+				"inspector_id":  "not-a-uuid",
+				"inspected_at":  time.Now(),
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Rejected != 1 || resp.Applied != 0 {
+		t.Fatalf("applied=%d rejected=%d, want 0/1（非法 inspector_id 应被拒）", resp.Applied, resp.Rejected)
+	}
+	if n, err := client.BobbinGrade.Query().Count(ctx); err != nil {
+		t.Fatalf("count: %v", err)
+	} else if n != 0 {
+		t.Errorf("质检行数 = %d, want 0（不得静默丢弃 inspector_id 后落库）", n)
 	}
 }
