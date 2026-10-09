@@ -1,8 +1,10 @@
 package schema_test
 
 import (
+	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 )
 
@@ -39,3 +41,31 @@ func TestBobbinGrade_SyncRetryCountValidatorGuardsNonNegative(t *testing.T) {
 	}
 }
 
+// 负值必须无法落库 —— 这是对写入路径的验证，而非只验证守卫函数本身。
+//
+// 上一条用例只证明「守卫函数会拒绝 -1」；若写入路径根本没接上校验器，
+// 它照样全绿。这里真正执行 Save，证明负值在落库前被拦下。
+// 用 SetSyncRetryCount 而非 AddSyncRetryCount —— 后者是 additive mutation，
+// 不经编辑校验器。
+func TestBobbinGrade_NegativeSyncRetryCountRejectedOnSave(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+
+	_, err := client.BobbinGrade.Create().
+		SetBobbinID(uuid.New()).
+		SetGrade("A").
+		SetSyncRetryCount(-1).
+		Save(ctx)
+	if err == nil {
+		t.Fatal("SetSyncRetryCount(-1).Save() = nil, want error（负值不得落库）")
+	}
+
+	// 确认库里确实没有写入该行（而非只是报错后仍落库）
+	n, cerr := client.BobbinGrade.Query().Count(ctx)
+	if cerr != nil {
+		t.Fatalf("count: %v", cerr)
+	}
+	if n != 0 {
+		t.Errorf("质检行数 = %d, want 0（被拒的写入不得落库）", n)
+	}
+}

@@ -231,6 +231,24 @@ func TestUploader_MarksEveryMarkableTable(t *testing.T) {
 		},
 	}
 
+	// cases 必须与 markableTables 同集：否则下一个新增表只改白名单、
+	// 不加用例时，测试照绿 —— forEachTable 会静默跳过没有 case 的表，
+	// 这正是本用例要堵的洞换个形态重现。
+	// 本文件与 markableTables 同在 package edge，可直接引用。
+	if len(cases) != len(markableTables) {
+		t.Fatalf("表驱动用例数 = %d, markableTables = %d（两者必须同集）",
+			len(cases), len(markableTables))
+	}
+	covered := make(map[string]bool, len(cases))
+	for _, tc := range cases {
+		covered[tc.table] = true
+	}
+	for _, table := range markableTables {
+		if !covered[table] {
+			t.Errorf("markableTables 中的 %q 没有对应的表驱动用例", table)
+		}
+	}
+
 	for _, tc := range cases {
 		t.Run(tc.table+"/synced", func(t *testing.T) {
 			client := newInternalEdgeClient(t)

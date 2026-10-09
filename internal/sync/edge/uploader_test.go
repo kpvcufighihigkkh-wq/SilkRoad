@@ -1059,8 +1059,11 @@ func TestBobbinGradePayload_ReachesCenterThroughRealSeam(t *testing.T) {
 	for _, e := range entries {
 		if e.Table == "bobbin_grades" {
 			collectedGrades++
-			if _, present := e.Data["bobbin_number"]; !present {
-				t.Error("质检载荷缺少 bobbin_number（Center 靠它解引用父丝饼）")
+			// 断言值而非仅断言键存在：bobbinNumbersFor 查不到父行时返回空串，
+			// 键仍在，只查存在会漏掉这个缺陷。
+			if got := e.Data["bobbin_number"]; got != "BOBBIN-GRADE-SEAM-1" {
+				t.Errorf("质检载荷 bobbin_number = %v, want %q（Center 靠它解引用父丝饼）",
+					got, "BOBBIN-GRADE-SEAM-1")
 			}
 		}
 	}

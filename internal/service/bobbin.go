@@ -216,6 +216,12 @@ type InspectBobbinRequest struct {
 	Grade       string `json:"grade" binding:"required"`
 	InspectorID string `json:"inspector_id"`
 	DefectNote  string `json:"defect_note"`
+	// IsQualified 是现场陈述的合格性，可选。
+	//
+	// 用指针以区分「未提供」与「明确为 false」：未提供时该列落 schema
+	// 默认值 true（见 schema/bobbingrade.go 的 Default(true)）—— 合格线
+	// 是业务决策，不由本服务推断。
+	IsQualified *bool `json:"is_qualified"`
 }
 
 // WeighBobbin 丝锭称重
@@ -281,9 +287,13 @@ func (s *BobbinService) InspectBobbin(ctx context.Context, id string, req *Inspe
 
 	// 保留完整质检历史（每次质检新增一条），同时把最新等级同步到 bobbin.grade。
 	// 不覆盖历史：缺陷原因、评分等在现场只产生一次，丢失即不可恢复。
+	//
+	// is_qualified 用 Nillable 版本透传现场陈述：未提供（nil）时不写值，
+	// 该列落 schema 默认值 true。
 	if _, err := s.client.BobbinGrade.Create().
 		SetBobbinID(bobbinID).
 		SetGrade(req.Grade).
+		SetNillableIsQualified(req.IsQualified).
 		SetNillableInspectorID(inspectorID).
 		SetNillableDefectReason(defectReason).
 		Save(ctx); err != nil {
