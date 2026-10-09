@@ -123,9 +123,9 @@ func (s *EdgeServer) registerRoutes() {
 
 		doffing := authorized.Group("/doffing")
 		{
-			doffing.POST("", doffingHandler.CreateDoffing)           // 创建落纱操作
-			doffing.GET("", doffingHandler.ListDoffing)              // 查询落纱记录
-			doffing.GET("/:id", doffingHandler.GetDoffing)           // 获取落纱详情
+			doffing.POST("", doffingHandler.CreateDoffing)             // 创建落纱操作
+			doffing.GET("", doffingHandler.ListDoffing)                // 查询落纱记录
+			doffing.GET("/:id", doffingHandler.GetDoffing)             // 获取落纱详情
 			doffing.PUT("/:id/confirm", doffingHandler.ConfirmDoffing) // 确认落纱
 			doffing.PUT("/:id/cancel", doffingHandler.CancelDoffing)   // 取消落纱
 		}

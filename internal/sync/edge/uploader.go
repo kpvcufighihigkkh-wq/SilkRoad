@@ -153,8 +153,13 @@ func (u *Uploader) collectLots(ctx context.Context, limit int) ([]models.UploadE
 // lot_id（那是 Edge 本地 UUID，认领后可能与 Center 行不同）。
 //
 // 同时必须带上落纱的状态流转字段（bobbin_number / actual_weight / grade /
-// cancel_reason / confirmed_at / doffing_time）—— 这些是 ConfirmDoffing /
-// CancelDoffing 写下的业务数据，Center 的 upsertDoffing 会逐个读取。
+// cancel_reason / confirmed_at / doffing_time）—— 这些是落纱过程写下的业务数据，
+// Center 的 upsertDoffing 会逐个读取。其中 bobbin_number / actual_weight /
+// grade / cancel_reason / confirmed_at 由 ConfirmDoffing / CancelDoffing 写入；
+// doffing_time 则在 CreateDoffing 建行时就已写定（service/doffing.go 显式
+// SetDoffingTime(time.Now())，schema 内另有 Default(time.Now) 兜底），
+// 不是状态流转的产物。
+//
 // 只发 status 会让 Center 落下一排「已确认但无重量、无丝锭编号、无确认时间」
 // 的空壳行。
 func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.UploadEntry, error) {

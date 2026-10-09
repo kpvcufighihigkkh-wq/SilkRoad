@@ -542,11 +542,16 @@ func (h *UploadHandler) upsertBobbinGrade(ctx context.Context, entry *models.Upl
 
 	// inspected_at 非 Optional（schema 内 Default(time.Now)），用 SetInspectedAt；
 	// 键缺席时以当前时间兜底（Center 无法回溯 Edge 的质检时刻）。
+	//
+	// is_qualified 则必须区分「键缺席」与「明确为 false」：该列 schema 默认
+	// true，getBool 会把缺席读成 false，把每一枚未带该键的丝饼记成"质检不合格"
+	// —— 一个安全相关字段朝危险方向的默认值反转。改用 Nillable 版本透传：
+	// nil 时不写值，插入时落 schema 默认 true。
 	_, err = h.client.BobbinGrade.Create().
 		SetID(id).
 		SetBobbinID(parent.ID).
 		SetGrade(getString(data, "grade")).
-		SetIsQualified(getBool(data, "is_qualified")).
+		SetNillableIsQualified(getBoolPtr(data, "is_qualified")).
 		SetNillableInspectorID(inspectorID).
 		SetNillableDefectReason(getStringPtr(data, "defect_reason")).
 		SetInspectedAt(getTimeOrNow(data, "inspected_at")).
@@ -573,16 +578,20 @@ func getTimeOrNow(m map[string]interface{}, key string) time.Time {
 	return time.Now()
 }
 
-// handleUpdate 处理更新操作
+// handleUpdate 处理更新操作。
+//
+// 未实现，且必须显式报错而非静默返回 nil：HandleUpload 把 nil 计为 applied，
+// 返回 nil 会让一条 update 记录在"没写任何东西"的情况下被回报为已应用 ——
+// 正是本同步机制要消灭的那类失败。这里返回错误，让它落进 rejected 并带上
+// 可读原因。Edge 侧所有采集器当前都硬编码 Operation: "create"，所以本条
+// 路径在正常运行中不可达；这是为"将来有人发出 update"准备的显式拒绝。
 func (h *UploadHandler) handleUpdate(ctx context.Context, entry *models.UploadEntry) error {
-	// TODO: 实现更新逻辑
-	return nil
+	return fmt.Errorf("unsupported operation: %s", entry.Operation)
 }
 
-// handleDelete 处理删除操作
+// handleDelete 处理删除操作。理由同 handleUpdate：未实现即拒绝，不得假报成功。
 func (h *UploadHandler) handleDelete(ctx context.Context, entry *models.UploadEntry) error {
-	// TODO: 实现删除逻辑
-	return nil
+	return fmt.Errorf("unsupported operation: %s", entry.Operation)
 }
 
 // 辅助函数：从map中提取各种类型的值
@@ -644,6 +653,19 @@ func getBool(m map[string]interface{}, key string) bool {
 		}
 	}
 	return false
+}
+
+// getBoolPtr 读取布尔字段；键缺席或类型不符时返回 nil。
+//
+// 供 schema 内有非 false 默认值的布尔列使用：nil 交给 SetNillableXxx，
+// 插入时落 schema 默认值，而不是被 getBool 顶替成 false。
+func getBoolPtr(m map[string]interface{}, key string) *bool {
+	if v, ok := m[key]; ok {
+		if b, ok := v.(bool); ok {
+			return &b
+		}
+	}
+	return nil
 }
 
 func getTimePtr(m map[string]interface{}, key string) *time.Time {

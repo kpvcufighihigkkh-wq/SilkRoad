@@ -45,18 +45,14 @@ var syncOnlyFields = map[string]struct{}{
 // 挂在 Edge 侧的 ent.Client 上（client.Use(...)）。挂在 Center 侧没有意义：
 // Center 不采集任何数据。
 //
-// 只处理采集器认识的表。当前 collectors() 只含 lots / bobbins
-// （uploader.go:93-99），doffings 的采集函数 collectDoffings 已存在但**未接入**，
-// 要等 Center 的 handleCreate 支持 "doffings" 才能加回。
+// 只处理采集器认识的表。当前 collectors() 返回四张表 —— lots / doffings /
+// bobbins / bobbin_grades（uploader.go 的 collectors()），Center 侧四张表的
+// handleCreate 分支均已实现，四张都真正在采集之列，没有"提前就位"的悬空分支。
 //
-// 因此 doffings 的 setter 分支属于"提前就位"：它置的脏现在没有消费者，会停在
-// pending 不被上传。这不构成数据丢失 —— 记录仍在本地，且重试计数不会增长，
-// 不会触发 markExhausted 把它翻成 failed，等采集接入后即可正常上传。
-//
-// 反方向的危险才是要防的：**给采集器不认识的表**置 pending 会造出永远排不出去
+// 要防的危险是反方向的：**给采集器不认识的表**置 pending 会造出永远排不出去
 // 的积压 —— 采集器不取它、retry_count 恒为 0、markExhausted 也碰不到它，
-// 记录永久停在 pending 且无人可见。新增实体时必须同步扩展本函数与
-// collectors()，两边保持一致。
+// 记录永久停在 pending 且无人可见。这正是 barrel 被排除在本 hook 之外的原因。
+// 新增实体时必须同步扩展本函数与 collectors()，两边保持一致。
 func NewDirtyMarker() ent.Hook {
 	return func(next ent.Mutator) ent.Mutator {
 		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
@@ -96,13 +92,15 @@ func shouldMarkDirty(m ent.Mutation) bool {
 // 的行打回 failed。只置 pending 而不重置计数，会让一条计数已达上限的
 // 记录在编辑后立刻被打回 failed —— 编辑再次丢失。
 //
-// 类型 switch 覆盖 lots / bobbins / doffings 三张有业务写入的表。枚举常量在
-// 各自生成包中，不在 ent 根包（ent.BobbinSyncStatusPending 不存在）。
+// 类型 switch 覆盖有业务写入、且被 collectors() 采集的表：lots / doffings /
+// bobbins。枚举常量在各自生成包中，不在 ent 根包
+// （ent.BobbinSyncStatusPending 不存在）。
 //
-// 三张表的覆盖范围与 collectors() 当前的两张并不重合，这是有意的：doffings
-// 的分支先就位（见 NewDirtyMarker 的说明），而 barrel 虽然也在 markableTables
-// 里、却被本 switch 排除，因为它现在没有业务写入路径。新增实体时必须同时
-// 扩展本函数与 collectors()。
+// 与 collectors() 的唯一差集是 barrel：它虽在 markableTables 里（重置与
+// markExhausted 需要覆盖历史上遗留的 pending 行），却没有业务写入路径，
+// 因而不该被本 hook 置脏 —— 置了也会造出没有采集器去排的积压
+// （见 NewDirtyMarker 的说明）。TestDirtyMarker_DoesNotDirtyUncollectedTables
+// 钉住了这条不变量。新增实体时必须同时扩展本函数与 collectors()。
 func markDirty(m ent.Mutation) {
 	switch mm := m.(type) {
 	case *ent.LotMutation:

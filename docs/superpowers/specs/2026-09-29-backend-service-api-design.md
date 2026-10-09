@@ -325,9 +325,9 @@ GET    /v1/edges/:code/base-data         下发基础数据（增量）
 ### 5.2 Edge Server
 
 ```
-POST   /v1/doffings                      执行落纱操作
-GET    /v1/doffings                      本地落纱记录
-GET    /v1/doffings/:id                  落纱详情
+POST   /v1/doffing                       执行落纱操作
+GET    /v1/doffing                       本地落纱记录
+GET    /v1/doffing/:id                   落纱详情
 
 GET    /v1/lots                          本地批次列表
 GET    /v1/lots/current                  当前批次

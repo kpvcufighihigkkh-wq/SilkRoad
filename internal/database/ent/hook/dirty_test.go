@@ -12,6 +12,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/hook"
@@ -326,6 +327,92 @@ func TestDirtyMarker_CoversBobbinAndDoffing(t *testing.T) {
 			}
 			if retry != 3 {
 				t.Errorf("SyncRetryCount = %d, want 3（仅同步字段写入不得由 hook 改动）", retry)
+			}
+		})
+	}
+}
+
+// TestDirtyMarker_DoesNotDirtyUncollectedTables 反向绑定：不被 collectors()
+// 采集的表必须**不**被本 hook 置脏。
+//
+// 能置脏却没采集器的表会造出永远排不出去的积压 —— 采集器不取它、
+// retry_count 被钉在 0、markExhausted 也碰不到它，记录永久停在 pending 且
+// 无人可见（dirty.go 的 NewDirtyMarker 注释立下的原则）。barrels 正是这样的表：
+// 它在 markableTables 里（供重置与 markExhausted 覆盖历史遗留行），却没有任何
+// 业务写入路径，也不在 collectors() 之列。此前这条约束只活在一句注释里 ——
+// 给 markDirty 加一个 case *ent.BarrelMutation 分支，整个 hook 与 sync/edge
+// 套件仍是全绿。
+//
+// 不变量：markableTables 减去 collectors() 就是这个"不得置脏"集合，当前差集
+// 只有 barrels。该集合的权威定义在 internal/sync/edge/uploader.go（markableTables
+// 与 collectors()），跨包且未导出，本文件无法引用；新增可采集表时若要修改此处，
+// 请同步核对 uploader.go 并更新下面的表驱动用例。
+func TestDirtyMarker_DoesNotDirtyUncollectedTables(t *testing.T) {
+	ctx := context.Background()
+
+	// 差集当前只有一个成员；将来差集变化时在此补用例。
+	cases := []struct {
+		table string
+		// seed 建一条已同步（非 pending）的记录，便于观察是否被 hook 翻成 pending
+		seed func(t *testing.T, client *ent.Client)
+		// businessWrite 制造一次业务字段写入
+		businessWrite func(t *testing.T, client *ent.Client)
+		// readStatus 读回 sync_status
+		readStatus func(t *testing.T, client *ent.Client) string
+	}{
+		{
+			table: "barrels",
+			seed: func(t *testing.T, client *ent.Client) {
+				t.Helper()
+				if _, err := client.Barrel.Create().
+					SetBarrelNumber("BARREL-NOTDIRTY-1").
+					SetLotID(lotUUIDForDirtyTest(t, client)).
+					SetSyncStatus(barrel.SyncStatusSynced).
+					SetSyncedAt(time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)).
+					Save(ctx); err != nil {
+					t.Fatalf("seed barrel: %v", err)
+				}
+			},
+			businessWrite: func(t *testing.T, client *ent.Client) {
+				t.Helper()
+				// 业务字段：分拣完成
+				if err := client.Barrel.Update().
+					Where(barrel.BarrelNumberEQ("BARREL-NOTDIRTY-1")).
+					SetStatus(barrel.StatusSorted).
+					Exec(ctx); err != nil {
+					t.Fatalf("barrel business write: %v", err)
+				}
+			},
+			readStatus: func(t *testing.T, client *ent.Client) string {
+				t.Helper()
+				got, err := client.Barrel.Query().
+					Where(barrel.BarrelNumberEQ("BARREL-NOTDIRTY-1")).
+					Only(ctx)
+				if err != nil {
+					t.Fatalf("read barrel: %v", err)
+				}
+				return string(got.SyncStatus)
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.table+"/业务写入不置脏", func(t *testing.T) {
+			client := newDirtyClient(t)
+
+			tc.seed(t, client)
+			// 前置断言：种子值确实落库为 synced，否则后面的"未被置脏"无从谈起
+			if got := tc.readStatus(t, client); got != "synced" {
+				t.Fatalf("前置条件不成立：SyncStatus = %q, want %q", got, "synced")
+			}
+
+			tc.businessWrite(t, client)
+
+			if got := tc.readStatus(t, client); got != "synced" {
+				t.Errorf("%s 的业务写入被置脏了（SyncStatus = %q, want %q）—— "+
+					"该表不被 collectors() 采集，置脏会造出永远排不出去的积压；"+
+					"若确要开始采集它，请同时扩展 collectors() 并更新本用例",
+					tc.table, got, "synced")
 			}
 		})
 	}

@@ -3,6 +3,7 @@ package center_test
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 	"time"
 
@@ -1491,5 +1492,109 @@ func TestUpsertBobbinGrade_InvalidInspectorIDRejected(t *testing.T) {
 		t.Fatalf("count: %v", err)
 	} else if n != 0 {
 		t.Errorf("质检行数 = %d, want 0（不得静默丢弃 inspector_id 后落库）", n)
+	}
+}
+
+// 未实现的 update / delete 操作必须被**拒绝**，不得被计为 applied。
+//
+// applyEntry 把 "update"/"delete" 分派给两个仅有 // TODO 的处理函数；它们
+// 直接返回 nil 时，HandleUpload 的 `err == nil → applied++` 会让一条什么都没
+// 写入的记录被回报为「已应用」—— 与「身份被伪造」「桶被静默丢弃」同属一类
+// 失败：调用方看到成功，系统里却没有对应的数据。
+//
+// 当前 Edge 侧所有采集器都硬编码 Operation: "create"，本条路径正常运行时
+// 不可达；这个用例把「不可达」变成「即使可达也必须显式失败」。
+func TestUploadHandler_UnsupportedOperationRejected(t *testing.T) {
+	for _, op := range []string{"update", "delete"} {
+		t.Run(op, func(t *testing.T) {
+			client := setupTestClient(t)
+			defer client.Close()
+			ctx := context.Background()
+
+			handler := center.NewUploadHandler(client)
+			resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+				EdgeID: edgeRowID(t, client).String(),
+				Entries: []models.UploadEntry{{
+					Table:     "lots",
+					Operation: op,
+					ID:        uuid.New(),
+					Data:      map[string]interface{}{"lot_number": "LOT-OP-" + op},
+				}},
+			})
+			if err != nil {
+				t.Fatalf("HandleUpload: %v", err)
+			}
+
+			if resp.Applied != 0 {
+				t.Errorf("Applied = %d, want 0（%s 未实现，不得计为已应用）", resp.Applied, op)
+			}
+			if resp.Rejected != 1 {
+				t.Fatalf("Rejected = %d, want 1（errors=%v）", resp.Rejected, resp.Errors)
+			}
+			// 错误信息必须点名操作类型，否则运维从 errors 里看不出被拒的原因。
+			if len(resp.Errors) != 1 || !strings.Contains(resp.Errors[0], op) {
+				t.Errorf("Errors = %v, want 含操作名 %q 的一条", resp.Errors, op)
+			}
+		})
+	}
+}
+
+// is_qualified 键缺席时必须落 schema 默认值 true，而不是被顶替成 false。
+//
+// Edge 的采集器恒带该键，所以线上路径不受影响；但 schema 默认 true
+// （合格线是业务决策，不由传输层推断），而 getBool 把「键缺席」读成 false。
+// 一个省略该字段的 Center 调用方会让每一枚丝饼都被记成「质检不合格」——
+// 安全相关字段朝危险方向反转，且写入的是只增不改的历史表，无法纠正。
+func TestUpsertBobbinGrade_AbsentIsQualifiedFallsBackToSchemaDefault(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BG-DEFAULT").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-BG-DEFAULT").
+		SetLotID(centerLot.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx); err != nil {
+		t.Fatalf("seed bobbin: %v", err)
+	}
+
+	gradeID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbin_grades", Operation: "create", ID: gradeID,
+			Data: map[string]interface{}{
+				"id":            gradeID.String(),
+				"bobbin_number": "BOBBIN-BG-DEFAULT",
+				"grade":         "A",
+				// is_qualified 故意缺席
+				"inspected_at": time.Now(),
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.BobbinGrade.Get(ctx, gradeID)
+	if err != nil {
+		t.Fatalf("get bobbin grade: %v", err)
+	}
+	if !got.IsQualified {
+		t.Error("IsQualified = false, want true（键缺席应落 schema 默认值，而不是被读成不合格）")
 	}
 }

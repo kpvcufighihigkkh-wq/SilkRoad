@@ -144,7 +144,22 @@ func (s *BobbinService) UpdateBobbinStatus(ctx context.Context, id, status strin
 		return &ServiceError{Code: 10001, Message: "无效的丝锭ID"}
 	}
 
-	return s.client.Bobbin.UpdateOneID(bobbinID).
+	// 先校验枚举：生成代码在 save 前才跑 StatusValidator，其错误没有可判别的
+	// 类型，冒到 HTTP 层会成为 500 —— 而路由的 @Failure 400 承诺的是入参错误。
+	// 提前校验，把这条路径收敛到与其他入参错误一致的 10001。
+	if err := bobbin.StatusValidator(bobbin.Status(status)); err != nil {
+		return &ServiceError{Code: 10001, Message: "无效的丝锭状态：" + status}
+	}
+
+	b, err := s.client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return &ServiceError{Code: 40001, Message: "丝锭不存在"}
+		}
+		return err
+	}
+
+	return b.Update().
 		SetStatus(bobbin.Status(status)).
 		Exec(ctx)
 }
@@ -156,7 +171,15 @@ func (s *BobbinService) MarkBobbinPrinted(ctx context.Context, id string) error 
 		return &ServiceError{Code: 10001, Message: "无效的丝锭ID"}
 	}
 
-	return s.client.Bobbin.UpdateOneID(bobbinID).
+	b, err := s.client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return &ServiceError{Code: 40001, Message: "丝锭不存在"}
+		}
+		return err
+	}
+
+	return b.Update().
 		SetLabelPrinted(true).
 		Exec(ctx)
 }
