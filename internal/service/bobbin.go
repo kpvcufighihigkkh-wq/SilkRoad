@@ -141,7 +141,7 @@ func (s *BobbinService) ListBobbins(ctx context.Context, page, pageSize int, lot
 func (s *BobbinService) UpdateBobbinStatus(ctx context.Context, id, status string) error {
 	bobbinID, err := uuid.Parse(id)
 	if err != nil {
-		return err
+		return &ServiceError{Code: 10001, Message: "无效的丝锭ID"}
 	}
 
 	return s.client.Bobbin.UpdateOneID(bobbinID).
@@ -153,7 +153,7 @@ func (s *BobbinService) UpdateBobbinStatus(ctx context.Context, id, status strin
 func (s *BobbinService) MarkBobbinPrinted(ctx context.Context, id string) error {
 	bobbinID, err := uuid.Parse(id)
 	if err != nil {
-		return err
+		return &ServiceError{Code: 10001, Message: "无效的丝锭ID"}
 	}
 
 	return s.client.Bobbin.UpdateOneID(bobbinID).

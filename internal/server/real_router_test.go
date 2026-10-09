@@ -274,3 +274,30 @@ func TestRealRouter_CenterKeepsReadRoutes(t *testing.T) {
 		}
 	}
 }
+
+// Edge 必须注册丝饼的两条写路由。
+//
+// 断言对象取自**活路由表**（router.Routes()），不是硬编码清单：把 edge.go 里
+// 那两行注册删掉，本测试即变红。没有它的话删掉后整套测试仍全绿 ——
+// bobbin.status 与 label_printed 会静默退回「无写入方」的状态
+// （Center 侧同类路由已在 Task 9 删除），与
+// TestRealRouter_HasBaseDataRouteWithCodeParam 是同一失效形态。
+//
+// nil client 可接受：NewEdgeServer 只存储它，构造路由不访问数据库。
+func TestRealRouter_EdgeHasBobbinWriteRoutes(t *testing.T) {
+	srv := NewEdgeServer(nil, "edge-001", "http://center", "test-secret", "", 0)
+
+	registered := make(map[string]struct{})
+	for _, r := range srv.router.Routes() {
+		registered[r.Method+" "+r.Path] = struct{}{}
+	}
+
+	for _, want := range []string{
+		"PUT /v1/bobbins/:id/status",
+		"POST /v1/bobbins/:id/print",
+	} {
+		if _, ok := registered[want]; !ok {
+			t.Errorf("Edge 缺少写路由 %s（删掉它 bobbin.status/label_printed 将无写入方，且无其它测试会红）", want)
+		}
+	}
+}

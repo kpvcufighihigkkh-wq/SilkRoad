@@ -144,16 +144,20 @@ func (h *BobbinHandler) UpdateBobbinStatus(c *gin.Context) {
 		Status string `json:"status" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, "参数错误"))
+		c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, err.Error()))
 		return
 	}
 
 	if err := h.bobbinService.UpdateBobbinStatus(c.Request.Context(), id, req.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		if svcErr, ok := err.(*service.ServiceError); ok {
+			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeInternalError, err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, api.Success(gin.H{"updated": true}))
+	c.JSON(http.StatusOK, api.Success(nil))
 }
 
 // MarkBobbinPrinted godoc
@@ -168,9 +172,13 @@ func (h *BobbinHandler) MarkBobbinPrinted(c *gin.Context) {
 	id := c.Param("id")
 
 	if err := h.bobbinService.MarkBobbinPrinted(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		if svcErr, ok := err.(*service.ServiceError); ok {
+			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeInternalError, err.Error()))
 		return
 	}
 
-	c.JSON(http.StatusOK, api.Success(gin.H{"printed": true}))
+	c.JSON(http.StatusOK, api.Success(nil))
 }
