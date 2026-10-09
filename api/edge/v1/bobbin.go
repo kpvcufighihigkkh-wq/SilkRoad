@@ -126,3 +126,51 @@ func (h *BobbinHandler) InspectBobbin(c *gin.Context) {
 
 	c.JSON(http.StatusOK, api.Success(nil))
 }
+
+// UpdateBobbinStatus godoc
+// @Summary 更新丝锭状态
+// @Tags bobbins
+// @Accept json
+// @Produce json
+// @Param id path string true "丝锭ID"
+// @Param status body object{status=string} true "状态"
+// @Success 200 {object} api.Response
+// @Failure 400 {object} api.Response
+// @Router /v1/bobbins/{id}/status [put]
+func (h *BobbinHandler) UpdateBobbinStatus(c *gin.Context) {
+	id := c.Param("id")
+
+	var req struct {
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, "参数错误"))
+		return
+	}
+
+	if err := h.bobbinService.UpdateBobbinStatus(c.Request.Context(), id, req.Status); err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(gin.H{"updated": true}))
+}
+
+// MarkBobbinPrinted godoc
+// @Summary 标记丝锭已打印
+// @Tags bobbins
+// @Produce json
+// @Param id path string true "丝锭ID"
+// @Success 200 {object} api.Response
+// @Failure 400 {object} api.Response
+// @Router /v1/bobbins/{id}/print [post]
+func (h *BobbinHandler) MarkBobbinPrinted(c *gin.Context) {
+	id := c.Param("id")
+
+	if err := h.bobbinService.MarkBobbinPrinted(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(gin.H{"printed": true}))
+}

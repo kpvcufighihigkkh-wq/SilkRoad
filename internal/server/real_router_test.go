@@ -58,8 +58,6 @@ func TestRealRouter_DeviceTokenCannotReachUserRoutes(t *testing.T) {
 		{http.MethodDelete, "/v1/users/00000000-0000-0000-0000-000000000001", ""},
 		// 同一把钥匙也保护 /v1/edges 的管理路由与其它管理组
 		{http.MethodPost, "/v1/edges/edge-dev/token", ""},
-		{http.MethodPost, "/v1/lots", `{}`},
-		{http.MethodPost, "/v1/bobbins", `{}`},
 	}
 
 	for _, tc := range cases {
@@ -230,5 +228,49 @@ func TestRealRouter_IgnoresForgedXFFFromUntrustedSource(t *testing.T) {
 	}
 	if seenClientIP != "198.51.100.9" {
 		t.Errorf("ClientIP() = %q, want %q（真实源地址）", seenClientIP, "198.51.100.9")
+	}
+}
+
+// 数据归属严格单向：Center 不得保留批次/丝饼的写路由。
+// 这七条是设计定稿前的过渡产物，保留会与「Edge 是数据所有者」相抵。
+func TestRealRouter_CenterHasNoLotOrBobbinWriteRoutes(t *testing.T) {
+	router, _, _ := newRealRouter(t)
+
+	forbidden := []struct{ method, path string }{
+		{http.MethodPost, "/v1/lots"},
+		{http.MethodPut, "/v1/lots/:id/status"},
+		{http.MethodDelete, "/v1/lots/:id"},
+		{http.MethodPost, "/v1/bobbins"},
+		{http.MethodPut, "/v1/bobbins/:id/status"},
+		{http.MethodPost, "/v1/bobbins/:id/print"},
+		{http.MethodDelete, "/v1/bobbins/:id"},
+	}
+	registered := make(map[string]struct{})
+	for _, r := range router.Routes() {
+		registered[r.Method+" "+r.Path] = struct{}{}
+	}
+	for _, f := range forbidden {
+		if _, ok := registered[f.method+" "+f.path]; ok {
+			t.Errorf("Center 不应注册 %s %s（数据归属单向：Center 只读）", f.method, f.path)
+		}
+	}
+}
+
+// 但只读端点必须保留
+func TestRealRouter_CenterKeepsReadRoutes(t *testing.T) {
+	router, _, _ := newRealRouter(t)
+	registered := make(map[string]struct{})
+	for _, r := range router.Routes() {
+		registered[r.Method+" "+r.Path] = struct{}{}
+	}
+	for _, want := range []string{
+		"GET /v1/lots",
+		"GET /v1/lots/:id",
+		"GET /v1/bobbins",
+		"GET /v1/bobbins/:id",
+	} {
+		if _, ok := registered[want]; !ok {
+			t.Errorf("缺少只读路由 %s", want)
+		}
 	}
 }

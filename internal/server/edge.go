@@ -136,10 +136,12 @@ func (s *EdgeServer) registerRoutes() {
 
 		bobbins := authorized.Group("/bobbins")
 		{
-			bobbins.GET("", bobbinHandler.ListBobbins)               // 查询丝锭
-			bobbins.GET("/:id", bobbinHandler.GetBobbin)             // 获取丝锭详情
-			bobbins.PUT("/:id/weigh", bobbinHandler.WeighBobbin)     // 称重
-			bobbins.PUT("/:id/inspect", bobbinHandler.InspectBobbin) // 质检
+			bobbins.GET("", bobbinHandler.ListBobbins)                   // 查询丝锭
+			bobbins.GET("/:id", bobbinHandler.GetBobbin)                 // 获取丝锭详情
+			bobbins.PUT("/:id/weigh", bobbinHandler.WeighBobbin)         // 称重
+			bobbins.PUT("/:id/inspect", bobbinHandler.InspectBobbin)     // 质检
+			bobbins.PUT("/:id/status", bobbinHandler.UpdateBobbinStatus) // 更新状态
+			bobbins.POST("/:id/print", bobbinHandler.MarkBobbinPrinted)  // 标记已打印
 		}
 
 		// 数据同步

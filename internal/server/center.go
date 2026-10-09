@@ -182,11 +182,9 @@ func (s *CenterServer) registerRoutes() {
 
 		lots := authorized.Group("/lots")
 		{
-			lots.POST("", lotHandler.CreateLot)
 			lots.GET("", lotHandler.ListLots)
 			lots.GET("/:id", lotHandler.GetLot)
-			lots.PUT("/:id/status", lotHandler.UpdateLotStatus)
-			lots.DELETE("/:id", lotHandler.DeleteLot)
+			// 写接口不在 Center：批次由 Edge 创建并上传（数据归属单向）
 		}
 
 		// 丝锭管理
@@ -195,12 +193,9 @@ func (s *CenterServer) registerRoutes() {
 
 		bobbins := authorized.Group("/bobbins")
 		{
-			bobbins.POST("", bobbinHandler.CreateBobbin)
 			bobbins.GET("", bobbinHandler.ListBobbins)
 			bobbins.GET("/:id", bobbinHandler.GetBobbin)
-			bobbins.PUT("/:id/status", bobbinHandler.UpdateBobbinStatus)
-			bobbins.POST("/:id/print", bobbinHandler.MarkBobbinPrinted)
-			bobbins.DELETE("/:id", bobbinHandler.DeleteBobbin)
+			// 写接口不在 Center：丝饼的全部信息来自 Edge
 		}
 
 		// 用户管理
