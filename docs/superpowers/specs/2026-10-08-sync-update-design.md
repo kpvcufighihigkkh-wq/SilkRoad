@@ -58,10 +58,10 @@ Edge 侧对已存在记录的任何修改都不会到达 Center。净效果：**
 
 | 来源 | 内容 | 冲突 |
 |------|------|------|
-| spec §364 归属表 | `Lot \| 只读汇总 \| Edge 创建` | Center 只读 |
-| spec §272-276 接口清单 | `POST /v1/lots`、`DELETE /v1/lots/:id` | Center 可写 |
-| spec §367 | `Bobbin \| 只读 + 改等级` | Center 可改等级 |
-| spec §368-370 + §373 | Module/Pallet/Carton 的 Center 端「应设计为只读接口」 | 与实现一致 |
+| spec §5.3 归属表 | `Lot \| 只读汇总 \| Edge 创建` | Center 只读 |
+| spec §5.1「生产管理」接口清单 | `POST /v1/lots`、`DELETE /v1/lots/:id` | Center 可写 |
+| spec §5.3 归属表（Bobbin 行） | `Bobbin \| 只读 + 改等级` | Center 可改等级 |
+| spec §5.3 归属表 + 注意段 | Module/Pallet/Carton 的 Center 端「应设计为只读接口」 | 与实现一致 |
 
 实现跟从了接口清单（提交 `deaf696`，2026-09-28），而归属定稿于 `5034415`（2026-09-29 16:08）——**写路由比归属定稿早一天**，是过渡产物。实测这些路由在本仓库内**无任何调用方**（除 swagger 注释），无前端代码。
 
@@ -147,7 +147,7 @@ Edge 侧对已存在记录的任何修改都不会到达 Center。净效果：**
 **连带修正：**
 
 - 删除 Center 的 7 条写路由：`lots.POST`、`lots.PUT /:id/status`、`lots.DELETE`、`bobbins.POST`、`bobbins.PUT /:id/status`、`bobbins.POST /:id/print`、`bobbins.DELETE`（`users.DELETE` 不在本例：用户实体不属 Edge 产生）。
-- spec 需同步修正：§272-276 移除批次写端点、§291 的 `PUT /v1/bobbins/:id/grade` 与 §367 的「Center 质检改等级」作废、§175 中 `PLCLotNumber` 放在 `CreateLotRequest` 的表述需重新说明。
+- spec 需同步修正：spec §5.1「生产管理」移除批次写端点、spec §5.1「载具与丝锭」的 `PUT /v1/bobbins/:id/grade` 与 §5.3 归属表 Bobbin 行的「Center 质检改等级」作废、spec §4.2 中 `PLCLotNumber` 放在 `CreateLotRequest` 的表述需重新说明。
 
 ### 2.8 BobbinGrade 启用：只增历史
 
@@ -301,4 +301,4 @@ Edge 逐条标记：应用→synced；被拒→计数+1，保持 pending
 
 本文经确认后，由 `superpowers:writing-plans` 生成逐任务实施计划。
 
-**需特别注意的两处文档修正：** spec 的归属表与接口清单自相矛盾（§364 vs §272-276），且 §367/§291 要求 Center 改等级——这三处需与本设计的单向原则统一，否则文档与实现会再次不一致。项目 `CLAUDE.md` 的文档同步规则为硬性要求。
+**需特别注意的两处文档修正：** spec 的归属表与接口清单自相矛盾（§5.3 归属表 vs §5.1「生产管理」），且 §5.3 归属表的 Bobbin 行与 §5.1「载具与丝锭」要求 Center 改等级——这三处需与本设计的单向原则统一，否则文档与实现会再次不一致。项目 `CLAUDE.md` 的文档同步规则为硬性要求。

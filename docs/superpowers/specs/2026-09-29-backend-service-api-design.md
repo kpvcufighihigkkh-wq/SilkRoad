@@ -271,6 +271,7 @@ PUT    /v1/spinning-lines/:id/status     更新状态
 ```
 GET    /v1/lots                          批次列表（全局）
 GET    /v1/lots/:id                      批次详情
+
 GET    /v1/doffings                      落纱记录（汇总）
 GET    /v1/doffings/:id                  落纱详情
 ```
@@ -285,7 +286,6 @@ GET    /v1/barrels/:id/bobbins           桶内丝饼
 
 GET    /v1/bobbins                       丝饼列表（全局）
 GET    /v1/bobbins/:id                   丝饼详情
-PUT    /v1/bobbins/:id/grade             更新等级（Edge 端）
 
 GET    /v1/bobbin-grades                 丝饼质检记录列表
 GET    /v1/bobbin-grades/:id             质检详情
@@ -340,10 +340,14 @@ PUT    /v1/barrels/:id/seal              封桶
 
 GET    /v1/bobbins                       本地丝饼
 GET    /v1/bobbins/:id                   丝饼详情
+PUT    /v1/bobbins/:id/weigh             称重
+PUT    /v1/bobbins/:id/inspect           质检
+PUT    /v1/bobbins/:id/status            更新状态
+POST   /v1/bobbins/:id/print             标记已打印
 
 POST   /v1/sync/upload                   手动触发上传
-GET    /v1/sync/status                   同步状态与积压量
-POST   /v1/sync/refresh                  拉取基础数据
+POST   /v1/sync/download                 从中心下载数据
+POST   /v1/sync/resync                   重置同步状态（failed 重传 / 全量重传）
 ```
 
 ### 5.3 端点职责对照
@@ -388,7 +392,7 @@ POST   /v1/sync/refresh                  拉取基础数据
         构建 models.UploadRequest
         （携带 EdgeID + Entries + Cursor）
                      ↓
-        POST /v1/sync/upload
+        POST {center}/v1/edges/{code}/upload
                      ↓
         ┌────────────┴────────────┐
         ↓                         ↓
