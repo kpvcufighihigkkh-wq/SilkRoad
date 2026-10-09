@@ -270,46 +270,37 @@ PUT    /v1/spinning-lines/:id/status     更新状态
 **生产管理**
 ```
 GET    /v1/lots                          批次列表（全局）
-POST   /v1/lots                          创建批次
 GET    /v1/lots/:id                      批次详情
-PUT    /v1/lots/:id/status               更新状态
-DELETE /v1/lots/:id                      删除批次
-
 GET    /v1/doffings                      落纱记录（汇总）
 GET    /v1/doffings/:id                  落纱详情
 ```
+
+**写接口归属：** 批次的创建与状态变更由 **Edge 端**负责（§5.3 归属表：`Lot | 只读汇总 | 创建/查询本地 | Edge 创建，上传至 Center`）。Center 侧仅提供只读汇总，不提供 `POST`/`PUT`/`DELETE`。丝饼同理——其全部信息来自 Edge。
 
 **载具与丝锭**
 ```
 GET    /v1/barrels                       落纱桶列表
 GET    /v1/barrels/:id                   落纱桶详情
 GET    /v1/barrels/:id/bobbins           桶内丝饼
-POST   /v1/barrels                       创建落纱桶
 
 GET    /v1/bobbins                       丝饼列表（全局）
 GET    /v1/bobbins/:id                   丝饼详情
-PUT    /v1/bobbins/:id/grade             更新等级
+PUT    /v1/bobbins/:id/grade             更新等级（Edge 端）
 
 GET    /v1/bobbin-grades                 丝饼质检记录列表
-POST   /v1/bobbin-grades                 提交质检结果
 GET    /v1/bobbin-grades/:id             质检详情
 ```
 
 **仓储管理**
 ```
 GET    /v1/pallets                       托盘列表
-POST   /v1/pallets                       创建托盘
 GET    /v1/pallets/:id                   托盘详情
-PUT    /v1/pallets/:id                   更新托盘
 GET    /v1/pallets/:id/bobbins           托盘上的丝饼
 
 GET    /v1/modules                       吊车列表
-POST   /v1/modules                       创建吊车
 GET    /v1/modules/:id                   吊车详情
-PUT    /v1/modules/:id/status            更新状态
 
 GET    /v1/cartons                       纸箱列表
-POST   /v1/cartons                       创建纸箱
 GET    /v1/cartons/:id                   纸箱详情
 ```
 
@@ -327,8 +318,8 @@ PUT    /v1/product-configs/:id           更新配置
 
 **同步接口**
 ```
-POST   /v1/sync/upload                   接收 Edge 批量上传
-GET    /v1/sync/base-data                下发基础数据（增量）
+POST   /v1/edges/:code/upload            接收 Edge 批量上传
+GET    /v1/edges/:code/base-data         下发基础数据（增量）
 ```
 
 ### 5.2 Edge Server
@@ -364,7 +355,7 @@ POST   /v1/sync/refresh                  拉取基础数据
 | Lot | 只读汇总 | 创建/查询本地 | Edge 创建，上传至 Center |
 | Doffing | 只读汇总 | **核心写操作** | Edge 产生，Center 汇总展示 |
 | Barrel | 只读查询 | 创建/封桶 | Edge 产生 |
-| Bobbin | 只读 + 改等级 | 创建/查询 | Edge 产生，Center 质检改等级 |
+| Bobbin | 只读 | 创建/查询/称重/质检 | Edge 产生（含等级与重量），Center 只读 |
 | Module | 只读查询 | 创建/更新位置 | **Edge 产生**（物流设备），Center 汇总 |
 | Pallet | 只读查询 | 创建/封板/打印标签 | **Edge 产生**（码垛机），Center 汇总 |
 | Carton | 只读查询 | 创建/装箱 | **Edge 产生**（包装设备），Center 汇总 |
