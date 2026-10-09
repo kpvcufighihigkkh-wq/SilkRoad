@@ -511,6 +511,21 @@ func (u *Uploader) Upload(ctx context.Context) (*models.UploadResponse, error) {
 	}
 	defer u.uploadMu.Unlock()
 
+	// 无条件整理超限记录，不依赖「本批有重试项」这一前提。
+	//
+	// markRetried 末尾也会调 markExhausted，但那条路径要求本批**存在**重试项：
+	// 批次为空会在此前的早退处返回，整批成功则走 markSynced，两条路都不经过它。
+	// 于是一条 pending 且 retry_count 已达上限的行可能永远翻不到 failed ——
+	// 采集器的 SyncRetryCountLT(上限) 把它挡在门外，它又不在 failed，
+	// 调度器每 tick 拿到空批次，记录永久卡在 pending 且无人可见 ——
+	// 正是 markExhausted 自身注释要防的那个洞。
+	//
+	// 代价：每次 Upload 五条命中 0 行的本地 UPDATE。空批次路径本无 HTTP 往返，
+	// 此时这是全部开销；有批次时相对一次往返可忽略。
+	if err := u.markExhausted(ctx); err != nil {
+		log.Printf("⚠️  整理超限记录出错: %v", err)
+	}
+
 	entries, err := u.CollectPending(ctx, uploadBatchSize)
 	if err != nil {
 		return nil, err

@@ -243,9 +243,14 @@ func (s *EdgeServer) handleSyncDownload(c *gin.Context) {
 
 // handleSyncResync 重置本地同步状态，触发重传。
 //
-// mode=failed：把 failed 记录重置为 pending（回收重试超限的积压）
+// mode=failed：把重试超限的记录重置为 pending（回收卡死的积压）
 // mode=all：把 synced 记录也一并重置（载荷新增字段后的存量回填）
-// table 省略或为空表示全部可采集表；未知表名由 uploader 报错，返回 500。
+// table 省略或为空表示全部可采集表。
+//
+// 未知表名是调用方给的非法值，属客户端错误，返 400 而非 500 ——
+// 后者会污染错误率看板，让运维误以为服务坏了。错误消息里保留合法表名清单，
+// 对已鉴权的运维是「告诉我合法值」，不是泄露。
+// 其余错误（数据库等）才是 500。
 //
 // 需要显式调用而非自动重试：不给自动化开无限重试的口子，
 // failed 的定位是「等人看一眼」，而非数据终点。
@@ -270,6 +275,10 @@ func (s *EdgeServer) handleSyncResync(c *gin.Context) {
 		n, err = s.uploader.ResyncAll(c.Request.Context(), req.Table)
 	}
 	if err != nil {
+		if errors.Is(err, edge.ErrUnknownTable) {
+			c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, err.Error()))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
 	}

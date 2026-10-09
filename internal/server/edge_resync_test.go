@@ -149,8 +149,9 @@ func TestHandleSyncResync_AllModeResetsEveryCollectableTable(t *testing.T) {
 
 // 非法 mode 与未知表名都必须被拒绝，而不是静默成功。
 //
-// gin 的 oneof 校验会把非法 mode 拦成 400；未知表名由 uploader 报错、
-// 经 handler 转成 500 —— 两条路径都不能回 200。
+// gin 的 oneof 校验会把非法 mode 拦成 400；未知表名由 uploader 抛出
+// ErrUnknownTable，handler 转成 400（客户端错误，不是 500）——
+// 两条路径都不能回 200。
 func TestHandleSyncResync_RejectsBadInput(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	client := newServerTestClient(t)
@@ -161,7 +162,8 @@ func TestHandleSyncResync_RejectsBadInput(t *testing.T) {
 		body string
 		want int
 	}{
-		{"未知表名", `{"mode":"failed","table":"barrels"}`, http.StatusInternalServerError},
+		// 表名是调用方给的，非法值属客户端错误。返 500 会污染错误率看板。
+		{"未知表名", `{"mode":"failed","table":"barrels"}`, http.StatusBadRequest},
 		{"非法 mode", `{"mode":"everything"}`, http.StatusBadRequest},
 		{"缺少 mode", `{"table":"lots"}`, http.StatusBadRequest},
 	}
@@ -173,6 +175,27 @@ func TestHandleSyncResync_RejectsBadInput(t *testing.T) {
 				t.Errorf("status = %d, want %d; body=%s", w.Code, tc.want, w.Body.String())
 			}
 		})
+	}
+}
+
+// 未知表名的错误消息必须列出合法表名 —— 对已鉴权的运维这是「告诉我合法值」。
+//
+// 可证伪：从错误消息里删掉 collectableTables(u) 那段，本用例必红。
+func TestHandleSyncResync_UnknownTableListsValidTables(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	client := newServerTestClient(t)
+	router, token := newResyncTestServer(t, client)
+
+	w := postResync(t, router, token, `{"mode":"failed","table":"barrels"}`)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", w.Code, w.Body.String())
+	}
+
+	body := w.Body.String()
+	for _, table := range []string{"lots", "doffings", "bobbins", "bobbin_grades"} {
+		if !strings.Contains(body, table) {
+			t.Errorf("错误消息未列出合法表名 %q；body=%s", table, body)
+		}
 	}
 }
 

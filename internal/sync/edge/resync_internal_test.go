@@ -134,7 +134,7 @@ func TestResync_EveryCollectableTableIsResettable(t *testing.T) {
 		}
 	}
 
-	opts := resetOptions{statuses: []string{"failed"}}
+	opts := resetOptions{status: "failed"}
 	for _, table := range collectable {
 		id := seeders[table]()
 
@@ -177,7 +177,7 @@ func TestResync_RejectsNonCollectableTables(t *testing.T) {
 		collectable[entity.table] = true
 	}
 
-	opts := resetOptions{statuses: []string{"failed"}}
+	opts := resetOptions{status: "failed"}
 	checked := 0
 	for _, table := range markableTables {
 		if collectable[table] {

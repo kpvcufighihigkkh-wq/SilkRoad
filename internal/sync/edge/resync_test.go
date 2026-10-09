@@ -322,9 +322,14 @@ func TestResync_OnlyTargetStatusIsReset(t *testing.T) {
 		return row
 	}
 
-	failedID := seed(t, "failed", 5)
-	pendingID := seed(t, "pending", 3)
+	failedID := seed(t, "failed", 0)
 	syncedID := seed(t, "synced", 0)
+	// 计数已达上限但状态不是 pending：不该被 ResyncFailed 命中。
+	// 它锁住谓词里 And(pending, retryGTE) 的那一半 —— 若把「且 pending」
+	// 丢掉只留计数判断，任何恰好超限的非 pending 行都会被误重置。
+	syncedAtCapID := seed(t, "synced", 5)
+	// 计数 3 < 上限：在途的正常 pending 行，不该被命中。
+	pendingUnderCapID := seed(t, "pending", 3)
 
 	n, err := u.ResyncFailed(ctx, "lots")
 	if err != nil {
@@ -337,8 +342,11 @@ func TestResync_OnlyTargetStatusIsReset(t *testing.T) {
 	if got := load(t, failedID); got.SyncStatus != lot.SyncStatusPending {
 		t.Errorf("failed 记录 SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusPending)
 	}
-	if got := load(t, pendingID); got.SyncStatus != lot.SyncStatusPending || got.SyncRetryCount != 3 {
-		t.Errorf("pending 记录被误改：status=%q retry=%d, want pending/3", got.SyncStatus, got.SyncRetryCount)
+	if got := load(t, pendingUnderCapID); got.SyncStatus != lot.SyncStatusPending || got.SyncRetryCount != 3 {
+		t.Errorf("在途 pending 记录被误改：status=%q retry=%d, want pending/3", got.SyncStatus, got.SyncRetryCount)
+	}
+	if got := load(t, syncedAtCapID); got.SyncStatus != lot.SyncStatusSynced || got.SyncRetryCount != 5 {
+		t.Errorf("非 pending 的超限记录被误改：status=%q retry=%d, want synced/5", got.SyncStatus, got.SyncRetryCount)
 	}
 	if got := load(t, syncedID); got.SyncStatus != lot.SyncStatusSynced {
 		t.Errorf("synced 记录被误改：status=%q, want synced", got.SyncStatus)
@@ -348,10 +356,12 @@ func TestResync_OnlyTargetStatusIsReset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResyncAll: %v", err)
 	}
-	if n != 1 {
-		t.Errorf("ResyncAll 重置条数 = %d, want 1（只有 synced 记录）", n)
+	// 两条 synced 行（syncedID 与 syncedAtCapID）都属「已同步存量」，
+	// 全量重传的谓词只看状态、不看计数。
+	if n != 2 {
+		t.Errorf("ResyncAll 重置条数 = %d, want 2（两条 synced 记录）", n)
 	}
-	if got := load(t, pendingID); got.SyncStatus != lot.SyncStatusPending || got.SyncRetryCount != 3 {
+	if got := load(t, pendingUnderCapID); got.SyncStatus != lot.SyncStatusPending || got.SyncRetryCount != 3 {
 		t.Errorf("pending 记录被 ResyncAll 误改：status=%q retry=%d, want pending/3", got.SyncStatus, got.SyncRetryCount)
 	}
 	if got := load(t, syncedID); got.SyncStatus != lot.SyncStatusPending {
@@ -407,5 +417,122 @@ func TestResync_UnknownTableIsError(t *testing.T) {
 		if _, err := u.ResyncAll(ctx, table); err == nil {
 			t.Errorf("ResyncAll(%q) 应返回错误，实际为 nil", table)
 		}
+	}
+}
+
+// ResyncFailed 的契约是「重试超限的记录」，这不等于「状态为 failed」。
+//
+// 一行 pending 且 retry_count 已达上限的记录同样超限：采集器按
+// `retry_count < 上限` 过滤把它挡在门外，它又没走到 failed。
+// 若端点只匹配 failed，这行会被漏掉、永久卡在 pending ——
+// 正是端点注释里承诺要回收的那一类。
+//
+// 可证伪：把 includeRetryExhaustedPending 置回 false，本用例必红。
+func TestResyncFailed_RecoversPendingAtRetryCap(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	row, err := client.Lot.Create().
+		SetLotNumber("LOT-RESYNC-CAPPED-PENDING").
+		SetProductType("FDY").
+		SetPlannedQuantity(1).
+		SetSyncStatus(lot.SyncStatusPending).
+		SetSyncRetryCount(5).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed pending-at-cap lot: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	n, err := u.ResyncFailed(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncFailed: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("重置条数 = %d, want 1（pending 且计数已达上限也属重试超限）", n)
+	}
+
+	got, err := client.Lot.Get(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("reload lot: %v", err)
+	}
+	if got.SyncStatus != lot.SyncStatusPending {
+		t.Errorf("SyncStatus = %q, want %q", got.SyncStatus, lot.SyncStatusPending)
+	}
+	if got.SyncRetryCount != 0 {
+		t.Errorf("SyncRetryCount = %d, want 0（须归还完整重试预算）", got.SyncRetryCount)
+	}
+}
+
+// 放宽后的谓词不得误伤计数未达上限的 pending 行。
+//
+// 它们是正常的在途记录：采集器照常采集，重试预算尚未耗尽。
+// 若把条件写成 GT 或干脆去掉计数判断，本用例必红。
+func TestResyncFailed_LeavesPendingUnderCapAlone(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	// 4 < 上限 5：仍可被采集，不属于超限。
+	row, err := client.Lot.Create().
+		SetLotNumber("LOT-RESYNC-UNDER-CAP").
+		SetProductType("FDY").
+		SetPlannedQuantity(1).
+		SetSyncStatus(lot.SyncStatusPending).
+		SetSyncRetryCount(4).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed under-cap lot: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	n, err := u.ResyncFailed(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncFailed: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("重置条数 = %d, want 0（计数 4 < 上限 5，不属重试超限）", n)
+	}
+
+	got, err := client.Lot.Get(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("reload lot: %v", err)
+	}
+	if got.SyncRetryCount != 4 {
+		t.Errorf("在途记录的重试计数被重置：%d, want 4", got.SyncRetryCount)
+	}
+}
+
+// ResyncAll 只重置 synced：它是「重传已同步的存量」，
+// 不承担回收超限记录的职责（那是 ResyncFailed 的契约）。
+func TestResyncAll_LeavesPendingAtCapAlone(t *testing.T) {
+	client := setupEdgeClient(t)
+	ctx := context.Background()
+
+	row, err := client.Lot.Create().
+		SetLotNumber("LOT-RESYNC-ALL-CAP").
+		SetProductType("FDY").
+		SetPlannedQuantity(1).
+		SetSyncStatus(lot.SyncStatusPending).
+		SetSyncRetryCount(5).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed pending-at-cap lot: %v", err)
+	}
+
+	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
+	n, err := u.ResyncAll(ctx, "lots")
+	if err != nil {
+		t.Fatalf("ResyncAll: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("重置条数 = %d, want 0（ResyncAll 只匹配 synced）", n)
+	}
+
+	got, err := client.Lot.Get(ctx, row.ID)
+	if err != nil {
+		t.Fatalf("reload lot: %v", err)
+	}
+	if got.SyncRetryCount != 5 {
+		t.Errorf("SyncedAt/SyncRetryCount 被 ResyncAll 误改：retry=%d, want 5", got.SyncRetryCount)
 	}
 }
