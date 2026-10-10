@@ -1169,6 +1169,7 @@ func TestUpsertDoffing_PersistsWithDereferencedLot(t *testing.T) {
 
 	lineID := uuid.New()
 	doffingID := uuid.New()
+	operatorID := uuid.New()
 	handler := center.NewUploadHandler(client)
 
 	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
@@ -1184,6 +1185,7 @@ func TestUpsertDoffing_PersistsWithDereferencedLot(t *testing.T) {
 				"bobbin_number":     "BOBBIN-DOFF-1",
 				"actual_weight":     1.75,
 				"grade":             "B",
+				"operator_id":       operatorID.String(),
 				"status":            "confirmed",
 			},
 		}},
@@ -1210,6 +1212,109 @@ func TestUpsertDoffing_PersistsWithDereferencedLot(t *testing.T) {
 	}
 	if got.Grade != "B" {
 		t.Errorf("Grade = %q, want %q", got.Grade, "B")
+	}
+	// 操作员归属：doffings 无 operator 外键，Center 直接落 UUID
+	if got.OperatorID != operatorID {
+		t.Errorf("OperatorID = %v, want %v（载荷带该键时应落库，而非留零值）", got.OperatorID, operatorID)
+	}
+}
+
+// operator_id 键缺席时留 uuid.Nil，不得被顶替成某个值。
+//
+// operator_id 是 Optional 列（可空）。Edge 的采集器只在非 nil 时才发该键，
+// 故缺席是常态（落纱创建时未指定操作员）。Center 若给它一个非零兜底值，
+// 会把「不知道谁操作的」写成「某人操作的」—— 只增不改的历史表，无法纠正。
+func TestUpsertDoffing_AbsentOperatorIDStaysNil(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-DOFF-NOOP").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	doffingID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "doffings", Operation: "create", ID: doffingID,
+			Data: map[string]interface{}{
+				"id":                doffingID.String(),
+				"lot_number":        "LOT-DOFF-NOOP",
+				"spinning_line_id":  uuid.New().String(),
+				"spinning_position": 1,
+				"status":            "pending",
+				// operator_id 故意缺席
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.Doffing.Get(ctx, doffingID)
+	if err != nil {
+		t.Fatalf("get doffing: %v", err)
+	}
+	if got.LotID != centerLot.ID {
+		t.Errorf("LotID = %v, want %v", got.LotID, centerLot.ID)
+	}
+	if got.OperatorID != uuid.Nil {
+		t.Errorf("OperatorID = %v, want uuid.Nil（键缺席必须留零值，不得被兜底成某个操作员）", got.OperatorID)
+	}
+}
+
+// 载荷里的 operator_id 不是合法 UUID 时必须拒绝该条，而不是静默丢弃归属。
+func TestUpsertDoffing_InvalidOperatorIDRejected(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	if _, err := client.Lot.Create().
+		SetLotNumber("LOT-DOFF-BADOP").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		SetActualQuantity(0).
+		SetStatus(lot.StatusInProgress).
+		Save(ctx); err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	doffingID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "doffings", Operation: "create", ID: doffingID,
+			Data: map[string]interface{}{
+				"id":                doffingID.String(),
+				"lot_number":        "LOT-DOFF-BADOP",
+				"spinning_line_id":  uuid.New().String(),
+				"spinning_position": 1,
+				"status":            "pending",
+				"operator_id":       "not-a-uuid",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 0 || resp.Rejected != 1 {
+		t.Fatalf("applied = %d, rejected = %d, want 0/1; errors=%v", resp.Applied, resp.Rejected, resp.Errors)
+	}
+	if len(resp.Errors) == 0 || !strings.Contains(resp.Errors[0], "operator_id") {
+		t.Errorf("错误信息未点名 operator_id：%v", resp.Errors)
 	}
 }
 

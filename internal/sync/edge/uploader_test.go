@@ -800,12 +800,14 @@ func TestDoffingPayload_ReachesCenterThroughRealSeam(t *testing.T) {
 	}
 
 	lineID := uuid.New()
+	operatorID := uuid.New()
 	confirmedAt := time.Now().Add(-time.Minute).Truncate(time.Second)
 	doffingRow, err := edgeClient.Doffing.Create().
 		SetSpinningLineID(lineID).
 		SetSpinningPosition(4).
 		SetLotID(lotRow.ID).
 		SetStatus(doffing.StatusConfirmed).
+		SetOperatorID(operatorID).
 		SetBobbinNumber("BOBBIN-SEAM-1").
 		SetActualWeight(1.75).
 		SetGrade("B").
@@ -862,6 +864,10 @@ func TestDoffingPayload_ReachesCenterThroughRealSeam(t *testing.T) {
 	}
 	if got.Grade != "B" {
 		t.Errorf("Grade = %q, want %q（漏发即空串）", got.Grade, "B")
+	}
+	if got.OperatorID != operatorID {
+		t.Errorf("OperatorID = %v, want %v（采集器漏发 operator_id 会落成 uuid.Nil，操作员归属永久丢失）",
+			got.OperatorID, operatorID)
 	}
 	if got.ConfirmedAt.IsZero() {
 		t.Error("ConfirmedAt 为零值 —— 采集器漏发 confirmed_at，确认时间丢失")
@@ -964,7 +970,7 @@ func TestDoffingPayload_PendingDoffingOmitsOptionalKeys(t *testing.T) {
 		t.Fatal("未收集到 doffings")
 	}
 
-	for _, key := range []string{"bobbin_number", "actual_weight", "grade", "cancel_reason", "confirmed_at"} {
+	for _, key := range []string{"operator_id", "bobbin_number", "actual_weight", "grade", "cancel_reason", "confirmed_at"} {
 		if _, present := doffingEntry.Data[key]; present {
 			t.Errorf("未确认的落纱不应带 %q（Center 会把零值当成真值写入）", key)
 		}

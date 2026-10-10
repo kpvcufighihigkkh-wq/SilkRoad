@@ -447,6 +447,19 @@ func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadE
 		return fmt.Errorf("invalid spinning_line_id %q: %w", getString(data, "spinning_line_id"), err)
 	}
 
+	// operator_id 是 UUID 列且可选：载荷带该键时必须是合法 UUID，
+	// 解析失败按无效参数拒绝该条（不静默丢弃操作员归属）。
+	// doffings 无 operator 外键（Doffing.Edges() 只声明 lot），故直接落库，
+	// 不需像 lot_id 那样按业务编号解引用父行。
+	var operatorID *uuid.UUID
+	if raw := getString(data, "operator_id"); raw != "" {
+		parsed, err := uuid.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("invalid operator_id %q: %w", raw, err)
+		}
+		operatorID = &parsed
+	}
+
 	existing, err := h.client.Doffing.Query().Where(doffing.IDEQ(id)).Only(ctx)
 	if err != nil && !ent.IsNotFound(err) {
 		return err
@@ -459,6 +472,7 @@ func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadE
 			SetSpinningLineID(lineID).
 			SetSpinningPosition(getInt(data, "spinning_position")).
 			SetStatus(doffing.Status(getString(data, "status"))).
+			SetNillableOperatorID(operatorID).
 			SetNillableBobbinNumber(getStringPtr(data, "bobbin_number")).
 			SetNillableActualWeight(getFloatPtr(data, "actual_weight")).
 			SetNillableGrade(getStringPtr(data, "grade")).
@@ -478,6 +492,7 @@ func (h *UploadHandler) upsertDoffing(ctx context.Context, entry *models.UploadE
 		SetSpinningLineID(lineID).
 		SetSpinningPosition(getInt(data, "spinning_position")).
 		SetStatus(doffing.Status(getString(data, "status"))).
+		SetNillableOperatorID(operatorID).
 		SetNillableBobbinNumber(getStringPtr(data, "bobbin_number")).
 		SetNillableActualWeight(getFloatPtr(data, "actual_weight")).
 		SetNillableGrade(getStringPtr(data, "grade")).

@@ -207,9 +207,13 @@ func (u *Uploader) collectDoffings(ctx context.Context, limit int) ([]models.Upl
 		// 键缺席则 Center 的 SetNillable* 成为 no-op，新建时留 NULL。
 		//
 		// 各字段的 Edge 侧写入者（载荷必须覆盖它们，否则 Center 收到的是空壳）：
+		//   - CreateDoffing：OperatorID
 		//   - ConfirmDoffing：ActualWeight / BobbinNumber / ConfirmedAt / Grade
 		//   - CancelDoffing：CancelReason
-		// （internal/service/doffing.go:176-188 / :211-217）
+		// （internal/service/doffing.go:80-89 / :176-188 / :211-217）
+		if r.OperatorID != uuid.Nil {
+			data["operator_id"] = r.OperatorID.String()
+		}
 		if r.BobbinNumber != "" {
 			data["bobbin_number"] = r.BobbinNumber
 		}
