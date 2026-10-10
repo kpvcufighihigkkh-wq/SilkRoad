@@ -278,6 +278,10 @@ GET    /v1/doffings/:id                  落纱详情
 
 **写接口归属：** 批次的创建与状态变更由 **Edge 端**负责（§5.3 归属表：`Lot | 只读汇总 | 创建/查询本地 | Edge 创建，上传至 Center`）。Center 侧仅提供只读汇总，不提供 `POST`/`PUT`/`DELETE`。丝饼同理——其全部信息来自 Edge。
 
+**实现状态（与 `internal/server/center.go` 对照，2026-10-10）：** 上列的落纱读端点
+（`GET /v1/doffings`、`GET /v1/doffings/:id`）**尚未实现** —— Center 侧没有注册任何 doffing
+路由，数据虽已由 Edge 同步进来（见 §6.2），但尚无对外读接口。
+
 **载具与丝锭**
 ```
 GET    /v1/barrels                       落纱桶列表
@@ -328,6 +332,8 @@ GET    /v1/edges/:code/base-data         下发基础数据（增量）
 POST   /v1/doffing                       执行落纱操作
 GET    /v1/doffing                       本地落纱记录
 GET    /v1/doffing/:id                   落纱详情
+PUT    /v1/doffing/:id/confirm           确认落纱
+PUT    /v1/doffing/:id/cancel            取消落纱
 
 GET    /v1/lots                          本地批次列表
 GET    /v1/lots/current                  当前批次
@@ -349,6 +355,18 @@ POST   /v1/sync/upload                   手动触发上传
 POST   /v1/sync/download                 从中心下载数据
 POST   /v1/sync/resync                   重置同步状态（failed 重传 / 全量重传）
 ```
+
+**实现状态（与 `internal/server/edge.go` 对照，2026-10-10）：**
+
+| 分组 | 状态 |
+|------|------|
+| `/v1/doffing`（含 confirm/cancel） | ✅ 已实现 |
+| `/v1/bobbins`（含 weigh/inspect/status/print） | ✅ 已实现 |
+| `/v1/sync`（upload/download/resync） | ✅ 已实现 |
+| `/v1/lots`（3 条） | ⏳ **未实现** —— 属 Phase 2–5，Edge 侧尚无对应 handler/service |
+| `/v1/barrels`（4 条） | ⏳ **未实现** —— 属 Phase 2–5，同上 |
+
+（`/health` 与 `/v1/login` 属基础设施端点，不列入本业务清单。）
 
 ### 5.3 端点职责对照
 
