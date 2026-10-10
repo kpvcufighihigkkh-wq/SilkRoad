@@ -184,10 +184,6 @@ func init() {
 	bobbingradeDescFinalScore := bobbingradeFields[6].Descriptor()
 	// bobbingrade.FinalScoreValidator is a validator for the "final_score" field. It is called by the builders before save.
 	bobbingrade.FinalScoreValidator = bobbingradeDescFinalScore.Validators[0].(func(float64) error)
-	// bobbingradeDescIsQualified is the schema descriptor for is_qualified field.
-	bobbingradeDescIsQualified := bobbingradeFields[7].Descriptor()
-	// bobbingrade.DefaultIsQualified holds the default value on creation for the is_qualified field.
-	bobbingrade.DefaultIsQualified = bobbingradeDescIsQualified.Default.(bool)
 	// bobbingradeDescInspectedAt is the schema descriptor for inspected_at field.
 	bobbingradeDescInspectedAt := bobbingradeFields[10].Descriptor()
 	// bobbingrade.DefaultInspectedAt holds the default value on creation for the inspected_at field.

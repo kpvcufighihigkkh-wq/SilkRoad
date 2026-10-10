@@ -1331,7 +1331,9 @@ func TestUpsertBobbinGrade_PersistsWithDereferencedBobbin(t *testing.T) {
 	if got.Grade != "B" {
 		t.Errorf("Grade = %q, want %q", got.Grade, "B")
 	}
-	if got.IsQualified {
+	if got.IsQualified == nil {
+		t.Error("IsQualified = NULL, want false（显式 false 被读成了「未陈述」）")
+	} else if *got.IsQualified {
 		t.Error("IsQualified = true, want false")
 	}
 	if got.InspectorID != inspectorID {
@@ -1539,13 +1541,13 @@ func TestUploadHandler_UnsupportedOperationRejected(t *testing.T) {
 	}
 }
 
-// is_qualified 键缺席时必须落 schema 默认值 true，而不是被顶替成 false。
+// is_qualified 键缺席时必须落 NULL，而不是被顶替成 true 或 false。
 //
-// Edge 的采集器恒带该键，所以线上路径不受影响；但 schema 默认 true
-// （合格线是业务决策，不由传输层推断），而 getBool 把「键缺席」读成 false。
-// 一个省略该字段的 Center 调用方会让每一枚丝饼都被记成「质检不合格」——
-// 安全相关字段朝危险方向反转，且写入的是只增不改的历史表，无法纠正。
-func TestUpsertBobbinGrade_AbsentIsQualifiedFallsBackToSchemaDefault(t *testing.T) {
+// 三态字段的「未陈述」是独立事实：若缺席落成 true，一枚现场根本没下结论的丝饼
+// 会被记成「质检合格」—— 安全相关字段朝乐观方向的反转，且该表只增不改，无法
+// 纠正。显式 true/false 的路径由 TestUpsertBobbinGrade_PersistsWithDereferencedBobbin
+// 覆盖，本用例只钉缺席这一态。
+func TestUpsertBobbinGrade_AbsentIsQualifiedIsNull(t *testing.T) {
 	client := setupTestClient(t)
 	defer client.Close()
 	ctx := context.Background()
@@ -1594,7 +1596,7 @@ func TestUpsertBobbinGrade_AbsentIsQualifiedFallsBackToSchemaDefault(t *testing.
 	if err != nil {
 		t.Fatalf("get bobbin grade: %v", err)
 	}
-	if !got.IsQualified {
-		t.Error("IsQualified = false, want true（键缺席应落 schema 默认值，而不是被读成不合格）")
+	if got.IsQualified != nil {
+		t.Errorf("IsQualified = %v, want NULL（键缺席必须落 NULL，不得被推断成一个结论）", *got.IsQualified)
 	}
 }

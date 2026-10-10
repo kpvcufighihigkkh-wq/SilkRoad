@@ -62,9 +62,20 @@ func (BobbinGrade) Fields() []ent.Field {
 			Comment("综合得分"),
 
 		// 是否合格
+		//
+		// 三态：NULL 表示质检员未陈述结论，true/false 表示已陈述的结论。
+		// 「未陈述」与「陈述为不合格」是两件事实，不能合并 —— 该表只增不改，
+		// 一旦把 NULL 落成 false/true 就再也无法区分。
+		//
+		// Optional() 让列可空并去掉 DEFAULT；Nillable() 让 Go 字段生成 *bool。
+		// 两者缺一不可：只加 Optional() 时列虽可空，Go 字段仍是 bool，SQL NULL
+		// 读回成 false —— 正好复现要消除的混淆。证据：本实体 inspector_id 只写
+		// Optional()，生成的是非指针 uuid.UUID；ent 源码 field.go:545-546 明写
+		// 「Unlike "Optional" only fields, "Nillable" fields are pointers」。
 		field.Bool("is_qualified").
-			Default(true).
-			Comment("是否合格"),
+			Optional().
+			Nillable().
+			Comment("是否合格（NULL 表示未陈述）"),
 
 		// 不合格原因
 		field.Text("defect_reason").

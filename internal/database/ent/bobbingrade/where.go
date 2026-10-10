@@ -350,6 +350,16 @@ func IsQualifiedNEQ(v bool) predicate.BobbinGrade {
 	return predicate.BobbinGrade(sql.FieldNEQ(FieldIsQualified, v))
 }
 
+// IsQualifiedIsNil applies the IsNil predicate on the "is_qualified" field.
+func IsQualifiedIsNil() predicate.BobbinGrade {
+	return predicate.BobbinGrade(sql.FieldIsNull(FieldIsQualified))
+}
+
+// IsQualifiedNotNil applies the NotNil predicate on the "is_qualified" field.
+func IsQualifiedNotNil() predicate.BobbinGrade {
+	return predicate.BobbinGrade(sql.FieldNotNull(FieldIsQualified))
+}
+
 // DefectReasonEQ applies the EQ predicate on the "defect_reason" field.
 func DefectReasonEQ(v string) predicate.BobbinGrade {
 	return predicate.BobbinGrade(sql.FieldEQ(FieldDefectReason, v))

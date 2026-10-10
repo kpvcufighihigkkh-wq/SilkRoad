@@ -1119,8 +1119,10 @@ func TestBobbinGradePayload_ReachesCenterThroughRealSeam(t *testing.T) {
 	if got.Grade != "B" {
 		t.Errorf("Grade = %q, want %q（漏发即空串）", got.Grade, "B")
 	}
-	if got.IsQualified {
-		t.Error("IsQualified = true, want false（漏发 is_qualified 会落成 schema 默认 true）")
+	if got.IsQualified == nil {
+		t.Error("IsQualified = NULL, want false（采集器漏发该键，现场结论被丢成「未陈述」）")
+	} else if *got.IsQualified {
+		t.Error("IsQualified = true, want false")
 	}
 	if got.InspectorID != inspectorID {
 		t.Errorf("InspectorID = %v, want %v（漏发即 uuid.Nil）", got.InspectorID, inspectorID)
@@ -1142,10 +1144,115 @@ func TestBobbinGradePayload_ReachesCenterThroughRealSeam(t *testing.T) {
 	if got2.Grade != "A" {
 		t.Errorf("第二条 Grade = %q, want %q", got2.Grade, "A")
 	}
-	if !got2.IsQualified {
+	if got2.IsQualified == nil {
+		t.Error("第二条 IsQualified = NULL, want true")
+	} else if !*got2.IsQualified {
 		t.Error("第二条 IsQualified = false, want true")
 	}
 	if got2.BobbinID != centerBobbin.ID {
 		t.Errorf("第二条 BobbinID = %v, want %v", got2.BobbinID, centerBobbin.ID)
+	}
+}
+
+// 三态字段的「未陈述」必须以整键缺席的形式上线，而不是 "is_qualified": null。
+//
+// 与 inspector_id / defect_reason 同理：Center 侧读的是「键是否存在」。
+// 当前 getBoolPtr 恰好把显式 null 也读成 nil，但那是巧合 —— 一旦 Center 改成
+// 按「键存在即取值」，显式 null 会被读成 false，把「未陈述」写成「不合格」，
+// 而该表只增不改。这里把「采集器不写该键」钉成契约。
+//
+// 本用例是必需的：采集器那处写成 `data["is_qualified"] = r.IsQualified`
+// （nil 指针）**能通过编译**，只是静默发出 null —— 编译器抓不到它。
+func TestBobbinGradePayload_IsQualifiedOmittedWhenUnstated(t *testing.T) {
+	edgeClient := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotRow, err := edgeClient.Lot.Create().
+		SetLotNumber("LOT-GRADE-TRISTATE").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+	bobbinRow, err := edgeClient.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-GRADE-TRISTATE").
+		SetLotID(lotRow.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create bobbin: %v", err)
+	}
+
+	// 三态各一行：未陈述 / 明确不合格 / 明确合格
+	unstated, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("B").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create unstated grade: %v", err)
+	}
+	explicitFalse, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("C").
+		SetIsQualified(false).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create false grade: %v", err)
+	}
+	explicitTrue, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("A").
+		SetIsQualified(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create true grade: %v", err)
+	}
+
+	u := edge.NewUploader(edgeClient, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	byID := map[string]models.UploadEntry{}
+	for _, e := range entries {
+		if e.Table == "bobbin_grades" {
+			byID[e.ID.String()] = e
+		}
+	}
+
+	// 未陈述：键必须整个缺席
+	e, ok := byID[unstated.ID.String()]
+	if !ok {
+		t.Fatalf("未收集到未陈述的质检记录 %s", unstated.ID)
+	}
+	if v, present := e.Data["is_qualified"]; present {
+		t.Errorf("is_qualified 键存在（值 %#v），want 缺席 —— 未陈述不得以任何值上线", v)
+	}
+
+	// 明确不合格：键存在且为 false（漏发在 Center 侧落 NULL，
+	// 会把「判为不合格」变成「没说话」）
+	e, ok = byID[explicitFalse.ID.String()]
+	if !ok {
+		t.Fatalf("未收集到不合格的质检记录 %s", explicitFalse.ID)
+	}
+	if v, present := e.Data["is_qualified"]; !present {
+		t.Error("is_qualified 键缺席，want 显式 false（判为不合格不得被丢成未陈述）")
+	} else if b, isBool := v.(bool); !isBool || b {
+		t.Errorf("is_qualified = %#v, want false", v)
+	}
+
+	// 明确合格
+	e, ok = byID[explicitTrue.ID.String()]
+	if !ok {
+		t.Fatalf("未收集到合格的质检记录 %s", explicitTrue.ID)
+	}
+	if v, present := e.Data["is_qualified"]; !present {
+		t.Error("is_qualified 键缺席，want 显式 true")
+	} else if b, isBool := v.(bool); !isBool || !b {
+		t.Errorf("is_qualified = %#v, want true", v)
 	}
 }

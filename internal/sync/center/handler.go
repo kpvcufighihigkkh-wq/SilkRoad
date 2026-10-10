@@ -543,10 +543,11 @@ func (h *UploadHandler) upsertBobbinGrade(ctx context.Context, entry *models.Upl
 	// inspected_at 非 Optional（schema 内 Default(time.Now)），用 SetInspectedAt；
 	// 键缺席时以当前时间兜底（Center 无法回溯 Edge 的质检时刻）。
 	//
-	// is_qualified 则必须区分「键缺席」与「明确为 false」：该列 schema 默认
-	// true，getBool 会把缺席读成 false，把每一枚未带该键的丝饼记成"质检不合格"
-	// —— 一个安全相关字段朝危险方向的默认值反转。改用 Nillable 版本透传：
-	// nil 时不写值，插入时落 schema 默认 true。
+	// is_qualified 是现场陈述，三态：键缺席 / 明确 false / 明确 true。
+	// getBool 会把缺席读成 false，把每一枚未带该键的丝饼记成「质检不合格」——
+	// 一个安全相关字段朝危险方向的默认值反转。用 Nillable 版本透传：
+	// nil 时不写值，插入时落 NULL（schema 无默认值，见 schema/bobbingrade.go
+	// 的 Optional().Nillable()）。
 	_, err = h.client.BobbinGrade.Create().
 		SetID(id).
 		SetBobbinID(parent.ID).
@@ -657,8 +658,8 @@ func getBool(m map[string]interface{}, key string) bool {
 
 // getBoolPtr 读取布尔字段；键缺席或类型不符时返回 nil。
 //
-// 供 schema 内有非 false 默认值的布尔列使用：nil 交给 SetNillableXxx，
-// 插入时落 schema 默认值，而不是被 getBool 顶替成 false。
+// 供三态布尔列使用：nil 交给 SetNillableXxx，插入时落 NULL（键缺席即
+// 「未陈述」），而不是被 getBool 顶替成 false。
 func getBoolPtr(m map[string]interface{}, key string) *bool {
 	if v, ok := m[key]; ok {
 		if b, ok := v.(bool); ok {

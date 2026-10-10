@@ -55,11 +55,11 @@ func TestInspectBobbin_AppendsGradeHistory(t *testing.T) {
 	}
 }
 
-// 现场陈述的合格性必须透传，不得由 schema 默认值顶替。
+// 现场陈述的合格性必须透传，不得被丢弃。
 //
-// BobbinGrade.is_qualified 在 schema 中 Default(true)。若 InspectBobbin 不设该列，
-// 评级 C/D 的质检也会落成 is_qualified=true —— 一张只增不改的「历史事实」表里
-// 写入与事实相反的结论，且永远无法纠正。
+// is_qualified 是三态：NULL=未陈述 / false / true（见 schema/bobbingrade.go 的
+// Optional().Nillable()）。若 InspectBobbin 不设该列，评级 C/D 的质检也会落成
+// NULL —— 一张只增不改的「历史事实」表里丢掉现场结论，且永远无法补回。
 // 这里用「不合格」的显式入参验证透传：删掉 SetNillableIsQualified，测试必红。
 func TestInspectBobbin_PassesThroughIsQualified(t *testing.T) {
 	client := newTestClient(t)
@@ -99,8 +99,11 @@ func TestInspectBobbin_PassesThroughIsQualified(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query grade: %v", err)
 	}
-	if got.IsQualified {
-		t.Error("IsQualified = true, want false（入参未透传，落成了 schema 默认值）")
+	if got.IsQualified == nil {
+		t.Fatal("IsQualified = NULL, want 非 nil（入参未透传，现场陈述被丢弃）")
+	}
+	if *got.IsQualified {
+		t.Error("IsQualified = true, want false（入参未透传，落成了相反结论）")
 	}
 }
 

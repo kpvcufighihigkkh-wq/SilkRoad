@@ -142,6 +142,12 @@ func (_u *BobbinGradeUpdate) SetNillableIsQualified(v *bool) *BobbinGradeUpdate 
 	return _u
 }
 
+// ClearIsQualified clears the value of the "is_qualified" field.
+func (_u *BobbinGradeUpdate) ClearIsQualified() *BobbinGradeUpdate {
+	_u.mutation.ClearIsQualified()
+	return _u
+}
+
 // SetDefectReason sets the "defect_reason" field.
 func (_u *BobbinGradeUpdate) SetDefectReason(v string) *BobbinGradeUpdate {
 	_u.mutation.SetDefectReason(v)
@@ -371,6 +377,9 @@ func (_u *BobbinGradeUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if value, ok := _u.mutation.IsQualified(); ok {
 		_spec.SetField(bobbingrade.FieldIsQualified, field.TypeBool, value)
 	}
+	if _u.mutation.IsQualifiedCleared() {
+		_spec.ClearField(bobbingrade.FieldIsQualified, field.TypeBool)
+	}
 	if value, ok := _u.mutation.DefectReason(); ok {
 		_spec.SetField(bobbingrade.FieldDefectReason, field.TypeString, value)
 	}
@@ -534,6 +543,12 @@ func (_u *BobbinGradeUpdateOne) SetNillableIsQualified(v *bool) *BobbinGradeUpda
 	if v != nil {
 		_u.SetIsQualified(*v)
 	}
+	return _u
+}
+
+// ClearIsQualified clears the value of the "is_qualified" field.
+func (_u *BobbinGradeUpdateOne) ClearIsQualified() *BobbinGradeUpdateOne {
+	_u.mutation.ClearIsQualified()
 	return _u
 }
 
@@ -795,6 +810,9 @@ func (_u *BobbinGradeUpdateOne) sqlSave(ctx context.Context) (_node *BobbinGrade
 	}
 	if value, ok := _u.mutation.IsQualified(); ok {
 		_spec.SetField(bobbingrade.FieldIsQualified, field.TypeBool, value)
+	}
+	if _u.mutation.IsQualifiedCleared() {
+		_spec.ClearField(bobbingrade.FieldIsQualified, field.TypeBool)
 	}
 	if value, ok := _u.mutation.DefectReason(); ok {
 		_spec.SetField(bobbingrade.FieldDefectReason, field.TypeString, value)

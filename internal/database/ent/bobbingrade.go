@@ -31,8 +31,8 @@ type BobbinGrade struct {
 	Scores map[string]interface{} `json:"scores,omitempty"`
 	// 综合得分
 	FinalScore float64 `json:"final_score,omitempty"`
-	// 是否合格
-	IsQualified bool `json:"is_qualified,omitempty"`
+	// 是否合格（NULL 表示未陈述）
+	IsQualified *bool `json:"is_qualified,omitempty"`
 	// 不合格原因
 	DefectReason string `json:"defect_reason,omitempty"`
 	// 备注信息
@@ -136,7 +136,8 @@ func (_m *BobbinGrade) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field is_qualified", values[i])
 			} else if value.Valid {
-				_m.IsQualified = value.Bool
+				_m.IsQualified = new(bool)
+				*_m.IsQualified = value.Bool
 			}
 		case bobbingrade.FieldDefectReason:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -240,8 +241,10 @@ func (_m *BobbinGrade) String() string {
 	builder.WriteString("final_score=")
 	builder.WriteString(fmt.Sprintf("%v", _m.FinalScore))
 	builder.WriteString(", ")
-	builder.WriteString("is_qualified=")
-	builder.WriteString(fmt.Sprintf("%v", _m.IsQualified))
+	if v := _m.IsQualified; v != nil {
+		builder.WriteString("is_qualified=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("defect_reason=")
 	builder.WriteString(_m.DefectReason)

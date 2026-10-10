@@ -3572,7 +3572,7 @@ func (m *BobbinGradeMutation) IsQualified() (r bool, exists bool) {
 // OldIsQualified returns the old "is_qualified" field's value of the BobbinGrade entity.
 // If the BobbinGrade object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BobbinGradeMutation) OldIsQualified(ctx context.Context) (v bool, err error) {
+func (m *BobbinGradeMutation) OldIsQualified(ctx context.Context) (v *bool, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldIsQualified is only allowed on UpdateOne operations")
 	}
@@ -3586,9 +3586,22 @@ func (m *BobbinGradeMutation) OldIsQualified(ctx context.Context) (v bool, err e
 	return oldValue.IsQualified, nil
 }
 
+// ClearIsQualified clears the value of the "is_qualified" field.
+func (m *BobbinGradeMutation) ClearIsQualified() {
+	m.is_qualified = nil
+	m.clearedFields[bobbingrade.FieldIsQualified] = struct{}{}
+}
+
+// IsQualifiedCleared returns if the "is_qualified" field was cleared in this mutation.
+func (m *BobbinGradeMutation) IsQualifiedCleared() bool {
+	_, ok := m.clearedFields[bobbingrade.FieldIsQualified]
+	return ok
+}
+
 // ResetIsQualified resets all changes to the "is_qualified" field.
 func (m *BobbinGradeMutation) ResetIsQualified() {
 	m.is_qualified = nil
+	delete(m.clearedFields, bobbingrade.FieldIsQualified)
 }
 
 // SetDefectReason sets the "defect_reason" field.
@@ -4278,6 +4291,9 @@ func (m *BobbinGradeMutation) ClearedFields() []string {
 	if m.FieldCleared(bobbingrade.FieldFinalScore) {
 		fields = append(fields, bobbingrade.FieldFinalScore)
 	}
+	if m.FieldCleared(bobbingrade.FieldIsQualified) {
+		fields = append(fields, bobbingrade.FieldIsQualified)
+	}
 	if m.FieldCleared(bobbingrade.FieldDefectReason) {
 		fields = append(fields, bobbingrade.FieldDefectReason)
 	}
@@ -4312,6 +4328,9 @@ func (m *BobbinGradeMutation) ClearField(name string) error {
 		return nil
 	case bobbingrade.FieldFinalScore:
 		m.ClearFinalScore()
+		return nil
+	case bobbingrade.FieldIsQualified:
+		m.ClearIsQualified()
 		return nil
 	case bobbingrade.FieldDefectReason:
 		m.ClearDefectReason()

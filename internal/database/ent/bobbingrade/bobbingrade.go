@@ -84,8 +84,6 @@ var (
 	GradeValidator func(string) error
 	// FinalScoreValidator is a validator for the "final_score" field. It is called by the builders before save.
 	FinalScoreValidator func(float64) error
-	// DefaultIsQualified holds the default value on creation for the "is_qualified" field.
-	DefaultIsQualified bool
 	// DefaultInspectedAt holds the default value on creation for the "inspected_at" field.
 	DefaultInspectedAt func() time.Time
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.

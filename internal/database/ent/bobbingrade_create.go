@@ -248,10 +248,6 @@ func (_c *BobbinGradeCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *BobbinGradeCreate) defaults() {
-	if _, ok := _c.mutation.IsQualified(); !ok {
-		v := bobbingrade.DefaultIsQualified
-		_c.mutation.SetIsQualified(v)
-	}
 	if _, ok := _c.mutation.InspectedAt(); !ok {
 		v := bobbingrade.DefaultInspectedAt()
 		_c.mutation.SetInspectedAt(v)
@@ -295,9 +291,6 @@ func (_c *BobbinGradeCreate) check() error {
 		if err := bobbingrade.FinalScoreValidator(v); err != nil {
 			return &ValidationError{Name: "final_score", err: fmt.Errorf(`ent: validator failed for field "BobbinGrade.final_score": %w`, err)}
 		}
-	}
-	if _, ok := _c.mutation.IsQualified(); !ok {
-		return &ValidationError{Name: "is_qualified", err: errors.New(`ent: missing required field "BobbinGrade.is_qualified"`)}
 	}
 	if _, ok := _c.mutation.InspectedAt(); !ok {
 		return &ValidationError{Name: "inspected_at", err: errors.New(`ent: missing required field "BobbinGrade.inspected_at"`)}
@@ -385,7 +378,7 @@ func (_c *BobbinGradeCreate) createSpec() (*BobbinGrade, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.IsQualified(); ok {
 		_spec.SetField(bobbingrade.FieldIsQualified, field.TypeBool, value)
-		_node.IsQualified = value
+		_node.IsQualified = &value
 	}
 	if value, ok := _c.mutation.DefectReason(); ok {
 		_spec.SetField(bobbingrade.FieldDefectReason, field.TypeString, value)

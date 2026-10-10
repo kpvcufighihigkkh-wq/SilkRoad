@@ -191,7 +191,7 @@ var (
 		{Name: "inspection_details", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "scores", Type: field.TypeJSON, Nullable: true, SchemaType: map[string]string{"postgres": "jsonb"}},
 		{Name: "final_score", Type: field.TypeFloat64, Nullable: true},
-		{Name: "is_qualified", Type: field.TypeBool, Default: true},
+		{Name: "is_qualified", Type: field.TypeBool, Nullable: true},
 		{Name: "defect_reason", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "notes", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "inspected_at", Type: field.TypeTime},

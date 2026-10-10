@@ -301,7 +301,6 @@ func (u *Uploader) collectBobbinGrades(ctx context.Context, limit int) ([]models
 			"bobbin_id":     r.BobbinID.String(),
 			"bobbin_number": bobbinNumbers[r.BobbinID],
 			"grade":         r.Grade,
-			"is_qualified":  r.IsQualified,
 			// inspected_at 在 schema 中非 Optional（Default(time.Now)），
 			// Edge 侧恒有值，无条件带上。
 			"inspected_at": r.InspectedAt,
@@ -314,6 +313,18 @@ func (u *Uploader) collectBobbinGrades(ctx context.Context, limit int) ([]models
 		}
 		if r.DefectReason != "" {
 			data["defect_reason"] = r.DefectReason
+		}
+		// is_qualified 是三态：nil 表示质检员未陈述结论，此时整键缺席。
+		//
+		// 注意此处不受编译器保护：把 nil 指针写进 map[string]interface{} 是
+		// 合法编译，只会静默发出 "is_qualified": null。带上显式 null 会让
+		// 「未陈述」在传输层呈现为一个值；今日 Center 的 getBoolPtr 恰好把它
+		// 读成 nil，但那是巧合——一旦 Center 改成按「键存在」解释载荷，
+		// 显式 null 就会被读成 false，把「未陈述」写成「不合格」，而该表只增
+		// 不改。故这里必须整键缺席，由 TestBobbinGradePayload_IsQualifiedOmitted
+		// _WhenUnstated 钉住。
+		if r.IsQualified != nil {
+			data["is_qualified"] = *r.IsQualified
 		}
 		out = append(out, models.UploadEntry{
 			Table:     "bobbin_grades",
