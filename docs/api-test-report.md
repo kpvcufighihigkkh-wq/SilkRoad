@@ -22,6 +22,8 @@ docker start igh-postgres
 
 ### 2. 数据库迁移
 ```bash
+# 先编译（bin/ 不在版本控制内，且 schema 变更后旧二进制会用旧结构建表）
+go build -o bin/migrate.exe ./cmd/migrate
 # 用 ent 自动迁移建表（migrations/ 目录已删除：内容陈旧且无代码引用）
 ./bin/migrate.exe center "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
 ```
