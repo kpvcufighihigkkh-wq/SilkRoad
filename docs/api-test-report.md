@@ -22,7 +22,8 @@ docker start igh-postgres
 
 ### 2. 数据库迁移
 ```bash
-cat migrations/center/000001_init.up.sql | docker exec -i igh-postgres psql -U igh -d igh
+# 用 ent 自动迁移建表（migrations/ 目录已删除：内容陈旧且无代码引用）
+./bin/migrate.exe center "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
 ```
 
 ### 3. 创建测试用户

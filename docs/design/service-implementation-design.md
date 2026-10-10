@@ -98,9 +98,8 @@ igh-silkroad/
 │   ├── gen-proto.sh         # 生成 Protobuf 代码
 │   └── gen-ent.sh           # 生成 Ent 代码
 │
-├── migrations/              # 数据库迁移文件
-│   ├── postgres/            # 中心端迁移
-│   └── sqlite/              # 边端迁移
+│   （注：原设计中的 migrations/ 目录已于 2026-10-10 删除 —— 内容与 ent schema 脱节且无代码引用；
+│     实际迁移入口是 cmd/migrate，走 ent 的 client.Schema.Create，见 docs/database-migration.md）
 │
 ├── go.mod
 ├── go.sum

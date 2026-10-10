@@ -1796,38 +1796,21 @@ if err := client.Schema.Create(ctx); err != nil {
 - migration文件提交到Git
 - Atlas自动管理版本号和依赖关系
 
-### 4.2 边端（golang-migrate）
+### 4.2 边端（ent自动迁移）
 
-**工具：** golang-migrate (ADR-07)
+**工具：** ent框架自动Schema迁移
 
-**迁移文件命名：**
-```
-migrations/
-  20260924120000_init_schema.up.sql
-  20260924120000_init_schema.down.sql
-  20260925100000_add_sync_queue.up.sql
-  20260925100000_add_sync_queue.down.sql
-```
+**实际实现：** 边端与中心端使用**同一套 ent schema**，迁移入口都是 `client.Schema.Create(ctx)`
+（`cmd/edge-server/main.go`、`cmd/migrate/main.go` 的 `migrateEdge`）。
 
-**自动执行：**
-```go
-// OTA更新时自动执行迁移
-func RunMigrations(db *sql.DB) error {
-    driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
-    if err != nil {
-        return err
-    }
-    
-    m, err := migrate.NewWithDatabaseInstance(
-        "file://migrations",
-        "sqlite3", driver)
-    if err != nil {
-        return err
-    }
-    
-    return m.Up()  // 执行所有待执行的up迁移
-}
-```
+**为何不是 golang-migrate：** 本设计初稿（2026-09-24）设想边端用 golang-migrate + 手写 SQL 迁移文件，
+该策略**从未实施** —— `golang-migrate` 至今未进入 `go.mod`，`scripts/gen-ent.sh` 与 `Makefile` 也从未创建。
+与之配套的 `migrations/` 目录已于 2026-10-10 删除：其内容用 `synced INTEGER` 而非现行的
+`sync_status` 枚举 + `sync_retry_count`，且缺 barrel/doffing/edge/grade/module 五个实体，
+与 ent schema 严重脱节；同时它无任何代码引用。
+
+**版本控制：** schema 的版本控制即 `internal/database/ent/schema/*.go` 的 Git 历史；
+生成产物提交入库，但不手工编辑（见项目 `CLAUDE.md` 的编码与生成规则）。
 
 ---
 
