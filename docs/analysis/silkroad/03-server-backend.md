@@ -844,6 +844,8 @@ func canWrite(role string, group string) bool {
 | logistics | movement, monorail_task, hourly_production, warehouse_location, warehouse_transaction | R/W | R | R |
 | system | user_account, audit_log, edge_alarm, erp_shipment | R/W | R | R |
 
+> **注**：上表 `system` 行中，`user_account` 与 `audit_log` 属 §8.4 的 `AdminOnly` 资源，完全绕过分组权限，非 admin 角色访问返回 `403 Forbidden`；因此 operator/viewer 列的「R」实际仅适用于 `edge_alarm` 与 `erp_shipment`（二者不属 AdminOnly）。以 §8.4 为准。
+
 ### 8.4 AdminOnly 资源
 
 标记为 `AdminOnly` 的资源完全绕过分组权限，仅 admin 角色可访问：
