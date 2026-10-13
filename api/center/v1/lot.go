@@ -73,14 +73,23 @@ func (h *LotHandler) GetLot(c *gin.Context) {
 // @Param page_size query int false "每页数量" default(20)
 // @Param edge_id query string false "边端设备ID"
 // @Param status query string false "状态"
+// @Param order_code query string false "订单号（精确匹配）"
+// @Param product_type query string false "产品类型（FDY/POY/DTY）"
+// @Param keyword query string false "批次号模糊搜索"
 // @Success 200 {object} api.Response{data=api.PageResponse{list=[]service.LotResponse}}
 // @Router /v1/lots [get]
 func (h *LotHandler) ListLots(c *gin.Context) {
 	page, pageSize := api.ParsePagination(c.DefaultQuery("page", "1"), c.DefaultQuery("page_size", "20"))
 	edgeID := c.Query("edge_id")
 	status := c.Query("status")
+	orderCode := c.Query("order_code")
+	productType := c.Query("product_type")
+	keyword := c.Query("keyword")
 
-	lots, total, err := h.lotService.ListLots(c.Request.Context(), page, pageSize, edgeID, status)
+	lots, total, err := h.lotService.ListLots(
+		c.Request.Context(), page, pageSize,
+		edgeID, status, orderCode, productType, keyword,
+	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
