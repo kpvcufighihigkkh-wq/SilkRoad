@@ -208,9 +208,14 @@ func (s *CenterServer) registerRoutes() {
 			users.GET("", userHandler.ListUsers)
 			users.GET("/:id", userHandler.GetUser)
 			users.PUT("/:id", userHandler.UpdateUser)
-			users.PUT("/:id/password", userHandler.ChangePassword)
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
+
+		// PUT /v1/users/:id/password 的允许角色是「admin 或本人」（spec 权限矩阵），
+		// 不是 admin-only：挂在 users 组内时，除 admin 外没有任何角色能改自己的密码
+		// （ChangePassword 的签名不含调用者身份，「仅本人」只能在 handler 层判定）。
+		// 注意这是**移动**而非新增 —— 同路径注册两次会让 gin 装配路由时 panic。
+		authorized.PUT("/users/:id/password", userHandler.ChangePassword)
 
 		// GET /v1/users/me 必须对所有已登录角色开放：它返回调用者自己的信息，
 		// 是前端判断角色、渲染菜单的依据。挂在 admin 组内会让 viewer 登录后

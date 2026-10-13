@@ -201,12 +201,28 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 // @Success 200 {object} api.Response
 // @Failure 400 {object} api.Response
 // @Router /v1/users/{id}/password [put]
+//
+// 允许角色为「admin 或本人」（设计文档权限矩阵）：该路由不在 requireRole("admin")
+// 组内，改他人密码必须在这里拦下。ChangePassword 要求提供旧密码，因此 admin
+// 实际上改不了他人密码（它不知道旧密码）—— 但「不知道旧密码」是运行时才发现
+// 的，不能当作授权依据，越权判定仍须显式做。
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	id := c.Param("id")
 
 	var req service.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, api.Error(api.CodeInvalidParams, err.Error()))
+		return
+	}
+
+	claims, ok := claimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未登录"))
+		return
+	}
+
+	if claims.UserID != id && primaryRole(claims) != "admin" {
+		c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "无权修改他人密码"))
 		return
 	}
 

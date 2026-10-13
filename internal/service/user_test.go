@@ -109,7 +109,7 @@ func TestUserService_UpdateUser_NilRoleKeepsOriginal(t *testing.T) {
 	// Role 缺省（nil）：只改姓名，角色应保持 inspector
 	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
 		RealName: "改名了",
-		IsActive: true,
+		IsActive: boolPtr(true),
 	}); err != nil {
 		t.Fatalf("UpdateUser failed: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestUserService_UpdateUser_EmptyRoleRejected(t *testing.T) {
 	empty := ""
 	err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
 		Role:     &empty,
-		IsActive: true,
+		IsActive: boolPtr(true),
 	})
 	if err == nil {
 		t.Error("显式空角色被接受，应被拒绝")
@@ -153,10 +153,71 @@ func TestUserService_UpdateUser_CannotEscalateViaUpdate(t *testing.T) {
 	adminRole := "admin"
 	err := svc.UpdateUser(context.Background(), targetID, "inspector", &service.UpdateUserRequest{
 		Role:     &adminRole,
-		IsActive: true,
+		IsActive: boolPtr(true),
 	})
 	if err == nil {
 		t.Error("inspector 通过更新接口把用户提升为 admin，越权未拦截")
+	}
+}
+
+// boolPtr 取布尔字面量的地址，用于构造 UpdateUserRequest 的显式取值字段。
+func boolPtr(v bool) *bool {
+	return &v
+}
+
+// Review Focus #3：IsActive 为 nil 时必须保持原启用状态不变。
+//
+// 与 NilRoleKeepsOriginal 是同一个失效模式（同一 struct、同一函数）：用值类型
+// 时缺省的 is_active 会被 encoding/json 解析成 false，一个只改姓名的
+// PUT /v1/users/:id 会把目标账号静默停用 —— 此后该用户登录得到
+// ErrUserInactive，而请求方看到的是 200 成功。
+//
+// 这条用例是该 bug 唯一的覆盖：此前所有用例都传了 IsActive: true，
+// 因此把字段改回值类型不会有任何测试变红。
+func TestUserService_UpdateUser_NilIsActiveKeepsOriginal(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+	mustCreateUser(t, svc, "admin", "u-active", "inspector")
+	targetID := findUserID(t, svc, "u-active")
+
+	before, err := svc.GetUser(context.Background(), targetID)
+	if err != nil {
+		t.Fatalf("GetUser failed: %v", err)
+	}
+	if !before.IsActive {
+		t.Fatalf("前置条件不成立：新建用户 IsActive = false, want true")
+	}
+
+	// IsActive 缺省（nil）：只改姓名，启用状态应保持 true
+	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
+		RealName: "只改了姓名",
+	}); err != nil {
+		t.Fatalf("UpdateUser failed: %v", err)
+	}
+
+	got, err := svc.GetUser(context.Background(), targetID)
+	if err != nil {
+		t.Fatalf("GetUser failed: %v", err)
+	}
+	if got.RealName != "只改了姓名" {
+		t.Errorf("RealName = %q, want %q", got.RealName, "只改了姓名")
+	}
+	if !got.IsActive {
+		t.Errorf("IsActive = false, want true（IsActive 为 nil 时不得改启用状态；该用户此后登录会得到 ErrUserInactive）")
+	}
+
+	// 显式 &false 必须真的停用 —— 否则「用 nil 判断」会退化成「永远不停用」。
+	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
+		IsActive: boolPtr(false),
+	}); err != nil {
+		t.Fatalf("UpdateUser failed: %v", err)
+	}
+	off, err := svc.GetUser(context.Background(), targetID)
+	if err != nil {
+		t.Fatalf("GetUser failed: %v", err)
+	}
+	if off.IsActive {
+		t.Errorf("IsActive = true, want false（显式 &false 必须停用）")
 	}
 }
 
@@ -170,7 +231,7 @@ func TestUserService_UpdateUser_CanPromoteWithinRank(t *testing.T) {
 	operatorRole := "operator"
 	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
 		Role:     &operatorRole,
-		IsActive: true,
+		IsActive: boolPtr(true),
 	}); err != nil {
 		t.Fatalf("UpdateUser failed: %v", err)
 	}
