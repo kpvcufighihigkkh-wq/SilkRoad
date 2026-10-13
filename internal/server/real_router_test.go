@@ -331,7 +331,9 @@ func TestRealRouter_NonAdminCannotReachUserManagement(t *testing.T) {
 	}{
 		{http.MethodPost, "/v1/users", `{"username":"x","password":"y","real_name":"z","role":"viewer"}`},
 		{http.MethodGet, "/v1/users", ""},
+		{http.MethodGet, "/v1/users/00000000-0000-0000-0000-000000000001", ""},
 		{http.MethodPut, "/v1/users/00000000-0000-0000-0000-000000000001", `{"real_name":"n","is_active":true}`},
+		{http.MethodPut, "/v1/users/00000000-0000-0000-0000-000000000001/password", `{"old_password":"a","new_password":"b"}`},
 		{http.MethodDelete, "/v1/users/00000000-0000-0000-0000-000000000001", ""},
 	}
 
@@ -445,18 +447,70 @@ func TestRealRouter_AllRolesCanReadOwnProfile(t *testing.T) {
 	}
 }
 
-// 设备凭证仍不得进入管理路由（回归：requireRole 不能取代 requireUserPrincipal）。
+// 生产路由必须包含 GET /v1/users/me，且它不得落在 admin 组内。
+//
+// TestRealRouter_AllRolesCanReadOwnProfile 只断言「非 403」，而该文件在
+// TestRealRouter_DeviceRoutesRemainReachableByDeviceToken 中已把标准写明：
+// 「不是 403」会被 404（路由被删）混过去。没有本断言时，/v1/users/me 的存在性
+// 仅靠间接的参数路由遮蔽行为支撑 —— 若该行被删，viewer 请求会落到 admin 组内的
+// GET /v1/users/:id 上得到 403，尚能被上面那条用例捕获；但若删的是整条路由
+// 之外的其它形态，就没有任何断言会红。这里直接钉住活路由表。
+func TestRealRouter_HasOwnProfileRoute(t *testing.T) {
+	router, _, _ := newRealRouter(t)
+
+	want := "GET /v1/users/me"
+	for _, r := range router.Routes() {
+		if r.Method+" "+r.Path == want {
+			return
+		}
+	}
+
+	var got []string
+	for _, r := range router.Routes() {
+		if strings.HasPrefix(r.Path, "/v1/users") {
+			got = append(got, r.Method+" "+r.Path)
+		}
+	}
+	t.Errorf("生产路由缺少 %s（前端靠它获取自身角色渲染菜单）；已注册: %v", want, got)
+}
+
+// 两条用例缺一不可，构成对「requireUserPrincipal 挂在 authorized 组级」的证明：
+//
+//  1. GET /v1/lots —— 该路由只有 requireUserPrincipal，**没有** requireRole。
+//     它才是这层中间件的判别用例：删掉 center.go 的 authorized.Use(requireUserPrincipal())
+//     会让它变红。只读端点如今是这层中间件唯一的专属守卫。
+//  2. POST /v1/users —— 该路由同时有 requireUserPrincipal 与 requireRole("admin")。
+//     设备 token 的 Roles 为 ["edge"]，会被角色允许列表拒掉，因此它**无法**单独
+//     证明 requireUserPrincipal 仍挂着（双层守卫会掩盖单层的缺失）。
+//     保留它是为了钉住「设备凭证进不了用户管理」这个终态。
 func TestRealRouter_DeviceTokenStillBlockedFromUserRoutes(t *testing.T) {
 	router, deviceToken, _ := newRealRouter(t)
 
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/v1/users",
-		strings.NewReader(`{"username":"x","password":"y","real_name":"z","role":"admin"}`))
-	req.Header.Set("Authorization", "Bearer "+deviceToken)
-	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	cases := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		// 仅 requireUserPrincipal 守卫（无 requireRole）—— 判别用例
+		{http.MethodGet, "/v1/lots", ""},
+		// 双层守卫 —— 终态用例
+		{http.MethodPost, "/v1/users", `{"username":"x","password":"y","real_name":"z","role":"admin"}`},
+	}
 
-	if w.Code != http.StatusForbidden {
-		t.Errorf("设备凭证 → %d, want 403; body=%s", w.Code, w.Body.String())
+	for _, tc := range cases {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+			req.Header.Set("Authorization", "Bearer "+deviceToken)
+			if tc.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+			router.ServeHTTP(w, req)
+
+			if w.Code != http.StatusForbidden {
+				t.Errorf("设备凭证访问 %s %s → %d, want 403; body=%s",
+					tc.method, tc.path, w.Code, w.Body.String())
+			}
+		})
 	}
 }
