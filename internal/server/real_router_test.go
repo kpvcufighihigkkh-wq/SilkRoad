@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yourusername/igh-silkroad/internal/service"
 )
 
 // newRealRouter 用生产构造函数装配路由，返回 router 与认证器。
@@ -333,7 +335,10 @@ func TestRealRouter_NonAdminCannotReachUserManagement(t *testing.T) {
 		{http.MethodGet, "/v1/users", ""},
 		{http.MethodGet, "/v1/users/00000000-0000-0000-0000-000000000001", ""},
 		{http.MethodPut, "/v1/users/00000000-0000-0000-0000-000000000001", `{"real_name":"n","is_active":true}`},
-		{http.MethodPut, "/v1/users/00000000-0000-0000-0000-000000000001/password", `{"old_password":"a","new_password":"b"}`},
+		// 该 UUID 与下面签发的 token 的 UserID（"u-"+role）不同，即为「改他人密码」。
+		// 请求体必须通过 binding 校验（new_password 有 min=6），否则会先拿到 400
+		// 而根本走不到授权判定 —— 那样这条断言就不再证明角色守卫拦住了越权。
+		{http.MethodPut, "/v1/users/00000000-0000-0000-0000-000000000001/password", `{"old_password":"old-secret","new_password":"new-secret"}`},
 		{http.MethodDelete, "/v1/users/00000000-0000-0000-0000-000000000001", ""},
 	}
 
@@ -396,8 +401,27 @@ func TestRealRouter_NonAdminCannotReachEdgeManagement(t *testing.T) {
 // 管理员必须能真正抵达 handler（否则「全拒绝」会伪装成正确实现）。
 //
 // 不断言 200 —— handler 持有 nil client 会失败，这里只要求「不是 403」。
+// 但「不是 403」会被 404（路由被删）混过去，因此同时断言活路由表里确实注册了
+// 这些管理路由 —— 与本文件 TestRealRouter_HasOwnProfileRoute 同一范式。
 func TestRealRouter_AdminPassesRoleGuard(t *testing.T) {
 	router, token := newRealRouterWithRole(t, "admin")
+
+	for _, want := range []string{
+		"GET /v1/users",
+		"POST /v1/users",
+		"GET /v1/users/:id",
+		"PUT /v1/users/:id",
+		"DELETE /v1/users/:id",
+		// 该路由对所有人开放（admin 或本人），见 center.go 中的说明
+		"PUT /v1/users/:id/password",
+		"GET /v1/edges",
+		"POST /v1/edges",
+		"POST /v1/edges/:code/token",
+	} {
+		if !routeRegistered(router, want) {
+			t.Errorf("生产路由缺少 %s（管理员无法抵达；断言「非 403」会被此处的 404 混过去）", want)
+		}
+	}
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/users", nil)
@@ -409,11 +433,31 @@ func TestRealRouter_AdminPassesRoleGuard(t *testing.T) {
 	}
 }
 
+// routeRegistered 报告活路由表中是否存在 method+path。
+//
+// 用 router.Routes() 而非硬编码清单：断言的是「真的注册了」，
+// 把它删掉测试即变红。
+func routeRegistered(router *gin.Engine, methodAndPath string) bool {
+	for _, r := range router.Routes() {
+		if r.Method+" "+r.Path == methodAndPath {
+			return true
+		}
+	}
+	return false
+}
+
 // 只读的批次/丝饼查询对所有已登录角色开放 —— 角色守卫不得误伤它们。
 func TestRealRouter_AllRolesCanReadLots(t *testing.T) {
 	for _, role := range []string{"viewer", "operator", "inspector", "admin"} {
 		t.Run(role, func(t *testing.T) {
 			router, token := newRealRouterWithRole(t, role)
+
+			// 删除整组只读路由时，「非 403」会被 404 混过。
+			for _, want := range []string{"GET /v1/lots", "GET /v1/bobbins"} {
+				if !routeRegistered(router, want) {
+					t.Errorf("生产路由缺少 %s（断言「非 403」会被此处的 404 混过去）", want)
+				}
+			}
 
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/v1/lots", nil)
@@ -434,6 +478,12 @@ func TestRealRouter_AllRolesCanReadOwnProfile(t *testing.T) {
 		t.Run(role, func(t *testing.T) {
 			router, token := newRealRouterWithRole(t, role)
 
+			// 删掉该路由时 viewer 的请求会落到 admin 组内的 GET /v1/users/:id 得到 403，
+			// 尚能被下面的断言捕获；但「非 403」本身仍不足以证明路由存在。
+			if !routeRegistered(router, "GET /v1/users/me") {
+				t.Errorf("生产路由缺少 GET /v1/users/me（断言「非 403」会被此处的 404 混过去）")
+			}
+
 			w := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, "/v1/users/me", nil)
 			req.Header.Set("Authorization", "Bearer "+token)
@@ -445,6 +495,111 @@ func TestRealRouter_AllRolesCanReadOwnProfile(t *testing.T) {
 			}
 		})
 	}
+}
+
+// PUT /v1/users/:id/password 允许的调用者是「admin 或本人」（设计文档 §权限矩阵）。
+//
+// 它此前落在 requireRole("admin") 组内，除 admin 外没有任何角色能改自己的密码 ——
+// 而 admin 也改不了别人（ChangePassword 需要旧密码）。净效果是该功能对所有人不可用。
+// 本测试用**生产路由** + 真实 client，因此把该路由挪回 admin 组、或在 handler 里
+// 去掉「本人」分支，都会变红。
+func TestRealRouter_NonAdminCanChangeOwnPassword(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	t.Setenv("TRUSTED_PROXIES", "127.0.0.1/32")
+
+	client := newServerTestClient(t)
+	svc := service.NewUserService(client)
+
+	// 用生产构造函数装配路由，并把 client 交给它 —— 直接调 NewCenterServer 会拿到 nil client。
+	srv := NewCenterServer(client, "test-secret", 0)
+	// NewCenterServer 内部的 userService 与本处 svc 是同一 client 上的两个实例，
+	// 因此下面用 svc 建档、用 srv 处理请求是等价的。
+
+	const oldPwd, newPwd = "old-secret", "new-secret"
+
+	mkUser := func(username, role string) string {
+		t.Helper()
+		u, err := svc.CreateUser(context.Background(), "admin", &service.CreateUserRequest{
+			Username: username,
+			Password: oldPwd,
+			RealName: "测试用户",
+			Role:     role,
+		})
+		if err != nil {
+			t.Fatalf("CreateUser(%s) failed: %v", username, err)
+		}
+		return u.ID
+	}
+
+	call := func(token, targetID, oldPassword string) *httptest.ResponseRecorder {
+		t.Helper()
+		body := `{"old_password":"` + oldPassword + `","new_password":"` + newPwd + `"}`
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPut, "/v1/users/"+targetID+"/password",
+			strings.NewReader(body))
+		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
+		srv.router.ServeHTTP(w, req)
+		return w
+	}
+
+	// 1) 非管理员改自己的密码 → 200
+	for _, role := range []string{"viewer", "operator", "inspector"} {
+		t.Run("本人-"+role, func(t *testing.T) {
+			ownID := mkUser("u-pwd-"+role, role)
+			token, err := srv.jwtAuth.GenerateToken(ownID, "u-pwd-"+role, []string{role})
+			if err != nil {
+				t.Fatalf("GenerateToken failed: %v", err)
+			}
+
+			w := call(token, ownID, oldPwd)
+			if w.Code != http.StatusOK {
+				t.Fatalf("%s 改自己密码 → %d, want 200; body=%s", role, w.Code, w.Body.String())
+			}
+
+			// 新密码必须真的生效（否则「返回 200」可能只是空实现）
+			if _, err := svc.ValidateLogin(context.Background(), "u-pwd-"+role, newPwd); err != nil {
+				t.Errorf("%s 用新密码登录失败: %v", role, err)
+			}
+		})
+	}
+
+	// 2) 非管理员改他人密码 → 403（且不得改动目标账号的密码）
+	t.Run("改他人", func(t *testing.T) {
+		viewerID := mkUser("u-pwd-attacker", "viewer")
+		victimID := mkUser("u-pwd-victim", "operator")
+
+		token, err := srv.jwtAuth.GenerateToken(viewerID, "u-pwd-attacker", []string{"viewer"})
+		if err != nil {
+			t.Fatalf("GenerateToken failed: %v", err)
+		}
+
+		w := call(token, victimID, oldPwd)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("viewer 改他人密码 → %d, want 403; body=%s", w.Code, w.Body.String())
+		}
+
+		// 受害者原密码必须仍然有效 —— 拦下请求但不能是「先改了再报 403」
+		if _, err := svc.ValidateLogin(context.Background(), "u-pwd-victim", oldPwd); err != nil {
+			t.Errorf("他人密码被改动: %v", err)
+		}
+	})
+
+	// 3) admin 改他人密码：路径放行到 handler（无旧密码则业务失败，但不该是 403）
+	t.Run("admin不被身份拦截", func(t *testing.T) {
+		adminID := mkUser("u-pwd-admin", "admin")
+		otherID := mkUser("u-pwd-other", "viewer")
+
+		token, err := srv.jwtAuth.GenerateToken(adminID, "u-pwd-admin", []string{"admin"})
+		if err != nil {
+			t.Fatalf("GenerateToken failed: %v", err)
+		}
+
+		w := call(token, otherID, "错误的旧密码")
+		if w.Code == http.StatusForbidden {
+			t.Errorf("admin 被误判为无权访问（status=403）; body=%s", w.Body.String())
+		}
+	})
 }
 
 // 生产路由必须包含 GET /v1/users/me，且它不得落在 admin 组内。

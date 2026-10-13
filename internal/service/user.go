@@ -42,12 +42,21 @@ type CreateUserRequest struct {
 //
 // 用值类型时二者都会被 encoding/json 解析成空串，无法区分，
 // 前端只改姓名的请求会意外清空角色。
+//
+// IsActive 同理用指针区分「未提供」与「显式设置」：
+//
+//	nil     → 不改启用状态
+//	&true   → 启用
+//	&false  → 停用
+//
+// 用值类型时缺省会解析成 false，前端只改姓名的请求会把目标账号静默停用
+// （此后该用户登录得到 ErrUserInactive），与 Role 是同一个失效模式。
 type UpdateUserRequest struct {
 	RealName string  `json:"real_name"`
 	Email    string  `json:"email"`
 	Phone    string  `json:"phone"`
 	Role     *string `json:"role"`
-	IsActive bool    `json:"is_active"`
+	IsActive *bool   `json:"is_active"`
 }
 
 // ChangePasswordRequest 修改密码请求
@@ -194,7 +203,10 @@ func (s *UserService) UpdateUser(ctx context.Context, id, callerRole string, req
 		builder.SetPhone(req.Phone)
 	}
 
-	builder.SetIsActive(req.IsActive)
+	// IsActive 为 nil 表示不改启用状态；非 nil 时才显式设置。
+	if req.IsActive != nil {
+		builder.SetIsActive(*req.IsActive)
+	}
 
 	// Role 为 nil 表示不改角色；非 nil 时必须校验。
 	if req.Role != nil {
