@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -12,21 +13,47 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/service"
 )
 
-// 路由必须存在，且失败路径不返回 404。
+// 登录路由必须注册，且请求能真正抵达 handler。
+//
+// 断言对象取自**活路由表**（router.Routes()），不是硬编码清单：删掉
+// registerRoutes 里的 v1.POST("/login", ...) 时用例必须变红。
+//
+// 不用「POST 一个必然失败的登录、断言响应码 != 404」这种写法。传入 nil client
+// 时，handleLogin → ValidateLogin → GetUserByUsername 会在 s.client.User.Query()
+// 处解引用 nil（internal/service/user.go:137）并 panic，gin 的 Recovery() 把它
+// 转成 500，于是「500 != 404」意外成立。那样一来，登录路径上任何真实的 panic
+// 都会被静默吞成通过 —— 测试失去区分能力。
 func TestLogin_RouteExists(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	t.Setenv("TRUSTED_PROXIES", "127.0.0.1/32")
 
-	srv := NewCenterServer(nil, "test-secret", 0)
+	srv := NewCenterServer(newServerTestClient(t), "test-secret", 0)
 
+	registered := make(map[string]bool)
+	var v1Routes []string
+	for _, r := range srv.router.Routes() {
+		registered[r.Method+" "+r.Path] = true
+		if strings.HasPrefix(r.Path, "/v1") {
+			v1Routes = append(v1Routes, r.Method+" "+r.Path)
+		}
+	}
+	sort.Strings(v1Routes)
+
+	if !registered["POST /v1/login"] {
+		t.Fatalf("POST /v1/login 未注册；已注册的 /v1 路由：\n  %s",
+			strings.Join(v1Routes, "\n  "))
+	}
+
+	// 路由注册不等于请求可达：请求体非法时 ShouldBindJSON 在 handler 首行即返回
+	// 400，据此证明请求确实进入了 handleLogin，而非停在 404 或 500。
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/login",
-		strings.NewReader(`{"username":"nobody","password":"wrong"}`))
+		strings.NewReader(`{"username":""}`))
 	req.Header.Set("Content-Type", "application/json")
 	srv.router.ServeHTTP(w, req)
 
-	if w.Code == http.StatusNotFound {
-		t.Fatal("POST /v1/login 路由不存在")
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("非法请求体应返回 400，got %d; body=%s", w.Code, w.Body.String())
 	}
 }
 
