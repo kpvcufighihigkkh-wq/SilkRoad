@@ -20,31 +20,6 @@ func NewLotHandler(lotService *service.LotService) *LotHandler {
 	}
 }
 
-// CreateLot godoc
-// @Summary 创建批次
-// @Tags lots
-// @Accept json
-// @Produce json
-// @Param lot body service.CreateLotRequest true "批次信息"
-// @Success 200 {object} api.Response{data=service.LotResponse}
-// @Failure 400 {object} api.Response
-// @Router /v1/lots [post]
-func (h *LotHandler) CreateLot(c *gin.Context) {
-	var req service.CreateLotRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.Error(api.CodeInvalidParams, err.Error()))
-		return
-	}
-
-	lot, err := h.lotService.CreateLot(c.Request.Context(), &req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
-		return
-	}
-
-	c.JSON(http.StatusOK, api.Success(lot))
-}
-
 // GetLot godoc
 // @Summary 获取批次详情
 // @Tags lots
@@ -96,53 +71,4 @@ func (h *LotHandler) ListLots(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, api.PageSuccess(lots, page, pageSize, total))
-}
-
-// UpdateLotStatus godoc
-// @Summary 更新批次状态
-// @Tags lots
-// @Accept json
-// @Produce json
-// @Param id path string true "批次ID"
-// @Param status body object{status=string} true "状态"
-// @Success 200 {object} api.Response
-// @Failure 400 {object} api.Response
-// @Router /v1/lots/{id}/status [put]
-func (h *LotHandler) UpdateLotStatus(c *gin.Context) {
-	id := c.Param("id")
-
-	var req struct {
-		Status string `json:"status" binding:"required"`
-	}
-
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, api.Error(api.CodeInvalidParams, err.Error()))
-		return
-	}
-
-	if err := h.lotService.UpdateLotStatus(c.Request.Context(), id, req.Status); err != nil {
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
-		return
-	}
-
-	c.JSON(http.StatusOK, api.Success(nil))
-}
-
-// DeleteLot godoc
-// @Summary 删除批次
-// @Tags lots
-// @Produce json
-// @Param id path string true "批次ID"
-// @Success 200 {object} api.Response
-// @Failure 404 {object} api.Response
-// @Router /v1/lots/{id} [delete]
-func (h *LotHandler) DeleteLot(c *gin.Context) {
-	id := c.Param("id")
-
-	if err := h.lotService.DeleteLot(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, api.Error(api.CodeNotFound, err.Error()))
-		return
-	}
-
-	c.JSON(http.StatusOK, api.Success(nil))
 }
