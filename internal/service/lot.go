@@ -108,8 +108,14 @@ func (s *LotService) GetLot(ctx context.Context, id string) (*LotResponse, error
 	return s.toLotResponse(lot), nil
 }
 
-// ListLots 查询批次列表
-func (s *LotService) ListLots(ctx context.Context, page, pageSize int, edgeID, status string) ([]*LotResponse, int, error) {
+// ListLots 查询批次列表。
+//
+// 筛选参数全部可选，空串表示不过滤。keyword 模糊匹配 lot_number。
+func (s *LotService) ListLots(
+	ctx context.Context,
+	page, pageSize int,
+	edgeID, status, orderCode, productType, keyword string,
+) ([]*LotResponse, int, error) {
 	query := s.client.Lot.Query()
 
 	if edgeID != "" {
@@ -122,6 +128,19 @@ func (s *LotService) ListLots(ctx context.Context, page, pageSize int, edgeID, s
 
 	if status != "" {
 		query = query.Where(lot.StatusEQ(lot.Status(status)))
+	}
+
+	if orderCode != "" {
+		query = query.Where(lot.OrderCodeEQ(orderCode))
+	}
+
+	if productType != "" {
+		query = query.Where(lot.ProductTypeEQ(lot.ProductType(productType)))
+	}
+
+	if keyword != "" {
+		// ent 的 ContainsFold 内部已转义 LIKE 元字符，此处直接传原值。
+		query = query.Where(lot.LotNumberContainsFold(keyword))
 	}
 
 	total, err := query.Count(ctx)
