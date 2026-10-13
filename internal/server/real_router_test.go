@@ -301,3 +301,162 @@ func TestRealRouter_EdgeHasBobbinWriteRoutes(t *testing.T) {
 		}
 	}
 }
+
+// newRealRouterWithRole 用生产构造函数装配路由，签发指定角色的用户 token。
+func newRealRouterWithRole(t *testing.T, role string) (*gin.Engine, string) {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+	t.Setenv("TRUSTED_PROXIES", "127.0.0.1/32")
+
+	srv := NewCenterServer(nil, "test-secret", 0)
+
+	token, err := srv.jwtAuth.GenerateToken("u-"+role, role, []string{role})
+	if err != nil {
+		t.Fatalf("GenerateToken failed: %v", err)
+	}
+
+	return srv.router, token
+}
+
+// 非管理员角色不得抵达任何 /v1/users 管理端点。
+//
+// 此前这些路由只挂了 requireUserPrincipal（挡设备凭证），任何登录用户
+// 都能创建 admin 账号。本测试钉住「角色守卫真的挂上了」。
+func TestRealRouter_NonAdminCannotReachUserManagement(t *testing.T) {
+	cases := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodPost, "/v1/users", `{"username":"x","password":"y","real_name":"z","role":"viewer"}`},
+		{http.MethodGet, "/v1/users", ""},
+		{http.MethodPut, "/v1/users/00000000-0000-0000-0000-000000000001", `{"real_name":"n","is_active":true}`},
+		{http.MethodDelete, "/v1/users/00000000-0000-0000-0000-000000000001", ""},
+	}
+
+	for _, role := range []string{"viewer", "operator", "inspector"} {
+		t.Run(role, func(t *testing.T) {
+			router, token := newRealRouterWithRole(t, role)
+
+			for _, tc := range cases {
+				t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+					w := httptest.NewRecorder()
+					req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+					req.Header.Set("Authorization", "Bearer "+token)
+					if tc.body != "" {
+						req.Header.Set("Content-Type", "application/json")
+					}
+					router.ServeHTTP(w, req)
+
+					if w.Code != http.StatusForbidden {
+						t.Errorf("%s 访问 %s %s → %d, want 403; body=%s",
+							role, tc.method, tc.path, w.Code, w.Body.String())
+					}
+				})
+			}
+		})
+	}
+}
+
+// 非管理员不得注册设备或签发凭证。
+func TestRealRouter_NonAdminCannotReachEdgeManagement(t *testing.T) {
+	cases := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{http.MethodPost, "/v1/edges", `{"edge_code":"e1","edge_name":"n","ip_address":"1.2.3.4"}`},
+		{http.MethodGet, "/v1/edges", ""},
+		{http.MethodPost, "/v1/edges/e1/token", ""},
+	}
+
+	router, token := newRealRouterWithRole(t, "inspector")
+
+	for _, tc := range cases {
+		t.Run(tc.method+" "+tc.path, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body))
+			req.Header.Set("Authorization", "Bearer "+token)
+			if tc.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+			router.ServeHTTP(w, req)
+
+			if w.Code != http.StatusForbidden {
+				t.Errorf("inspector 访问 %s %s → %d, want 403; body=%s",
+					tc.method, tc.path, w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+// 管理员必须能真正抵达 handler（否则「全拒绝」会伪装成正确实现）。
+//
+// 不断言 200 —— handler 持有 nil client 会失败，这里只要求「不是 403」。
+func TestRealRouter_AdminPassesRoleGuard(t *testing.T) {
+	router, token := newRealRouterWithRole(t, "admin")
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/v1/users", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	if w.Code == http.StatusForbidden {
+		t.Errorf("admin 被角色守卫拦下（status=%d）; body=%s", w.Code, w.Body.String())
+	}
+}
+
+// 只读的批次/丝饼查询对所有已登录角色开放 —— 角色守卫不得误伤它们。
+func TestRealRouter_AllRolesCanReadLots(t *testing.T) {
+	for _, role := range []string{"viewer", "operator", "inspector", "admin"} {
+		t.Run(role, func(t *testing.T) {
+			router, token := newRealRouterWithRole(t, role)
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/v1/lots", nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			router.ServeHTTP(w, req)
+
+			if w.Code == http.StatusForbidden {
+				t.Errorf("%s 被拦在 /v1/lots 之外（status=403）; body=%s",
+					role, w.Body.String())
+			}
+		})
+	}
+}
+
+// /v1/users/me 必须对所有已登录角色开放：前端靠它拿自己的角色渲染菜单。
+func TestRealRouter_AllRolesCanReadOwnProfile(t *testing.T) {
+	for _, role := range []string{"viewer", "operator", "inspector", "admin"} {
+		t.Run(role, func(t *testing.T) {
+			router, token := newRealRouterWithRole(t, role)
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, "/v1/users/me", nil)
+			req.Header.Set("Authorization", "Bearer "+token)
+			router.ServeHTTP(w, req)
+
+			if w.Code == http.StatusForbidden {
+				t.Errorf("%s 被拦在 /v1/users/me 之外（status=403）; body=%s",
+					role, w.Body.String())
+			}
+		})
+	}
+}
+
+// 设备凭证仍不得进入管理路由（回归：requireRole 不能取代 requireUserPrincipal）。
+func TestRealRouter_DeviceTokenStillBlockedFromUserRoutes(t *testing.T) {
+	router, deviceToken, _ := newRealRouter(t)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/users",
+		strings.NewReader(`{"username":"x","password":"y","real_name":"z","role":"admin"}`))
+	req.Header.Set("Authorization", "Bearer "+deviceToken)
+	req.Header.Set("Content-Type", "application/json")
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("设备凭证 → %d, want 403; body=%s", w.Code, w.Body.String())
+	}
+}

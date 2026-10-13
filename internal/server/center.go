@@ -198,26 +198,31 @@ func (s *CenterServer) registerRoutes() {
 			// 写接口不在 Center：丝饼的全部信息来自 Edge
 		}
 
-		// 用户管理
+		// 用户管理（仅管理员）
 		userService := service.NewUserService(s.client)
 		userHandler := centerv1.NewUserHandler(userService)
 
-		users := authorized.Group("/users")
+		users := authorized.Group("/users", requireRole("admin"))
 		{
 			users.POST("", userHandler.CreateUser)
 			users.GET("", userHandler.ListUsers)
-			users.GET("/me", userHandler.GetCurrentUser)
 			users.GET("/:id", userHandler.GetUser)
 			users.PUT("/:id", userHandler.UpdateUser)
 			users.PUT("/:id/password", userHandler.ChangePassword)
 			users.DELETE("/:id", userHandler.DeleteUser)
 		}
 
-		// 边端设备管理（管理员操作，需用户 JWT）
+		// GET /v1/users/me 必须对所有已登录角色开放：它返回调用者自己的信息，
+		// 是前端判断角色、渲染菜单的依据。挂在 admin 组内会让 viewer 登录后
+		// 拿不到自己的角色。注意 /me 在此处**移出**了 users 组，不是新增 ——
+		// 同路径注册两次会让 gin 在装配路由时 panic。
+		authorized.GET("/users/me", userHandler.GetCurrentUser)
+
+		// 边端设备管理（仅管理员）
 		edgeAdminHandler := centerv1.NewEdgeHandler(s.edgeService, s.jwtAuth)
 
 		// 组级已带 requireUserPrincipal，此处不再重复挂载。
-		edgesAdmin := authorized.Group("/edges")
+		edgesAdmin := authorized.Group("/edges", requireRole("admin"))
 		{
 			edgesAdmin.POST("", edgeAdminHandler.CreateEdge)
 			edgesAdmin.GET("", edgeAdminHandler.ListEdges)
