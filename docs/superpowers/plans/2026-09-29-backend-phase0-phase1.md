@@ -505,6 +505,9 @@ EOF
 
 **Interfaces:**
 - Consumes: `service.LotService`（Task 1 产出的 `ListLots(ctx, page, pageSize, edgeID, status)` 签名）
+
+> **注（2026-10-13 追记）**：上述 5 参签名此后已扩展为 9 参 —— `ListLots(ctx, page, pageSize int, edgeID, status, orderCode, productType, keyword string)`，新增筛选参数 `order_code`/`product_type`/`keyword`。此处保留历史签名仅作当时记录，现行签名以 `internal/service/lot.go` 为准。
+
 - Produces: Center 的 `/v1/lots` 路由可用；`/v1/orders` 不再存在
 
 - [ ] **Step 1: 删除 OrderHandler**

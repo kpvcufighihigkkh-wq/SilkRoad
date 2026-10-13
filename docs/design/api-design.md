@@ -282,6 +282,8 @@ GET /v1/orders?page=1&page_size=20&sort=-created_at&filter=status:in_progress
 
 ### 3.1 订单管理 (Orders)
 
+> ⚠️ **本节已作废（2026-10-13 标注）。** `Order` 实体已从 Schema 移除，Center 不再存在任何 `/v1/orders` 端点（`POST /v1/orders`、`GET /v1/orders`、`POST /v1/orders/{order_id}/complete`、`DELETE /v1/orders/{order_id}` 均已删除）。`order_code` 现仅为 `Lot` 上的普通字符串字段（ERP 集成用，非外键）。下方内容为历史设计记录，已失效，仅作对照保留。现行接口见 `internal/server/center.go` 路由表与 `docs/superpowers/specs/2026-10-12-frontend-admin-design.md` 的缺口清单。
+
 #### 3.1.1 创建订单
 
 ```http
@@ -418,6 +420,8 @@ DELETE /v1/orders/{order_id}
 
 #### 3.2.1 创建批次
 
+> ⚠️ **本节已作废（2026-10-13 标注）。** `POST /v1/lots` 已删除。Center 不提供任何批次写接口；批次由 Edge 创建后上传，Center 只读汇总。请求体中的 `order_id` 字段早已不存在（`Order` 实体已删），`prefix`/`target_weight_kg` 亦非现行字段。下方内容为历史设计记录，已失效。现行接口见 `internal/server/center.go` 路由表与 `docs/superpowers/specs/2026-10-12-frontend-admin-design.md` 的缺口清单。
+
 ```http
 POST /v1/lots
 Content-Type: application/json
@@ -432,11 +436,15 @@ Content-Type: application/json
 
 #### 3.2.2 查询订单的批次列表
 
+> ⚠️ **本节已作废（2026-10-13 标注）。** `GET /v1/orders/{order_id}/lots` 端点不存在 —— 不存在任何 `/v1/orders` 路由组。批次列表查询请用现存的只读端点 `GET /v1/lots`（支持 `edge_id`/`status`/`order_code`/`product_type`/`keyword` 筛选）。下方内容为历史设计记录。
+
 ```http
 GET /v1/orders/{order_id}/lots
 ```
 
 #### 3.2.3 批次锁定/解锁
+
+> ⚠️ **本节已作废（2026-10-13 标注）。** `PATCH /v1/lots/{lot_id}/lock` 端点不存在。支撑它的 `is_locked` 是死字段：schema 中有定义，Go 业务代码零引用，无任何端点读写。下方内容为历史设计记录。
 
 ```http
 PATCH /v1/lots/{lot_id}/lock

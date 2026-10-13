@@ -258,6 +258,9 @@ Authorization: Bearer {token}
 ### ✅ 4. 批次管理 API (Lot Management)
 
 #### 4.1 创建批次
+
+> ⚠️ **本节测试记录已失效（2026-10-13 标注）。** 所测端点 `POST /v1/lots` 已删除，Center 不提供批次写接口；批次由 Edge 创建后上传，Center 只读汇总。下述「通过」结论针对的是当时尚存在的端点，现已不可复现。保留原文仅为历史记录。现行只读接口见 `internal/server/center.go` 路由表。
+
 **请求**:
 ```bash
 POST http://localhost:8080/v1/lots
@@ -305,6 +308,9 @@ Authorization: Bearer {token}
 **结果**: ✅ 通过 - 列表查询成功，分页正常
 
 #### 4.3 更新批次状态
+
+> ⚠️ **本节测试记录已失效（2026-10-13 标注）。** 所测端点 `PUT /v1/lots/{id}/status` 已删除（连同其 handler 与 service 死代码 `UpdateLotStatus`），Center 不提供批次写接口。下述「通过」结论针对的是当时尚存在的端点，现已不可复现。保留原文仅为历史记录。
+
 **请求**:
 ```bash
 PUT http://localhost:8080/v1/lots/{id}/status
