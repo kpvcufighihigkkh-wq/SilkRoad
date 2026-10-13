@@ -156,6 +156,10 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.userService.UpdateUser(c.Request.Context(), id, primaryRole(claims), &req); err != nil {
+		if svcErr, ok := err.(*service.ServiceError); ok {
+			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
+			return
+		}
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
 	}
