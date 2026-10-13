@@ -33,11 +33,21 @@ type CreateUserRequest struct {
 }
 
 // UpdateUserRequest 更新用户请求
+//
+// Role 用指针以区分「未提供」与「显式空串」：
+//
+//	nil      → 不改角色
+//	&"admin" → 改角色为 admin
+//	&""      → 非法，返回参数错误
+//
+// 用值类型时二者都会被 encoding/json 解析成空串，无法区分，
+// 前端只改姓名的请求会意外清空角色。
 type UpdateUserRequest struct {
-	RealName string `json:"real_name"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
-	IsActive bool   `json:"is_active"`
+	RealName string  `json:"real_name"`
+	Email    string  `json:"email"`
+	Phone    string  `json:"phone"`
+	Role     *string `json:"role"`
+	IsActive bool    `json:"is_active"`
 }
 
 // ChangePasswordRequest 修改密码请求
@@ -59,8 +69,15 @@ type UserResponse struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
-// CreateUser 创建用户
-func (s *UserService) CreateUser(ctx context.Context, req *CreateUserRequest) (*UserResponse, error) {
+// CreateUser 创建用户。
+//
+// callerRole 是发起请求者的角色。校验「目标角色不得高于调用者」——
+// 缺少这道校验时，任何已登录用户都能创建一个 admin 账号完成提权。
+func (s *UserService) CreateUser(ctx context.Context, callerRole string, req *CreateUserRequest) (*UserResponse, error) {
+	if !IsRoleHigherOrEqual(callerRole, req.Role) {
+		return nil, ErrRoleTooHigh
+	}
+
 	// 检查用户名是否已存在
 	exists, err := s.client.User.Query().
 		Where(user.UsernameEQ(req.Username)).
@@ -157,7 +174,7 @@ func (s *UserService) ListUsers(ctx context.Context, page, pageSize int, role st
 }
 
 // UpdateUser 更新用户信息
-func (s *UserService) UpdateUser(ctx context.Context, id string, req *UpdateUserRequest) error {
+func (s *UserService) UpdateUser(ctx context.Context, id, callerRole string, req *UpdateUserRequest) error {
 	userID, err := uuid.Parse(id)
 	if err != nil {
 		return err
@@ -178,6 +195,14 @@ func (s *UserService) UpdateUser(ctx context.Context, id string, req *UpdateUser
 	}
 
 	builder.SetIsActive(req.IsActive)
+
+	// Role 为 nil 表示不改角色；非 nil 时必须校验。
+	if req.Role != nil {
+		if !IsRoleHigherOrEqual(callerRole, *req.Role) {
+			return ErrRoleTooHigh
+		}
+		builder.SetRole(user.Role(*req.Role))
+	}
 
 	return builder.Exec(ctx)
 }
@@ -275,6 +300,12 @@ var (
 	ErrUserNotFound    = &ServiceError{Code: 40001, Message: "用户不存在"}
 	ErrUserInactive    = &ServiceError{Code: 20004, Message: "用户已禁用"}
 	ErrInvalidPassword = &ServiceError{Code: 20001, Message: "密码错误"}
+
+	// ErrRoleTooHigh 目标角色高于调用者，或角色值非法。
+	ErrRoleTooHigh = &ServiceError{
+		Code:    30001, // api.CodeBusinessRuleError
+		Message: "无权创建或授予高于自身级别的角色",
+	}
 )
 
 // ServiceError 服务错误

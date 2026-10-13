@@ -9,6 +9,38 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/service"
 )
 
+// claimsFromContext 从 gin 上下文取出 JWT claims。
+// 与 GetCurrentUser 中既有的读取方式一致（c.Get + middleware.ClaimsKey），
+// 不改成 c.Request.Context() 的 Value —— 二者不互通（gin 的 Value()
+// 只对 string 类型的 key 回退查 Keys，而 ClaimsKey 是自定义类型）。
+func claimsFromContext(c *gin.Context) (*middleware.JWTClaims, bool) {
+	raw, exists := c.Get(string(middleware.ClaimsKey))
+	if !exists {
+		return nil, false
+	}
+	claims, ok := raw.(*middleware.JWTClaims)
+	if !ok {
+		return nil, false
+	}
+	return claims, true
+}
+
+// primaryRole 取调用者的最高角色，用于越权比较。
+//
+// JWT 的 Roles 是数组（设备凭证为 ["edge"]），管理接口的用户凭证实际只含
+// 一个角色。取最高权重的那个：多角色时不能因为数组里有一个低权角色
+// 就把调用者降级，也不能只取第一个。
+func primaryRole(claims *middleware.JWTClaims) string {
+	best := ""
+	bestRank := 0
+	for _, r := range claims.Roles {
+		if rank := service.RoleRank(r); rank > bestRank {
+			best, bestRank = r, rank
+		}
+	}
+	return best
+}
+
 // UserHandler 用户处理器
 type UserHandler struct {
 	userService *service.UserService
@@ -37,7 +69,13 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	user, err := h.userService.CreateUser(c.Request.Context(), &req)
+	claims, ok := claimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未登录"))
+		return
+	}
+
+	user, err := h.userService.CreateUser(c.Request.Context(), primaryRole(claims), &req)
 	if err != nil {
 		if svcErr, ok := err.(*service.ServiceError); ok {
 			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
@@ -111,7 +149,13 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	if err := h.userService.UpdateUser(c.Request.Context(), id, &req); err != nil {
+	claims, ok := claimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未登录"))
+		return
+	}
+
+	if err := h.userService.UpdateUser(c.Request.Context(), id, primaryRole(claims), &req); err != nil {
 		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
 		return
 	}
