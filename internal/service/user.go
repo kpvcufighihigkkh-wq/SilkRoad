@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
-	"github.com/google/uuid"
 )
 
 // UserService 用户服务
@@ -314,8 +314,12 @@ var (
 	ErrInvalidPassword = &ServiceError{Code: 20001, Message: "密码错误"}
 
 	// ErrRoleTooHigh 目标角色高于调用者，或角色值非法。
+	//
+	// 用 20004（CodeForbidden）而非 30001：这是权限拒绝，不是业务规则冲突。
+	// 与 requireRole 中间件返回的 20004 保持一致，前端按 20004 做「无权限」
+	// 提示时不会漏掉服务层这一条路径。
 	ErrRoleTooHigh = &ServiceError{
-		Code:    30001, // api.CodeBusinessRuleError
+		Code:    20004, // api.CodeForbidden
 		Message: "无权创建或授予高于自身级别的角色",
 	}
 )
