@@ -241,3 +241,78 @@ func TestUserService_UpdateUser_CanPromoteWithinRank(t *testing.T) {
 		t.Errorf("Role = %q, want %q", got.Role, "operator")
 	}
 }
+
+// 邮箱与电话必须能清空：只按非空字符串写入时，前端没有任何办法把
+// 一个已经填过的邮箱改回空 —— 这与 Role / IsActive 的三态处理不一致。
+func TestUserService_UpdateUser_CanClearEmailAndPhone(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+	mustCreateUser(t, svc, "admin", "u-contact", "viewer")
+	targetID := findUserID(t, svc, "u-contact")
+
+	email := "a@example.com"
+	phone := "13800000000"
+	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
+		Email: &email,
+		Phone: &phone,
+	}); err != nil {
+		t.Fatalf("设置邮箱电话失败: %v", err)
+	}
+
+	got, _ := svc.GetUser(context.Background(), targetID)
+	if got.Email != email || got.Phone != phone {
+		t.Fatalf("设置后 email=%q phone=%q, want %q / %q", got.Email, got.Phone, email, phone)
+	}
+
+	// 显式传空串 → 清空
+	empty := ""
+	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
+		Email: &empty,
+		Phone: &empty,
+	}); err != nil {
+		t.Fatalf("清空邮箱电话失败: %v", err)
+	}
+
+	got, _ = svc.GetUser(context.Background(), targetID)
+	if got.Email != "" {
+		t.Errorf("Email = %q, want 空（显式空串必须清空）", got.Email)
+	}
+	if got.Phone != "" {
+		t.Errorf("Phone = %q, want 空（显式空串必须清空）", got.Phone)
+	}
+}
+
+// 不传 Email / Phone（nil）时必须保持原值 —— 与 Role / IsActive 同一纪律。
+func TestUserService_UpdateUser_NilEmailAndPhoneKeepOriginal(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+	mustCreateUser(t, svc, "admin", "u-contact-keep", "viewer")
+	targetID := findUserID(t, svc, "u-contact-keep")
+
+	email := "keep@example.com"
+	phone := "13900000000"
+	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
+		Email: &email,
+		Phone: &phone,
+	}); err != nil {
+		t.Fatalf("设置邮箱电话失败: %v", err)
+	}
+
+	name := "改名用户"
+	if err := svc.UpdateUser(context.Background(), targetID, "admin", &service.UpdateUserRequest{
+		RealName: name,
+	}); err != nil {
+		t.Fatalf("只改姓名失败: %v", err)
+	}
+
+	got, _ := svc.GetUser(context.Background(), targetID)
+	if got.RealName != name {
+		t.Errorf("RealName = %q, want %q", got.RealName, name)
+	}
+	if got.Email != email {
+		t.Errorf("Email = %q, want %q（未提供时不得清空）", got.Email, email)
+	}
+	if got.Phone != phone {
+		t.Errorf("Phone = %q, want %q（未提供时不得清空）", got.Phone, phone)
+	}
+}

@@ -51,10 +51,19 @@ type CreateUserRequest struct {
 //
 // 用值类型时缺省会解析成 false，前端只改姓名的请求会把目标账号静默停用
 // （此后该用户登录得到 ErrUserInactive），与 Role 是同一个失效模式。
+//
+// Email 与 Phone 同样是三态：
+//
+//	nil    → 不改
+//	&"x"   → 设为 x
+//	&""    → 清空
+//
+// 用值类型时「不传」与「传空串」都解析成空串，管理员无法把一个已填的
+// 邮箱改回空 —— 管理界面的「清除」操作因此无法实现。
 type UpdateUserRequest struct {
 	RealName string  `json:"real_name"`
-	Email    string  `json:"email"`
-	Phone    string  `json:"phone"`
+	Email    *string `json:"email"`
+	Phone    *string `json:"phone"`
 	Role     *string `json:"role"`
 	IsActive *bool   `json:"is_active"`
 }
@@ -195,12 +204,13 @@ func (s *UserService) UpdateUser(ctx context.Context, id, callerRole string, req
 		builder.SetFullName(req.RealName)
 	}
 
-	if req.Email != "" {
-		builder.SetEmail(req.Email)
+	// Email / Phone 为 nil 表示不改；非 nil 时写入（含空串 = 清空）。
+	if req.Email != nil {
+		builder.SetEmail(*req.Email)
 	}
 
-	if req.Phone != "" {
-		builder.SetPhone(req.Phone)
+	if req.Phone != nil {
+		builder.SetPhone(*req.Phone)
 	}
 
 	// IsActive 为 nil 表示不改启用状态；非 nil 时才显式设置。
