@@ -267,7 +267,7 @@ type defectGroupRow struct {
 // QualityDistribution 汇总区间内的质检结论。
 //
 // 计数单位是**质检记录行**，不是丝饼：同一丝饼返修后复检会留下两条记录，
-// 两条都计入（spec 2026-11-12 设计文档 §3.2.1 的口径）。若要「丝饼最终合格率」，
+// 两条都计入（spec 2026-11-09 设计文档 §3.2.1 的口径）。若要「丝饼最终合格率」，
 // 需按 bobbin_id 取最新一条，那需要原生 SQL，属另一个端点。
 func (s *ReportService) QualityDistribution(ctx context.Context, start, end time.Time, top int) (*QualityDistributionResponse, error) {
 	base := func() *ent.BobbinGradeQuery {
@@ -278,18 +278,33 @@ func (s *ReportService) QualityDistribution(ctx context.Context, start, end time
 	}
 
 	var qualified, unqualified, unspecified int
-	var err error
 
-	// 三态分三次计数：比 GroupBy(IsQualified) 更直白，且 NULL 组在 SQL 的
-	// GROUP BY 里返回 NULL 键，扫进非指针字段会静默变成零值。
-	if qualified, err = base().Where(bobbingrade.IsQualified(true)).Count(ctx); err != nil {
+	// 一次 GROUP BY is_qualified 拿到三态计数，而不是三次独立 Count。
+	//
+	// 三次独立查询有两个问题：多两次往返；且并发同步写入时三次查询可能
+	// 读到不同的行集，导致 qualified+unqualified+unspecified 与实际总数
+	// 对不上。扫描目标用 *bool —— 非指针 bool 遇到 SQL NULL 会静默变成
+	// false，把「未判定」错记成「不合格」。
+	var qualifiedRows []struct {
+		IsQualified *bool `json:"is_qualified"`
+		Count       int   `json:"count"`
+	}
+	if err := base().
+		GroupBy(bobbingrade.FieldIsQualified).
+		Aggregate(ent.Count()).
+		Scan(ctx, &qualifiedRows); err != nil {
 		return nil, err
 	}
-	if unqualified, err = base().Where(bobbingrade.IsQualified(false)).Count(ctx); err != nil {
-		return nil, err
-	}
-	if unspecified, err = base().Where(bobbingrade.IsQualifiedIsNil()).Count(ctx); err != nil {
-		return nil, err
+
+	for _, r := range qualifiedRows {
+		switch {
+		case r.IsQualified == nil:
+			unspecified += r.Count
+		case *r.IsQualified:
+			qualified += r.Count
+		default:
+			unqualified += r.Count
+		}
 	}
 
 	graded := qualified + unqualified
