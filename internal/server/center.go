@@ -198,6 +198,20 @@ func (s *CenterServer) registerRoutes() {
 			// 写接口不在 Center：丝饼的全部信息来自 Edge
 		}
 
+		// 报表（全部已登录角色）
+		//
+		// 不挂 requireRole：spec 2026-10-12 §6.3 的权限矩阵把报表与
+		// GET /v1/lots、/v1/bobbins 同列为「全部已登录角色」可访问。
+		// 组级 requireUserPrincipal 仍然生效（挡设备凭证）。
+		reportService := service.NewReportService(s.client)
+		reportHandler := centerv1.NewReportHandler(reportService)
+
+		reports := authorized.Group("/reports")
+		{
+			reports.GET("/quality-distribution", reportHandler.QualityDistribution)
+			reports.GET("/machine-operator", reportHandler.MachineOperator)
+		}
+
 		// 用户管理（仅管理员）
 		userService := service.NewUserService(s.client)
 		userHandler := centerv1.NewUserHandler(userService)

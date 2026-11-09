@@ -669,3 +669,65 @@ func TestRealRouter_DeviceTokenStillBlockedFromUserRoutes(t *testing.T) {
 		})
 	}
 }
+
+// 报表端点必须存在，且对全部已登录角色开放、对设备凭证关闭。
+//
+// 三条用例各钉一件事：
+//  1. 存在性 —— 路由真的注册了，而不是 handler 写了却忘了挂；
+//  2. 设备凭证 —— 新路由组必须在 authorized 组内，继承组级 requireUserPrincipal；
+//  3. viewer 放行 —— 报表不是管理功能，误挂 requireRole("admin") 时这里变红。
+func TestRealRouter_ReportRoutesExist(t *testing.T) {
+	router, _, _ := newRealRouter(t)
+
+	paths := map[string]bool{}
+	for _, r := range router.Routes() {
+		paths[r.Path] = true
+	}
+
+	for _, want := range []string{
+		"/v1/reports/quality-distribution",
+		"/v1/reports/machine-operator",
+	} {
+		if !paths[want] {
+			t.Errorf("route %s 未注册", want)
+		}
+	}
+}
+
+func TestRealRouter_DeviceTokenBlockedFromReports(t *testing.T) {
+	router, deviceToken, _ := newRealRouter(t)
+
+	for _, path := range []string{
+		"/v1/reports/quality-distribution",
+		"/v1/reports/machine-operator",
+	} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer "+deviceToken)
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("设备凭证访问 %s → %d, want 403; body=%s", path, w.Code, w.Body.String())
+		}
+	}
+}
+
+// 断言「不是 403」而非 200：nil client 下 handler 会在 service 层失败，
+// 这里要证明的只是角色守卫放行，查询成功与否由服务层测试覆盖。
+func TestRealRouter_ViewerPassesReportGuard(t *testing.T) {
+	router, viewerToken := newRealRouterWithRole(t, "viewer")
+
+	for _, path := range []string{
+		"/v1/reports/quality-distribution",
+		"/v1/reports/machine-operator",
+	} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		req.Header.Set("Authorization", "Bearer "+viewerToken)
+		router.ServeHTTP(w, req)
+
+		if w.Code == http.StatusForbidden {
+			t.Errorf("viewer 访问 %s 被 403 拒绝；报表应对全部已登录角色开放", path)
+		}
+	}
+}
