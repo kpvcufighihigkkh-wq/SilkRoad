@@ -100,8 +100,10 @@ const (
 )
 
 var (
-	errEndNotAfterStart = errors.New("end 必须晚于 start")
-	errRangeTooLong     = errors.New("区间跨度不得超过 366 天")
+	// errEndNotAfterStart 的措辞要覆盖「用户只传了 start」的情形：
+	// 那种情况下 end 取当前时间，用户会看到「end 必须晚于 start」却
+	// 根本没传 end，不知道该怎么办。
+	errEndNotAfterStart = errors.New("区间为空：start 晚于区间终点（未传 end 时取当前时间）")
 )
 
 // parseTimeRange 解析报表端点的 start / end 参数，返回左闭右开区间。
@@ -143,7 +145,7 @@ func parseTimeRange(startStr, endStr string, now time.Time) (time.Time, time.Tim
 		return time.Time{}, time.Time{}, errEndNotAfterStart
 	}
 	if end.Sub(start) > reportMaxWindow {
-		return time.Time{}, time.Time{}, errRangeTooLong
+		return time.Time{}, time.Time{}, fmt.Errorf("区间跨度不得超过 %d 天", int(reportMaxWindow/(24*time.Hour)))
 	}
 
 	return start, end, nil
