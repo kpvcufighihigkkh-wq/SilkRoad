@@ -175,6 +175,10 @@ func (s *CenterServer) registerRoutes() {
 	authorized := v1.Group("")
 	authorized.Use(s.jwtMiddleware())
 	authorized.Use(requireUserPrincipal())
+	// 用数据库刷新身份：token 内的角色与激活状态是签发时的快照，
+	// 停用账号或降级角色必须立即生效，而不是等 token 过期（默认 2 小时）。
+	// 设备凭证在上一步已被拒绝，且设备路由走独立的 edge 组，不受影响。
+	authorized.Use(s.requireActiveUser())
 	{
 		// 批次管理
 		lotService := service.NewLotService(s.client)

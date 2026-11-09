@@ -68,11 +68,15 @@ func setupUserUpdateTest(t *testing.T, claims *middleware.JWTClaims) (*gin.Engin
 	return router, svc
 }
 
-// TestUserHandler_UpdateUser_EscalationReturns400 钉住更新路径的提权错误映射。
+// TestUserHandler_UpdateUser_EscalationReturns403 钉住更新路径的提权错误映射。
 //
-// 与 CreateUser 同一处拒绝（ErrRoleTooHigh, 30001）在创建路径返回 400，
-// 更新路径曾返回 500 —— 500 会告诉运维「服务器坏了」，而事实是「你没有权限」。
-func TestUserHandler_UpdateUser_EscalationReturns400(t *testing.T) {
+// 与 CreateUser 同一处拒绝（ErrRoleTooHigh）在两个路径都必须返回
+// 403 + 20004：
+//   - 用 400 是错的：越权不是参数错误，前端按状态码区分「没权限」时会漏掉它；
+//   - 用 500 更是错的：那会告诉运维「服务器坏了」，而事实是「你没有权限」；
+//   - 用 30001（业务规则错误）同样不合口径：它和 requireRole 中间件返回的
+//     20004 分属两个码，前端要同时处理两种才认得出「没权限」。
+func TestUserHandler_UpdateUser_EscalationReturns403(t *testing.T) {
 	// 调用者是 inspector，目标是把它提权为 admin。
 	router, svc := setupUserUpdateTest(t, &middleware.JWTClaims{
 		UserID: "u-inspector",
@@ -95,8 +99,8 @@ func TestUserHandler_UpdateUser_EscalationReturns400(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400; body=%s", w.Code, w.Body.String())
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403; body=%s", w.Code, w.Body.String())
 	}
 
 	var resp struct {
@@ -106,8 +110,8 @@ func TestUserHandler_UpdateUser_EscalationReturns400(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response failed: %v", err)
 	}
-	if resp.Code != 30001 {
-		t.Errorf("code = %d, want 30001（与创建路径一致）", resp.Code)
+	if resp.Code != 20004 {
+		t.Errorf("code = %d, want 20004（与 requireRole 中间件一致）", resp.Code)
 	}
 }
 

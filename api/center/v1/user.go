@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/api"
 	"github.com/yourusername/igh-silkroad/api/middleware"
 	"github.com/yourusername/igh-silkroad/internal/service"
@@ -39,6 +40,50 @@ func primaryRole(claims *middleware.JWTClaims) string {
 		}
 	}
 	return best
+}
+
+// isSelfOrAdmin 判断调用者是否可以操作路径上的那个用户 ID。
+//
+// 两侧都按 UUID 解析后比较，而不是比字符串：UUID 是大小写不敏感的十六进制，
+// 前端或客户端若以大写形式回传自己的 ID，字符串比较会把「改自己的密码」
+// 误判成「改他人密码」并返回 403 —— 而同一个 ID 交给 ChangePassword
+// 又能正常解析，用户看到的是「明明是我自己却说我无权」。
+//
+// 任一侧解析失败都按「不是本人」处理，由 admin 分支兜底；路径参数格式错误
+// 最终会在 service 层被拒绝，这里不重复报错。
+func isSelfOrAdmin(claims *middleware.JWTClaims, targetID string) bool {
+	if primaryRole(claims) == "admin" {
+		return true
+	}
+
+	callerID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return false
+	}
+	target, err := uuid.Parse(targetID)
+	if err != nil {
+		return false
+	}
+
+	return callerID == target
+}
+
+// respondServiceError 把服务层错误映射为 HTTP 响应。
+//
+// 20004（无权限）必须返回 403 而不是 400：前端按状态码区分「没权限」与
+// 「参数不对」，若越权也回 400，用户会以为是自己填错了。其余业务错误沿用 400。
+func respondServiceError(c *gin.Context, err error) {
+	svcErr, ok := err.(*service.ServiceError)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
+
+	status := http.StatusBadRequest
+	if svcErr.Code == api.CodeForbidden {
+		status = http.StatusForbidden
+	}
+	c.JSON(status, api.Error(svcErr.Code, svcErr.Message))
 }
 
 // UserHandler 用户处理器
@@ -77,11 +122,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	user, err := h.userService.CreateUser(c.Request.Context(), primaryRole(claims), &req)
 	if err != nil {
-		if svcErr, ok := err.(*service.ServiceError); ok {
-			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		respondServiceError(c, err)
 		return
 	}
 
@@ -156,11 +197,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	}
 
 	if err := h.userService.UpdateUser(c.Request.Context(), id, primaryRole(claims), &req); err != nil {
-		if svcErr, ok := err.(*service.ServiceError); ok {
-			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		respondServiceError(c, err)
 		return
 	}
 
@@ -175,13 +212,12 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 // @Failure 401 {object} api.Response
 // @Router /v1/users/me [get]
 func (h *UserHandler) GetCurrentUser(c *gin.Context) {
-	claims, exists := c.Get(string(middleware.ClaimsKey))
-	if !exists {
+	userClaims, ok := claimsFromContext(c)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未登录"))
 		return
 	}
 
-	userClaims := claims.(*middleware.JWTClaims)
 	user, err := h.userService.GetUser(c.Request.Context(), userClaims.UserID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, api.Error(api.CodeNotFound, err.Error()))
@@ -221,17 +257,13 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	if claims.UserID != id && primaryRole(claims) != "admin" {
+	if !isSelfOrAdmin(claims, id) {
 		c.JSON(http.StatusForbidden, api.Error(api.CodeForbidden, "无权修改他人密码"))
 		return
 	}
 
 	if err := h.userService.ChangePassword(c.Request.Context(), id, &req); err != nil {
-		if svcErr, ok := err.(*service.ServiceError); ok {
-			c.JSON(http.StatusBadRequest, api.Error(svcErr.Code, svcErr.Message))
-			return
-		}
-		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		respondServiceError(c, err)
 		return
 	}
 

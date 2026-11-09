@@ -8,33 +8,85 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/user"
 	"github.com/yourusername/igh-silkroad/internal/service"
 )
 
-// newRealRouter 用生产构造函数装配路由，返回 router 与认证器。
+// newRealRouter 用生产构造函数装配路由，返回 router、设备凭证与用户凭证。
 //
 // 必须走 NewCenterServer 而不是自建 gin.New()：只有这样才能验证
 // 「中间件真的挂在了它该在的位置」，以及路由路径与生产一致。
 // TRUSTED_PROXIES 设为只信回环，与 edge_auth_test.go 的既有做法一致。
+//
+// 用真实内存库而非 nil client：authorized 组现在有一个 requireActiveUser
+// 中间件，每个用户请求都会回查 users 表。因此用户 token 的 UserID 必须是
+// 库中真实存在且已激活的行，否则请求会在鉴权阶段就 401。
 func newRealRouter(t *testing.T) (*gin.Engine, string, string) {
 	t.Helper()
 
-	gin.SetMode(gin.TestMode)
-	t.Setenv("TRUSTED_PROXIES", "127.0.0.1/32")
+	client := newServerTestClient(t)
+	srv := newCenterServerForTest(t, client)
 
-	// nil client 可接受：构造过程只存储它，不访问数据库
-	srv := NewCenterServer(nil, "test-secret", 0)
+	adminID := seedTestUser(t, client, "alice", "admin", true)
 
 	deviceToken, err := srv.jwtAuth.GenerateEdgeToken("edge-dev")
 	if err != nil {
 		t.Fatalf("GenerateEdgeToken failed: %v", err)
 	}
-	userToken, err := srv.jwtAuth.GenerateToken("u1", "alice", []string{"admin"})
+	userToken, err := srv.jwtAuth.GenerateToken(adminID, "alice", []string{"admin"})
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
 
 	return srv.router, deviceToken, userToken
+}
+
+// newCenterServerForTest 用给定 client 装配生产路由。
+func newCenterServerForTest(t *testing.T, client *ent.Client) *CenterServer {
+	t.Helper()
+
+	gin.SetMode(gin.TestMode)
+	t.Setenv("TRUSTED_PROXIES", "127.0.0.1/32")
+
+	return NewCenterServer(client, "test-secret", 0)
+}
+
+// newRealRouterWithoutDB 装配生产路由但不接数据库，只用于设备凭证用例。
+//
+// 这些用例要证明的是「设备凭证能穿过 jwtMiddleware 抵达 handler」，
+// 判据是 handler 内部访问 nil client 而 panic、被 Recovery 兜成 500。
+// 换成真实库后这条判据消失（设备会因「未注册」或 IP 不符被 403 拒掉，
+// 那属于 authenticateEdge 的业务校验，与本用例要钉的挂载位置无关）。
+func newRealRouterWithoutDB(t *testing.T) (*gin.Engine, string) {
+	t.Helper()
+
+	srv := newCenterServerForTest(t, nil)
+
+	deviceToken, err := srv.jwtAuth.GenerateEdgeToken("edge-dev")
+	if err != nil {
+		t.Fatalf("GenerateEdgeToken failed: %v", err)
+	}
+
+	return srv.router, deviceToken
+}
+
+// seedTestUser 在测试库里造一个已激活用户并返回其 ID。
+func seedTestUser(t *testing.T, client *ent.Client, username, role string, active bool) string {
+	t.Helper()
+
+	u, err := client.User.Create().
+		SetUsername(username).
+		SetPasswordHash("$2a$10$abcdefghijklmnopqrstuv").
+		SetFullName("测试用户").
+		SetRole(user.Role(role)).
+		SetIsActive(active).
+		Save(context.Background())
+	if err != nil {
+		t.Fatalf("seed user %s: %v", username, err)
+	}
+
+	return u.ID.String()
 }
 
 // Critical 2：持有合法设备凭证不得访问任何用户管理接口。
@@ -112,7 +164,7 @@ func TestRealRouter_UserTokenPassesPrincipalGuard(t *testing.T) {
 // requireUserPrincipal 挂到 authorized 组后，这两个端点必须留在独立的 edge 组里，
 // 否则设备会被自己的凭证锁在门外 —— 上传与基础数据下发全部 403。
 func TestRealRouter_DeviceRoutesRemainReachableByDeviceToken(t *testing.T) {
-	router, deviceToken, _ := newRealRouter(t)
+	router, deviceToken := newRealRouterWithoutDB(t)
 
 	cases := []struct {
 		method string
@@ -308,12 +360,12 @@ func TestRealRouter_EdgeHasBobbinWriteRoutes(t *testing.T) {
 func newRealRouterWithRole(t *testing.T, role string) (*gin.Engine, string) {
 	t.Helper()
 
-	gin.SetMode(gin.TestMode)
-	t.Setenv("TRUSTED_PROXIES", "127.0.0.1/32")
+	client := newServerTestClient(t)
+	srv := newCenterServerForTest(t, client)
 
-	srv := NewCenterServer(nil, "test-secret", 0)
+	userID := seedTestUser(t, client, "u-"+role, role, true)
 
-	token, err := srv.jwtAuth.GenerateToken("u-"+role, role, []string{role})
+	token, err := srv.jwtAuth.GenerateToken(userID, role, []string{role})
 	if err != nil {
 		t.Fatalf("GenerateToken failed: %v", err)
 	}
