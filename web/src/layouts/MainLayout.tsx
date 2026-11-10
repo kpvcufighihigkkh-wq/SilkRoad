@@ -1,0 +1,121 @@
+import { useState } from 'react'
+import { useNavigate, useOutlet, useLocation } from 'react-router-dom'
+import { Avatar, Dropdown, Layout, Menu, Typography } from 'antd'
+import {
+  BarChartOutlined,
+  InboxOutlined,
+  LogoutOutlined,
+  SettingOutlined,
+  UserOutlined,
+} from '@ant-design/icons'
+import { clearSession, getUser, type Role } from '@/auth/session'
+
+const { Header, Sider, Content } = Layout
+const { Text } = Typography
+
+/** 角色中文名，用于顶栏展示。 */
+const ROLE_LABEL: Record<Role, string> = {
+  admin: '管理员',
+  operator: '操作员',
+  inspector: '质检员',
+  viewer: '只读用户',
+}
+
+/**
+ * 主布局：左侧导航 + 顶栏用户区。
+ *
+ * 导航项按 spec §7.1 的结构，但只保留**已有后端支撑**的页面：
+ * 报表与系统管理尚未实现，仓储管理依赖的包装四表在 Center 恒为空，
+ * 因此不放死链。后续页面落地时在此追加菜单项与路由。
+ */
+export default function MainLayout() {
+  const outlet = useOutlet()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [collapsed, setCollapsed] = useState(false)
+
+  const user = getUser()
+
+  // 选中态取自路径首段，兼容 /lots/:id 这类子路由。
+  const selectedKey = '/' + (location.pathname.split('/')[1] ?? '')
+
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed}>
+        <div
+          style={{
+            height: 48,
+            margin: 8,
+            color: '#fff',
+            display: 'grid',
+            placeItems: 'center',
+            fontWeight: 600,
+            letterSpacing: 1,
+          }}
+        >
+          {collapsed ? 'SR' : 'SilkRoad'}
+        </div>
+
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          onClick={({ key }) => navigate(key)}
+          items={[
+            { key: '/lots', icon: <InboxOutlined />, label: '批次管理' },
+            {
+              key: 'reports',
+              icon: <BarChartOutlined />,
+              label: '报表',
+              disabled: true,
+            },
+            {
+              key: 'system',
+              icon: <SettingOutlined />,
+              label: '系统管理',
+              disabled: true,
+            },
+          ]}
+        />
+      </Sider>
+
+      <Layout>
+        <Header
+          style={{
+            background: '#fff',
+            padding: '0 24px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <Text type="secondary">{user ? ROLE_LABEL[user.role] : ''}</Text>
+
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'logout',
+                  icon: <LogoutOutlined />,
+                  label: '退出登录',
+                  onClick: () => {
+                    clearSession()
+                    navigate('/login', { replace: true })
+                  },
+                },
+              ],
+            }}
+          >
+            <span style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Avatar size="small" icon={<UserOutlined />} />
+              {user?.full_name ?? user?.username}
+            </span>
+          </Dropdown>
+        </Header>
+
+        <Content style={{ margin: 16 }}>{outlet}</Content>
+      </Layout>
+    </Layout>
+  )
+}
