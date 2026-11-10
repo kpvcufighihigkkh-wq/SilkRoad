@@ -202,6 +202,22 @@ func (s *CenterServer) registerRoutes() {
 			// 写接口不在 Center：丝饼的全部信息来自 Edge
 		}
 
+		// 质检记录（只读）
+		//
+		// 供批次详情页展示质检结果。不挂 requireRole：与批次、丝锭同属
+		// 「全部已登录角色」可读的数据（spec §6.3）。
+		gradeService := service.NewGradeService(s.client)
+		gradeHandler := centerv1.NewGradeHandler(gradeService)
+		authorized.GET("/grades", gradeHandler.ListGrades)
+
+		// 落纱记录（只读）
+		//
+		// 与 Edge 侧的 /v1/doffing 分开：那边是落纱操作入口（创建/确认/取消），
+		// 这里是 Center 的查询视图。
+		doffingService := service.NewDoffingService(s.client)
+		doffingHandler := centerv1.NewCenterDoffingHandler(doffingService)
+		authorized.GET("/doffings", doffingHandler.ListDoffings)
+
 		// 报表（全部已登录角色）
 		//
 		// 不挂 requireRole：spec 2026-10-12 §6.3 的权限矩阵把报表与

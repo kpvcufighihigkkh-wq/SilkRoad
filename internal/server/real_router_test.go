@@ -783,3 +783,57 @@ func TestRealRouter_ViewerPassesReportGuard(t *testing.T) {
 		}
 	}
 }
+
+// 质检与落纱的只读查询端点必须存在，且与批次/丝锭同权限：
+// 全部已登录角色可读，设备凭证被挡。
+func TestRealRouter_ReadOnlyQueryRoutes(t *testing.T) {
+	router, deviceToken, userToken := newRealRouter(t)
+
+	paths := []string{"/v1/grades", "/v1/doffings"}
+
+	for _, p := range paths {
+		if !routeRegistered(router, "GET "+p) {
+			t.Errorf("生产路由缺少 GET %s", p)
+		}
+	}
+
+	// 设备凭证：必须 403（组级 requireUserPrincipal）
+	for _, p := range paths {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		req.Header.Set("Authorization", "Bearer "+deviceToken)
+		router.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Errorf("设备凭证访问 %s → %d, want 403", p, w.Code)
+		}
+	}
+
+	// 用户凭证：不得被角色守卫拦下
+	for _, p := range paths {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		req.Header.Set("Authorization", "Bearer "+userToken)
+		router.ServeHTTP(w, req)
+
+		if w.Code == http.StatusForbidden {
+			t.Errorf("用户访问 %s 被 403 拒绝；只读查询应对全部已登录角色开放", p)
+		}
+	}
+}
+
+// viewer 也能读质检与落纱 —— 它们不含管理数据。
+func TestRealRouter_ViewerCanReadGradesAndDoffings(t *testing.T) {
+	router, viewerToken := newRealRouterWithRole(t, "viewer")
+
+	for _, p := range []string{"/v1/grades", "/v1/doffings"} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, p, nil)
+		req.Header.Set("Authorization", "Bearer "+viewerToken)
+		router.ServeHTTP(w, req)
+
+		if w.Code == http.StatusForbidden {
+			t.Errorf("viewer 访问 %s 被 403 拒绝", p)
+		}
+	}
+}
