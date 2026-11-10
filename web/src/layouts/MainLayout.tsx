@@ -6,6 +6,8 @@ import {
   InboxOutlined,
   LogoutOutlined,
   SettingOutlined,
+  TeamOutlined,
+  ClusterOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import { clearSession, getUser, type Role } from '@/auth/session'
@@ -36,8 +38,11 @@ export default function MainLayout() {
 
   const user = getUser()
 
-  // 选中态取自路径首段，兼容 /lots/:id 这类子路由。
-  const selectedKey = '/' + (location.pathname.split('/')[1] ?? '')
+  // 选中态：优先匹配完整路径（如 /system/users），否则退回首段。
+  const pathname = location.pathname
+  const selectedKey = pathname.startsWith('/system/')
+    ? pathname
+    : '/' + (pathname.split('/')[1] ?? '')
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -68,7 +73,10 @@ export default function MainLayout() {
               key: 'system',
               icon: <SettingOutlined />,
               label: '系统管理',
-              disabled: true,
+              children: [
+                { key: '/system/users', icon: <TeamOutlined />, label: '用户' },
+                { key: '/system/edges', icon: <ClusterOutlined />, label: '设备' },
+              ],
             },
           ]}
         />

@@ -8,6 +8,8 @@ import LoginPage from '@/pages/LoginPage'
 import LotsPage from '@/pages/LotsPage'
 import LotDetailPage from '@/pages/LotDetailPage'
 import ReportsPage from '@/pages/ReportsPage'
+import SystemUsersPage from '@/pages/SystemUsersPage'
+import SystemEdgesPage from '@/pages/SystemEdgesPage'
 
 /**
  * AuthGate 负责两件事：
@@ -62,6 +64,8 @@ export default function App() {
           <Route path="lots" element={<LotsPage />} />
           <Route path="lots/:id" element={<LotDetailPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="system/users" element={<SystemUsersPage />} />
+          <Route path="system/edges" element={<SystemEdgesPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/lots" replace />} />
