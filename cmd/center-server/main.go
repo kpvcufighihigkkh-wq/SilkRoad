@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -37,7 +38,17 @@ func main() {
 
 	// 创建服务器
 	jwtSecret := getEnv("JWT_SECRET", "igh-secret-key-change-in-production")
+
+	// 端口可配置：默认 8080，但该端口常被同机的其它服务占用（例如 Edge
+	// 或并行的开发实例），写死会让本地联调时必须改代码、重新编译。
 	port := 8080
+	if raw := getEnv("PORT", ""); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 || parsed > 65535 {
+			log.Fatalf("❌ Invalid PORT %q：必须是 1-65535 之间的整数", raw)
+		}
+		port = parsed
+	}
 
 	srv := server.NewCenterServer(client, jwtSecret, port)
 
