@@ -6,6 +6,7 @@ import {
   Descriptions,
   Input,
   Progress,
+  Segmented,
   Space,
   Spin,
   Table,
@@ -17,6 +18,8 @@ import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { getLot, type Lot, type LotStatus } from '@/api/lots'
 import { listBobbins, BOBBIN_STATUS_LABEL, type Bobbin, type BobbinStatus } from '@/api/bobbins'
+import { listGrades, qualifiedLabel, type Grade, type QualifiedFilter } from '@/api/grades'
+import { listDoffings, DOFFING_STATUS_LABEL, type Doffing } from '@/api/doffings'
 
 function statusTag(status: LotStatus) {
   switch (status) {
@@ -54,6 +57,19 @@ export default function LotDetailPage() {
   const [bobbinPageSize, setBobbinPageSize] = useState(20)
   const [bobbinLoading, setBobbinsLoading] = useState(false)
   const [keyword, setKeyword] = useState('')
+
+  // 质检记录：按批次过滤，三态筛选
+  const [grades, setGrades] = useState<Grade[]>([])
+  const [gradeTotal, setGradeTotal] = useState(0)
+  const [gradePage, setGradePage] = useState(1)
+  const [gradePageSize, setGradePageSize] = useState(20)
+  const [gradeLoading, setGradeLoading] = useState(false)
+  const [qualifiedFilter, setQualifiedFilter] = useState<QualifiedFilter>('')
+
+  // 落纱记录：用于追溯链的机台与操作员层
+  const [doffings, setDoffings] = useState<Doffing[]>([])
+  const [doffingTotal, setDoffingTotal] = useState(0)
+  const [doffingLoading, setDoffingLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -95,6 +111,42 @@ export default function LotDetailPage() {
     loadBobbins(bobbinPage, bobbinPageSize)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, bobbinPage, bobbinPageSize])
+
+  const loadGrades = (page: number, size: number, filter: QualifiedFilter) => {
+    if (!id) return
+
+    setGradeLoading(true)
+    listGrades({ lot_id: id, page, page_size: size, is_qualified: filter })
+      .then(({ list, total }) => {
+        setGrades(list)
+        setGradeTotal(total)
+      })
+      .catch((err) => message.error(err instanceof Error ? err.message : '加载质检记录失败'))
+      .finally(() => setGradeLoading(false))
+  }
+
+  useEffect(() => {
+    loadGrades(gradePage, gradePageSize, qualifiedFilter)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, gradePage, gradePageSize, qualifiedFilter])
+
+  // 落纱一次取前 50 条用于追溯链概览：单批次落纱数量有限，
+  // 这里不做分页，避免为「概览」再引入一套分页状态。
+  useEffect(() => {
+    if (!id) return
+
+    setDoffingLoading(true)
+    listDoffings({ lot_id: id, page_size: 50 })
+      .then(({ list, total }) => {
+        setDoffings(list)
+        setDoffingTotal(total)
+      })
+      .catch(() => {
+        setDoffings([])
+        setDoffingTotal(0)
+      })
+      .finally(() => setDoffingLoading(false))
+  }, [id])
 
   // 编码搜索在客户端做：只过滤当前页，不重新请求。
   // 这依赖 spec §3.2 的前提「单批次丝锭数量有限」，故不引入服务端搜索参数。
@@ -139,6 +191,66 @@ export default function LotDetailPage() {
       render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
     },
   ]
+
+  // 丝锭 id → 编码，供质检记录与追溯链把 bobbin_id 显示成人能看懂的值。
+  // 只覆盖当前页的丝锭；跨页的丝锭显示 UUID 前 8 位，不假装知道。
+  const bobbinNumberByID = new Map(bobbins.map((b) => [b.id, b.bobbin_number]))
+  const bobbinLabel = (id: string) => bobbinNumberByID.get(id) ?? id.slice(0, 8)
+
+  const gradeColumns: ColumnsType<Grade> = [
+    {
+      title: '丝锭',
+      dataIndex: 'bobbin_id',
+      render: (v: string) => <span className="mono">{bobbinLabel(v)}</span>,
+    },
+    {
+      title: '等级',
+      dataIndex: 'grade',
+      width: 80,
+      render: (v: string) => <Tag>{v}</Tag>,
+    },
+    {
+      title: '是否合格',
+      dataIndex: 'is_qualified',
+      width: 110,
+      // 三态：true / false / null。null 是「未判定」，不是「不合格」。
+      render: (v: boolean | null) => {
+        const { text, color } = qualifiedLabel(v)
+        return <Tag color={color}>{text}</Tag>
+      },
+    },
+    {
+      title: '综合得分',
+      dataIndex: 'final_score',
+      width: 100,
+      align: 'right',
+      render: (v: number | null) => (v ?? '—'),
+    },
+    {
+      title: '缺陷原因',
+      dataIndex: 'defect_reason',
+      render: (v?: string) => v || '—',
+    },
+    {
+      title: '检测员',
+      dataIndex: 'inspector_id',
+      width: 110,
+      render: (v: string | null) =>
+        v ? <span className="mono">{v.slice(0, 8)}</span> : <Tag>未记录</Tag>,
+    },
+    {
+      title: '检测时间',
+      dataIndex: 'inspected_at',
+      width: 150,
+      render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
+    },
+  ]
+
+  // 追溯链上显示的各层计数。落纱是一次取前 50 条，故这里标注「最多 50」。
+  const doffingByStatus = doffings.reduce<Record<string, number>>((acc, d) => {
+    acc[d.status] = (acc[d.status] ?? 0) + 1
+    return acc
+  }, {})
 
   if (loading) {
     return (
@@ -235,6 +347,110 @@ export default function LotDetailPage() {
           }}
           locale={{ emptyText: '该批次暂无丝锭记录' }}
         />
+      </Card>
+
+      <Card
+        type="inner"
+        title="质检记录"
+        style={{ marginTop: 16 }}
+        extra={
+          <Segmented<QualifiedFilter | 'all'>
+            value={qualifiedFilter === '' ? 'all' : qualifiedFilter}
+            onChange={(v) => {
+              setGradePage(1)
+              setQualifiedFilter(v === 'all' ? '' : v)
+            }}
+            options={[
+              { label: '全部', value: 'all' },
+              { label: '合格', value: 'true' },
+              { label: '不合格', value: 'false' },
+              { label: '未判定', value: 'unspecified' },
+            ]}
+          />
+        }
+      >
+        <Table<Grade>
+          rowKey="id"
+          size="small"
+          loading={gradeLoading}
+          columns={gradeColumns}
+          dataSource={grades}
+          pagination={{
+            current: gradePage,
+            pageSize: gradePageSize,
+            total: gradeTotal,
+            showSizeChanger: true,
+            pageSizeOptions: [20, 50, 100, 200],
+            showTotal: (t) => `共 ${t} 条`,
+            onChange: (p, size) => {
+              setGradePage(p)
+              setGradePageSize(size)
+            },
+          }}
+          locale={{ emptyText: '该批次暂无质检记录' }}
+        />
+      </Card>
+
+      <Card type="inner" title="追溯链" style={{ marginTop: 16 }} loading={doffingLoading}>
+        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+          <div>
+            <Tag color="blue">批次</Tag>
+            <span className="mono">{lot.lot_number}</span>
+          </div>
+
+          <div style={{ paddingLeft: 8, color: '#999' }}>↓</div>
+
+          <div>
+            <Tag color="geekblue">落纱</Tag>
+            {doffings.length === 0 ? (
+              <span>暂无落纱记录</span>
+            ) : (
+              <Space size={6} wrap>
+                {Object.entries(doffingByStatus).map(([status, count]) => (
+                  <Tag key={status}>
+                    {DOFFING_STATUS_LABEL[status as keyof typeof DOFFING_STATUS_LABEL] ?? status} ×{' '}
+                    {count}
+                  </Tag>
+                ))}
+                <span style={{ color: '#999' }}>
+                  （展示最近 {doffings.length} 条
+                  {doffingTotal > doffings.length ? `，共 ${doffingTotal} 条` : ''}）
+                </span>
+              </Space>
+            )}
+          </div>
+
+          <div style={{ paddingLeft: 8, color: '#999' }}>↓</div>
+
+          <div>
+            <Tag color="cyan">丝锭</Tag>
+            <span>共 {bobbinTotal} 个</span>
+          </div>
+
+          <div style={{ paddingLeft: 8, color: '#999' }}>↓</div>
+
+          <div>
+            <Tag color="green">质检</Tag>
+            <span>共 {gradeTotal} 条记录</span>
+            {gradeTotal > 0 && (
+              <span style={{ color: '#999' }}>
+                （合格 {grades.filter((g) => g.is_qualified === true).length} / 不合格{' '}
+                {grades.filter((g) => g.is_qualified === false).length} / 未判定{' '}
+                {grades.filter((g) => g.is_qualified === null).length}
+                {gradeTotal > grades.length ? '，仅统计当前页' : ''}）
+              </span>
+            )}
+          </div>
+
+          <div style={{ paddingLeft: 8, color: '#999' }}>↓</div>
+
+          <div>
+            <Tag>包装</Tag>
+            <span style={{ color: '#999' }}>
+              桶 / 托盘 / 纸箱 — Center 暂无这些表的数据，待 Edge 打包环节接入
+            </span>
+          </div>
+        </Space>
       </Card>
     </Card>
   )
