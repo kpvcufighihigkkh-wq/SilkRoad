@@ -43,3 +43,36 @@ jobs:
       - name: Test
         # -count=1 绕过测试缓存：CI 里必须真的跑一遍，而不是复用本地的结果。
         run: go test ./... -count=1
+
+  web:
+    name: Web Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          # 与本地开发使用的 Node 大版本一致
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        # npm ci 按 lockfile 安装，保证 CI 与本地依赖树一致；
+        # 缺少 lockfile 或与 package.json 不一致时会直接失败，这正是我们要的。
+        run: npm ci
+
+      - name: Typecheck
+        # 构建脚本里也跑 tsc，但单独一步能让类型错误在日志里更醒目。
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
