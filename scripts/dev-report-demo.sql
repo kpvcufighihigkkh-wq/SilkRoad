@@ -5,18 +5,26 @@
 BEGIN;
 
 -- 8 条质检记录：4 合格 / 2 不合格 / 2 未判定（NULL）
--- 其中 bobbin b-1 复检两次（不合格 -> 合格），用于验证「按行计数」口径。
+-- 其中 B01 复检两次（不合格 -> 合格），用于验证「按行计数」口径。
+--
+-- bobbin_id 必须指向真实丝锭：质检表没有指向丝锭的外键边，但 /v1/grades?lot_id=
+-- 是按 `bobbin_id IN (SELECT id FROM bobbins WHERE lot_id=?)` 过滤的，
+-- 用编造的 ID 会让该批次查不到任何记录。因此这里按丝锭编号取 ID。
 INSERT INTO bobbin_grades
   (id, bobbin_id, inspector_id, grade, is_qualified, defect_reason, inspected_at, created_at, updated_at)
-VALUES
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000001', '6de8a73a-7aef-40d4-acec-e541cd5456c8', 'C', false, '毛丝',     now() - interval '5 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000001', '6de8a73a-7aef-40d4-acec-e541cd5456c8', 'A', true,  NULL,       now() - interval '4 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000002', '6de8a73a-7aef-40d4-acec-e541cd5456c8', 'A', true,  NULL,       now() - interval '4 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000003', NULL,                                   'B', true,  NULL,       now() - interval '3 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000004', NULL,                                   'D', false, '断头',     now() - interval '3 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000005', '6de8a73a-7aef-40d4-acec-e541cd5456c8', 'B', true,  NULL,       now() - interval '2 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000006', '6de8a73a-7aef-40d4-acec-e541cd5456c8', 'B', NULL,  NULL,       now() - interval '1 days', now(), now()),
-  (gen_random_uuid(), 'aaaaaaaa-0000-4000-8000-000000000007', '6de8a73a-7aef-40d4-acec-e541cd5456c8', 'C', NULL,  '油污',     now() - interval '1 days', now(), now());
+SELECT gen_random_uuid(), b.id, v.inspector_id, v.grade, v.is_qualified, v.defect_reason,
+       now() - v.ago, now(), now()
+FROM (VALUES
+  ('FDY-2026-001-01-B01', '6de8a73a-7aef-40d4-acec-e541cd5456c8'::uuid, 'C', false, '毛丝', interval '5 days'),
+  ('FDY-2026-001-01-B01', '6de8a73a-7aef-40d4-acec-e541cd5456c8'::uuid, 'A', true,  NULL,   interval '4 days'),
+  ('FDY-2026-001-01-B02', '6de8a73a-7aef-40d4-acec-e541cd5456c8'::uuid, 'A', true,  NULL,   interval '4 days'),
+  ('FDY-2026-001-01-B03', NULL::uuid,                                   'B', true,  NULL,   interval '3 days'),
+  ('FDY-2026-001-01-B04', NULL::uuid,                                   'D', false, '断头', interval '3 days'),
+  ('FDY-2026-001-01-B05', '6de8a73a-7aef-40d4-acec-e541cd5456c8'::uuid, 'B', true,  NULL,   interval '2 days'),
+  ('FDY-2026-001-01-B05', '6de8a73a-7aef-40d4-acec-e541cd5456c8'::uuid, 'B', NULL,  NULL,   interval '1 days'),
+  ('FDY-2026-001-01-B05', '6de8a73a-7aef-40d4-acec-e541cd5456c8'::uuid, 'C', NULL,  '油污', interval '1 days')
+) AS v(bobbin_number, inspector_id, grade, is_qualified, defect_reason, ago)
+JOIN bobbins b ON b.bobbin_number = v.bobbin_number;
 
 -- 6 条落纱：Line 1 三条（含一条作废）、Line 2 两条、Line 3 一条
 -- 作废那条必须不出现在机台统计里，用于验证后端 §3.2.2 的口径。
