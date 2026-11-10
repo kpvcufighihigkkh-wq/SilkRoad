@@ -30,4 +30,16 @@ VALUES
   (gen_random_uuid(), '0bef2ad0-b58b-4ff3-b90f-5b0cb02ed208', 2, NULL,                                   'confirmed', NULL, now() - interval '2 days', now(), now(), '30e759bd-e9a3-46b0-ae5f-59e5a5489d43'),
   (gen_random_uuid(), '79506cdb-dd20-4b43-a41a-4eb737165502', 1, '49827a6e-a1ac-4bc3-8e86-d8b1217ea661', 'confirmed', 5.0,  now() - interval '1 days', now(), now(), '30e759bd-e9a3-46b0-ae5f-59e5a5489d43');
 
+-- 5 条丝锭，用于批次详情页的丝锭列表。
+-- 覆盖四种状态与「等级为空」的展示（空值应显示为 —，而非空白）。
+INSERT INTO bobbins
+  (id, bobbin_number, lot_id, spinning_position, gross_weight, net_weight, tare_weight,
+   grade, status, label_printed, created_at, updated_at)
+VALUES
+  (gen_random_uuid(), 'FDY-2026-001-01-B01', '30e759bd-e9a3-46b0-ae5f-59e5a5489d43', 1, 5.45, 5.10, 0.35, 'A',    'completed', true,  now() - interval '5 days', now()),
+  (gen_random_uuid(), 'FDY-2026-001-01-B02', '30e759bd-e9a3-46b0-ae5f-59e5a5489d43', 2, 5.52, 5.17, 0.35, 'B',    'packed',    true,  now() - interval '4 days', now()),
+  (gen_random_uuid(), 'FDY-2026-001-01-B03', '30e759bd-e9a3-46b0-ae5f-59e5a5489d43', 3, 5.38, 5.03, 0.35, 'C',    'shipped',   true,  now() - interval '3 days', now()),
+  (gen_random_uuid(), 'FDY-2026-001-01-B04', '30e759bd-e9a3-46b0-ae5f-59e5a5489d43', 4, 5.60, 5.25, 0.35, 'A',    'completed', true,  now() - interval '2 days', now()),
+  (gen_random_uuid(), 'FDY-2026-001-01-B05', '30e759bd-e9a3-46b0-ae5f-59e5a5489d43', 5, 5.44, 5.09, 0.35, NULL,   'producing', false, now() - interval '1 days', now());
+
 COMMIT;
