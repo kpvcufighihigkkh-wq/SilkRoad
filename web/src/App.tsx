@@ -7,6 +7,7 @@ import MainLayout from '@/layouts/MainLayout'
 import LoginPage from '@/pages/LoginPage'
 import LotsPage from '@/pages/LotsPage'
 import LotDetailPage from '@/pages/LotDetailPage'
+import ReportsPage from '@/pages/ReportsPage'
 
 /**
  * AuthGate 负责两件事：
@@ -60,6 +61,7 @@ export default function App() {
           <Route index element={<Navigate to="/lots" replace />} />
           <Route path="lots" element={<LotsPage />} />
           <Route path="lots/:id" element={<LotDetailPage />} />
+          <Route path="reports" element={<ReportsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/lots" replace />} />

@@ -63,12 +63,7 @@ export default function MainLayout() {
           onClick={({ key }) => navigate(key)}
           items={[
             { key: '/lots', icon: <InboxOutlined />, label: '批次管理' },
-            {
-              key: 'reports',
-              icon: <BarChartOutlined />,
-              label: '报表',
-              disabled: true,
-            },
+            { key: '/reports', icon: <BarChartOutlined />, label: '报表' },
             {
               key: 'system',
               icon: <SettingOutlined />,
