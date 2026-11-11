@@ -43,13 +43,17 @@ type BobbinResponse struct {
 	Grade            string  `json:"grade,omitempty"`
 	// PalletID 为 null 表示尚未码盘。托盘详情页靠它列出盘内丝锭，
 	// 缺了这个字段就只剩一个计数，看不到是哪几枚。
-	PalletID         *string `json:"pallet_id"`
-	Status           string  `json:"status"`
-	LabelPrinted     bool    `json:"label_printed"`
-	PrintedAt        *string `json:"printed_at,omitempty"`
-	CompletedAt      *string `json:"completed_at,omitempty"`
-	CreatedAt        string  `json:"created_at"`
-	UpdatedAt        string  `json:"updated_at"`
+	PalletID *string `json:"pallet_id"`
+	// BarrelID / CartonID 同理：null 表示不在桶里 / 不在箱里。
+	// 桶与纸箱详情页靠它们列出内容物；三者为互斥的上级容器。
+	BarrelID     *string `json:"barrel_id"`
+	CartonID     *string `json:"carton_id"`
+	Status       string  `json:"status"`
+	LabelPrinted bool    `json:"label_printed"`
+	PrintedAt    *string `json:"printed_at,omitempty"`
+	CompletedAt  *string `json:"completed_at,omitempty"`
+	CreatedAt    string  `json:"created_at"`
+	UpdatedAt    string  `json:"updated_at"`
 }
 
 // CreateBobbin 创建丝锭
@@ -222,6 +226,14 @@ func (s *BobbinService) toBobbinResponse(b *ent.Bobbin) *BobbinResponse {
 	if b.PalletID != uuid.Nil {
 		str := b.PalletID.String()
 		resp.PalletID = &str
+	}
+	if b.BarrelID != uuid.Nil {
+		str := b.BarrelID.String()
+		resp.BarrelID = &str
+	}
+	if b.CartonID != uuid.Nil {
+		str := b.CartonID.String()
+		resp.CartonID = &str
 	}
 
 	if !b.PrintedAt.IsZero() {

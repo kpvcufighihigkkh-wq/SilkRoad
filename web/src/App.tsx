@@ -10,6 +10,11 @@ import LotDetailPage from '@/pages/LotDetailPage'
 import ReportsPage from '@/pages/ReportsPage'
 import PalletsPage from '@/pages/PalletsPage'
 import PalletDetailPage from '@/pages/PalletDetailPage'
+import BarrelsPage from '@/pages/BarrelsPage'
+import BarrelDetailPage from '@/pages/BarrelDetailPage'
+import CartonsPage from '@/pages/CartonsPage'
+import CartonDetailPage from '@/pages/CartonDetailPage'
+import ModulesPage from '@/pages/ModulesPage'
 import SystemUsersPage from '@/pages/SystemUsersPage'
 import SystemEdgesPage from '@/pages/SystemEdgesPage'
 
@@ -67,6 +72,11 @@ export default function App() {
           <Route path="lots/:id" element={<LotDetailPage />} />
           <Route path="pallets" element={<PalletsPage />} />
           <Route path="pallets/:id" element={<PalletDetailPage />} />
+          <Route path="barrels" element={<BarrelsPage />} />
+          <Route path="barrels/:id" element={<BarrelDetailPage />} />
+          <Route path="cartons" element={<CartonsPage />} />
+          <Route path="cartons/:id" element={<CartonDetailPage />} />
+          <Route path="modules" element={<ModulesPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="system/users" element={<SystemUsersPage />} />
           <Route path="system/edges" element={<SystemEdgesPage />} />

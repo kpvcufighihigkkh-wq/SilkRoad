@@ -29,6 +29,10 @@ export interface Bobbin {
   grade?: string
   /** 所属托盘。null 表示尚未码盘 —— 托盘详情页据此判断盘内丝锭。 */
   pallet_id: string | null
+  /** 所属桶。null 表示未装桶。 */
+  barrel_id: string | null
+  /** 所属纸箱。null 表示未装箱。 */
+  carton_id: string | null
   status: string
   label_printed: boolean
   printed_at?: string

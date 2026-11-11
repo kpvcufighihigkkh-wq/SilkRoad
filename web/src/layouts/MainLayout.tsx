@@ -4,6 +4,8 @@ import { Avatar, Dropdown, Layout, Menu, Typography } from 'antd'
 import {
   AppstoreOutlined,
   BarChartOutlined,
+  CarOutlined,
+  ContainerOutlined,
   InboxOutlined,
   LogoutOutlined,
   SettingOutlined,
@@ -70,6 +72,9 @@ export default function MainLayout() {
           items={[
             { key: '/lots', icon: <InboxOutlined />, label: '批次管理' },
             { key: '/pallets', icon: <AppstoreOutlined />, label: '托盘管理' },
+            { key: '/barrels', icon: <ContainerOutlined />, label: '落纱桶' },
+            { key: '/cartons', icon: <InboxOutlined />, label: '纸箱' },
+            { key: '/modules', icon: <CarOutlined />, label: '吊车' },
             { key: '/reports', icon: <BarChartOutlined />, label: '报表' },
             {
               key: 'system',
