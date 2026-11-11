@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useOutlet, useLocation } from 'react-router-dom'
 import { Avatar, Dropdown, Layout, Menu, Typography } from 'antd'
 import {
+  AppstoreOutlined,
   BarChartOutlined,
   InboxOutlined,
   LogoutOutlined,
@@ -68,6 +69,7 @@ export default function MainLayout() {
           onClick={({ key }) => navigate(key)}
           items={[
             { key: '/lots', icon: <InboxOutlined />, label: '批次管理' },
+            { key: '/pallets', icon: <AppstoreOutlined />, label: '托盘管理' },
             { key: '/reports', icon: <BarChartOutlined />, label: '报表' },
             {
               key: 'system',

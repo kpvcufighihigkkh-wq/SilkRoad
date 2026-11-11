@@ -8,6 +8,8 @@ import LoginPage from '@/pages/LoginPage'
 import LotsPage from '@/pages/LotsPage'
 import LotDetailPage from '@/pages/LotDetailPage'
 import ReportsPage from '@/pages/ReportsPage'
+import PalletsPage from '@/pages/PalletsPage'
+import PalletDetailPage from '@/pages/PalletDetailPage'
 import SystemUsersPage from '@/pages/SystemUsersPage'
 import SystemEdgesPage from '@/pages/SystemEdgesPage'
 
@@ -63,6 +65,8 @@ export default function App() {
           <Route index element={<Navigate to="/lots" replace />} />
           <Route path="lots" element={<LotsPage />} />
           <Route path="lots/:id" element={<LotDetailPage />} />
+          <Route path="pallets" element={<PalletsPage />} />
+          <Route path="pallets/:id" element={<PalletDetailPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="system/users" element={<SystemUsersPage />} />
           <Route path="system/edges" element={<SystemEdgesPage />} />
