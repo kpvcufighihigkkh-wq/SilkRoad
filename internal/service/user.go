@@ -74,6 +74,14 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
+// ResetPasswordRequest 管理员重置他人密码请求。
+//
+// 只要新密码、不要旧密码：这是管理员代操作，管理员不知道也不该知道
+// 目标用户的旧密码。授权依据是 callerRole，不是旧密码。
+type ResetPasswordRequest struct {
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
 // UserResponse 用户响应
 type UserResponse struct {
 	ID        string `json:"id"`
@@ -251,6 +259,40 @@ func (s *UserService) ChangePassword(ctx context.Context, id string, req *Change
 	newPasswordHash := hashPassword(req.NewPassword)
 	return s.client.User.UpdateOneID(userID).
 		SetPasswordHash(newPasswordHash).
+		Exec(ctx)
+}
+
+// ResetPassword 管理员重置他人密码，不校验旧密码。
+//
+// 与 ChangePassword 的分工：
+//   - ChangePassword：本人改自己的密码，必须提供旧密码；
+//   - ResetPassword：管理员帮他人重置（员工忘密码、账号交接），凭管理员身份授权。
+//
+// callerRole 由鉴权层传入，不是客户端可控的请求字段。目标用户存在性先校验，
+// 避免对不存在的 ID 返回成功（那会让前端误以为重置生效）。
+func (s *UserService) ResetPassword(ctx context.Context, id, callerRole, newPassword string) error {
+	if callerRole != "admin" {
+		return ErrRoleTooHigh
+	}
+	if len(newPassword) < 6 {
+		return &ServiceError{Code: 10001, Message: "新密码至少 6 位"}
+	}
+
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return &ServiceError{Code: 10001, Message: "无效的用户ID"}
+	}
+
+	exists, err := s.client.User.Query().Where(user.ID(userID)).Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrUserNotFound
+	}
+
+	return s.client.User.UpdateOneID(userID).
+		SetPasswordHash(hashPassword(newPassword)).
 		Exec(ctx)
 }
 

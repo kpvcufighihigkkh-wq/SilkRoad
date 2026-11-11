@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/yourusername/igh-silkroad/internal/service"
 )
 
@@ -314,5 +316,70 @@ func TestUserService_UpdateUser_NilEmailAndPhoneKeepOriginal(t *testing.T) {
 	}
 	if got.Phone != phone {
 		t.Errorf("Phone = %q, want %q（未提供时不得清空）", got.Phone, phone)
+	}
+}
+
+// 管理员重置他人密码：不校验旧密码，凭 callerRole 授权。
+func TestUserService_ResetPassword_AdminResetsWithoutOldPassword(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+	ctx := context.Background()
+
+	mustCreateUser(t, svc, "admin", "reset-target", "operator")
+	id := findUserID(t, svc, "reset-target")
+
+	if err := svc.ResetPassword(ctx, id, "admin", "brand-new-pw"); err != nil {
+		t.Fatalf("ResetPassword: %v", err)
+	}
+
+	// 新密码可登录，旧密码失效
+	if _, err := svc.ValidateLogin(ctx, "reset-target", "brand-new-pw"); err != nil {
+		t.Errorf("新密码登录失败：%v", err)
+	}
+	if _, err := svc.ValidateLogin(ctx, "reset-target", "secret123"); err == nil {
+		t.Error("旧密码仍然可登录：重置没有生效")
+	}
+}
+
+// 非管理员不得重置他人密码 —— 这是本接口唯一的授权依据。
+func TestUserService_ResetPassword_NonAdminRejected(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+	ctx := context.Background()
+
+	mustCreateUser(t, svc, "admin", "reset-victim", "admin")
+	id := findUserID(t, svc, "reset-victim")
+
+	for _, role := range []string{"operator", "inspector", "viewer", ""} {
+		if err := svc.ResetPassword(ctx, id, role, "hijacked-pw"); err == nil {
+			t.Errorf("callerRole=%q 竟然可以重置他人密码", role)
+		}
+	}
+
+	// 确认原密码仍有效
+	if _, err := svc.ValidateLogin(ctx, "reset-victim", "secret123"); err != nil {
+		t.Errorf("被拒绝的请求仍然改动了密码：%v", err)
+	}
+}
+
+func TestUserService_ResetPassword_RejectsShortPassword(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+	ctx := context.Background()
+
+	mustCreateUser(t, svc, "admin", "reset-short", "viewer")
+	id := findUserID(t, svc, "reset-short")
+
+	if err := svc.ResetPassword(ctx, id, "admin", "12345"); err == nil {
+		t.Fatal("want error：新密码不足 6 位")
+	}
+}
+
+func TestUserService_ResetPassword_RejectsUnknownUser(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewUserService(client)
+
+	if err := svc.ResetPassword(context.Background(), uuid.NewString(), "admin", "whatever1"); err == nil {
+		t.Fatal("want error：用户不存在")
 	}
 }

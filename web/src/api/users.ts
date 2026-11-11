@@ -94,6 +94,16 @@ export async function deleteUser(id: string): Promise<void> {
   await http.delete(`/v1/users/${id}`)
 }
 
+/**
+ * 管理员重置他人密码：不要旧密码。
+ *
+ * 与 changePassword 的分工：那条要旧密码、供本人用；这条凭管理员身份授权，
+ * 用于员工忘密码或账号交接。后端路由在 admin 组内。
+ */
+export async function resetPassword(id: string, newPassword: string): Promise<void> {
+  await http.put(`/v1/users/${id}/password/reset`, { new_password: newPassword })
+}
+
 /** 改密：非管理员只能改自己的，且必须提供旧密码。 */
 export async function changePassword(id: string, input: ChangePasswordInput): Promise<void> {
   await http.put(`/v1/users/${id}/password`, input)
