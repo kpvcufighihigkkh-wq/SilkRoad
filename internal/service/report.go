@@ -14,6 +14,7 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
 
@@ -77,10 +78,15 @@ type QualityDistributionResponse struct {
 }
 
 // SpinningLineStat 按机台汇总的一行。
+//
+// SpinningLineName 可空：spinning_line_id 来自 Edge，是不带外键约束的普通
+// UUID 列。Edge 未从 Center 拉过线体配置时，这里只能给出 ID。
+// 指针且不加 omitempty，让前端能区分「查不到名称」与「没有这个字段」。
 type SpinningLineStat struct {
-	SpinningLineID string  `json:"spinning_line_id"`
-	DoffingCount   int     `json:"doffing_count"`
-	ActualWeight   float64 `json:"actual_weight"`
+	SpinningLineID   string  `json:"spinning_line_id"`
+	SpinningLineName *string `json:"spinning_line_name"`
+	DoffingCount     int     `json:"doffing_count"`
+	ActualWeight     float64 `json:"actual_weight"`
 }
 
 // OperatorStat 按操作员汇总的一行。
@@ -156,6 +162,17 @@ func (s *ReportService) MachineOperator(ctx context.Context, start, end time.Tim
 		return nil, err
 	}
 
+	// 机台名称在 Center 本地关联得出：spinning_line 是 Center 的权威配置，
+	// 不需要经 Edge 回传。一次批量查询而不是逐行查，避免 N+1。
+	lineIDs := make([]uuid.UUID, 0, len(lineRows))
+	for _, r := range lineRows {
+		lineIDs = append(lineIDs, r.SpinningLineID)
+	}
+	lineNames, err := s.spinningLineNames(ctx, lineIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	byLine := make([]SpinningLineStat, 0, len(lineRows))
 	for _, r := range lineRows {
 		// SUM 在整组权重皆为 NULL 时返回 NULL；归一化为 0，不把 null 透传给前端。
@@ -164,9 +181,10 @@ func (s *ReportService) MachineOperator(ctx context.Context, start, end time.Tim
 			weight = r.Sum.Float64
 		}
 		byLine = append(byLine, SpinningLineStat{
-			SpinningLineID: r.SpinningLineID.String(),
-			DoffingCount:   r.Count,
-			ActualWeight:   weight,
+			SpinningLineID:   r.SpinningLineID.String(),
+			SpinningLineName: lineNames[r.SpinningLineID],
+			DoffingCount:     r.Count,
+			ActualWeight:     weight,
 		})
 	}
 	sort.Slice(byLine, func(i, j int) bool {
@@ -251,6 +269,35 @@ func ptrStringLess(a, b *string) bool {
 		return true
 	}
 	return *a < *b
+}
+
+// spinningLineNames 批量查线体名称，返回 ID → 名称（可空值）。
+//
+// 查不到的 ID 不出现在 map 里，调用方读到的就是 nil —— 语义是「这个 ID
+// 在 Center 的线体表里没有对应行」，而不是「线体无名」。典型成因是 Edge
+// 从未拉取过 Center 的线体配置（见缺口 C）。
+//
+// 空输入直接返回空 map，不发查询：分组结果为空时（区间内无落纱）
+// WHERE IN () 在部分方言下是语法错误。
+func (s *ReportService) spinningLineNames(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]*string, error) {
+	if len(ids) == 0 {
+		return map[uuid.UUID]*string{}, nil
+	}
+
+	rows, err := s.client.SpinningLine.Query().
+		Where(spinningline.IDIn(ids...)).
+		Select(spinningline.FieldID, spinningline.FieldLineName).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[uuid.UUID]*string, len(rows))
+	for _, r := range rows {
+		name := r.LineName
+		out[r.ID] = &name
+	}
+	return out, nil
 }
 
 // sortOperatorStats 按落纱数降序、同值按操作员 ID 升序（nil 排最后）。

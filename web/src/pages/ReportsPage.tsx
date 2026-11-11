@@ -64,7 +64,17 @@ const lineColumns: ColumnsType<SpinningLineStat> = [
   {
     title: '机台',
     dataIndex: 'spinning_line_id',
-    render: (v: string) => <span className="mono">{v.slice(0, 8)}</span>,
+    // 名称由报表在 Center 本地关联线体表得出；查不到时回退显示 ID 前 8 位，
+    // 而不是留空 —— 运维仍需要一个能拿去排查的句柄。
+    render: (_id: string, row) =>
+      row.spinning_line_name ? (
+        <span>{row.spinning_line_name}</span>
+      ) : (
+        <Space size={4}>
+          <span className="mono">{row.spinning_line_id.slice(0, 8)}</span>
+          <Tag color="default">未匹配</Tag>
+        </Space>
+      ),
   },
   {
     title: '落纱数',
