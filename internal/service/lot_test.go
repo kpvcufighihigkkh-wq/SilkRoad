@@ -3,7 +3,9 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/service"
@@ -131,5 +133,135 @@ func TestLotService_ListLots_EmptyFiltersReturnAll(t *testing.T) {
 	}
 	if total != 3 {
 		t.Errorf("total = %d, want 3", total)
+	}
+}
+
+// 批次由 Edge 产生，创建即投产：start_time 必须在 CreateLot 时写定。
+//
+// 这一列是看板一的区间过滤字段，此前全仓库无人写它，导致看板无法交付。
+// 本用例钉住「创建时非零」，以及落库后确实落到了列上（而不是只出现在响应里）。
+func TestLotService_CreateLot_WritesStartTime(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewLotService(client)
+
+	resp, err := svc.CreateLot(context.Background(), &service.CreateLotRequest{
+		LotNumber:       "EDGE-2026-001",
+		ProductType:     "FDY",
+		PlannedQuantity: 500,
+	})
+	if err != nil {
+		t.Fatalf("CreateLot: %v", err)
+	}
+
+	if resp.Status != string(lot.StatusInProgress) {
+		t.Errorf("status = %q, want in_progress", resp.Status)
+	}
+	if resp.StartTime == nil {
+		t.Fatal("响应缺少 start_time")
+	}
+
+	row, err := client.Lot.Get(context.Background(), uuid.MustParse(resp.ID))
+	if err != nil {
+		t.Fatalf("重新读取批次: %v", err)
+	}
+	if row.StartTime.IsZero() {
+		t.Fatal("lot.start_time 落库后仍为零值")
+	}
+	if !row.EndTime.IsZero() {
+		t.Errorf("新建批次的 end_time 应为空，got %v", row.EndTime)
+	}
+}
+
+// 重复批次号必须被拒绝：lot_number 有唯一约束，靠数据库报错再转成 40002
+// 会把约束错误泄漏成 500，前端无法提示「批次号已存在」。
+func TestLotService_CreateLot_RejectsDuplicateNumber(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewLotService(client)
+	req := &service.CreateLotRequest{
+		LotNumber:       "EDGE-2026-DUP",
+		ProductType:     "POY",
+		PlannedQuantity: 100,
+	}
+
+	if _, err := svc.CreateLot(context.Background(), req); err != nil {
+		t.Fatalf("首次 CreateLot: %v", err)
+	}
+
+	_, err := svc.CreateLot(context.Background(), req)
+	svcErr, ok := err.(*service.ServiceError)
+	if !ok {
+		t.Fatalf("重复批次号应返回 ServiceError, got %T: %v", err, err)
+	}
+	if svcErr.Code != 40002 {
+		t.Errorf("error code = %d, want 40002（冲突）", svcErr.Code)
+	}
+}
+
+// 状态流转写 end_time，且是幂等的：重复提交 completed 不把结束时刻推后。
+func TestLotService_UpdateLotStatus_WritesEndTimeOnce(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewLotService(client)
+
+	created, err := svc.CreateLot(context.Background(), &service.CreateLotRequest{
+		LotNumber:       "EDGE-2026-002",
+		ProductType:     "DTY",
+		PlannedQuantity: 100,
+	})
+	if err != nil {
+		t.Fatalf("CreateLot: %v", err)
+	}
+
+	actual := 98
+	completed, err := svc.UpdateLotStatus(context.Background(), created.ID, &service.UpdateLotStatusRequest{
+		Status:         "completed",
+		ActualQuantity: &actual,
+	})
+	if err != nil {
+		t.Fatalf("UpdateLotStatus(completed): %v", err)
+	}
+	if completed.EndTime == nil {
+		t.Fatal("完工后缺少 end_time")
+	}
+	if completed.ActualQuantity != 98 {
+		t.Errorf("actual_quantity = %d, want 98", completed.ActualQuantity)
+	}
+	firstEnd := *completed.EndTime
+
+	// 隔一小段时间重复提交：end_time 必须保持第一次的值。
+	time.Sleep(10 * time.Millisecond)
+	again, err := svc.UpdateLotStatus(context.Background(), created.ID, &service.UpdateLotStatusRequest{
+		Status: "completed",
+	})
+	if err != nil {
+		t.Fatalf("UpdateLotStatus(重复 completed): %v", err)
+	}
+	if again.EndTime == nil || *again.EndTime != firstEnd {
+		t.Errorf("重复提交改写了 end_time: 首次 %s, 再次 %v", firstEnd, again.EndTime)
+	}
+}
+
+// 非法状态直接拒绝，且不改动任何列。
+func TestLotService_UpdateLotStatus_RejectsUnknownStatus(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewLotService(client)
+
+	created, err := svc.CreateLot(context.Background(), &service.CreateLotRequest{
+		LotNumber:       "EDGE-2026-003",
+		ProductType:     "FDY",
+		PlannedQuantity: 10,
+	})
+	if err != nil {
+		t.Fatalf("CreateLot: %v", err)
+	}
+
+	_, err = svc.UpdateLotStatus(context.Background(), created.ID, &service.UpdateLotStatusRequest{
+		Status: "flying",
+	})
+	svcErr, ok := err.(*service.ServiceError)
+	if !ok {
+		t.Fatalf("非法状态应返回 ServiceError, got %T: %v", err, err)
+	}
+	if svcErr.Code != 10001 {
+		t.Errorf("error code = %d, want 10001（参数错误）", svcErr.Code)
 	}
 }
