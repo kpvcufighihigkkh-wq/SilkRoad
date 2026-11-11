@@ -69,8 +69,8 @@ func NewEdgeServer(client *ent.Client, edgeID, centerURL, jwtSecret, centerToken
 		RefreshDuration: 24 * time.Hour,
 	})
 
-	// 同步客户端（下载侧由后续任务接线，此处仅保留实例）
-	syncClient := edge.NewSyncClient(edgeID, centerURL, client)
+	// 同步客户端：下行拉取 Center 的权威配置（线体、等级字典）
+	syncClient := edge.NewSyncClient(client, edgeID, centerURL, centerToken)
 
 	// 上传器：唯一的上传路径
 	uploader := edge.NewUploader(client, edgeID, centerURL, centerToken)
@@ -299,14 +299,18 @@ func (s *EdgeServer) handleSyncUpload(c *gin.Context) {
 }
 
 // handleSyncDownload 处理数据下载
+//
+// 拉取 Center 的权威配置（线体、等级字典）并落地到本地。
+// 机台名称的报表关联依赖线体主键与 Center 一致 —— 这里的落地沿用
+// Center 的 UUID，本地不另行生成。
 func (s *EdgeServer) handleSyncDownload(c *gin.Context) {
-	// TODO: 调用syncClient下载数据
-	log.Println("📥 Downloading data from center...")
+	result, err := s.syncClient.DownloadData(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
 
-	c.JSON(http.StatusOK, api.Success(gin.H{
-		"downloaded": 0,
-		"applied":    0,
-	}))
+	c.JSON(http.StatusOK, api.Success(result))
 }
 
 // handleSyncResync 重置本地同步状态，触发重传。

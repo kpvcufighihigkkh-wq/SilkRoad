@@ -60,7 +60,14 @@ func TestReportService_MachineOperator_BySpinningLine(t *testing.T) {
 	start, end, inside, _, _ := reportWindow()
 
 	lotID := seedLot(t, client, "LOT-MO-001")
-	lineID := uuid.New()
+	lineRow, err := client.SpinningLine.Create().
+		SetLineName("A线").
+		SetLineNumber("LINE-A").
+		Save(context.Background())
+	if err != nil {
+		t.Fatalf("seed spinning line: %v", err)
+	}
+	lineID := lineRow.ID
 	w1, w2 := 100.0, 50.0
 	seedDoffing(t, client, lotID, lineID, nil, doffing.StatusConfirmed, &w1, inside)
 	seedDoffing(t, client, lotID, lineID, nil, doffing.StatusConfirmed, &w2, inside.Add(time.Minute))
@@ -77,11 +84,41 @@ func TestReportService_MachineOperator_BySpinningLine(t *testing.T) {
 	if row.SpinningLineID != lineID.String() {
 		t.Errorf("SpinningLineID = %s, want %s", row.SpinningLineID, lineID)
 	}
+	// 名称来自 Center 本地线体表，不依赖 Edge 回传。
+	if row.SpinningLineName == nil || *row.SpinningLineName != "A线" {
+		t.Errorf("SpinningLineName = %v, want A线", row.SpinningLineName)
+	}
 	if row.DoffingCount != 2 {
 		t.Errorf("DoffingCount = %d, want 2", row.DoffingCount)
 	}
 	if row.ActualWeight != 150 {
 		t.Errorf("ActualWeight = %v, want 150", row.ActualWeight)
+	}
+}
+
+// 线体表里查不到该 ID 时名称应为 null，而不是空串或省略键。
+//
+// 这不是异常：spinning_line_id 来自 Edge，Center 未必有对应行
+// （Edge 未拉取过线体配置）。前端需要能区分「无名」与「无此行」。
+func TestReportService_MachineOperator_UnknownLineNameIsNull(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewReportService(client)
+	start, end, inside, _, _ := reportWindow()
+
+	lotID := seedLot(t, client, "LOT-MO-UNKNOWN")
+	lineID := uuid.New() // Center 线体表里不存在
+	seedDoffing(t, client, lotID, lineID, nil, doffing.StatusConfirmed, nil, inside)
+
+	got, err := svc.MachineOperator(context.Background(), start, end)
+	if err != nil {
+		t.Fatalf("MachineOperator: %v", err)
+	}
+
+	if len(got.BySpinningLine) != 1 {
+		t.Fatalf("len(BySpinningLine) = %d, want 1", len(got.BySpinningLine))
+	}
+	if got.BySpinningLine[0].SpinningLineName != nil {
+		t.Errorf("未知线体的名称应为 nil, got %q", *got.BySpinningLine[0].SpinningLineName)
 	}
 }
 

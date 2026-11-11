@@ -434,8 +434,8 @@ reports := authorized.Group("/reports")
 |---|---|---|---|
 | A | `bobbin_grade.inspection_details` / `scores` / `final_score` 未同步 | 扩展 Edge 采集器 + Center `upsertBobbinGrade` | 「五维度合格率」「平均分」两项指标 |
 | B | `barrel` / `module` / `pallet` / `carton` 无生产者、无同步、无端点 | 属 Edge 操作子系统，需另立 spec | spec §8 缺口 #7 整个 |
-| C | Edge 侧无 `spinning_line` 消费方 | **方向与 A 相反**：Center 是 `spinning_line` 的权威源（`internal/sync/center/provider.go:52-63` 向外下发，`cmd/seed` 建行），缺的是 Edge 的下载落地——`internal/server/edge.go:236` 的 `handleSyncDownload` 是返回 `downloaded: 0` 的桩 | 报表展示机台名称（当前只返回 UUID） |
-| D | 看板一所需的 `lot.start_time` 无生产者、不在同步载荷内 | 先建 Edge 批次产生路径，再给 `lotToEntry` 补 `start_time`，最后改过滤字段 | 看板一整个（已移出本计划，见 §1.2） |
+| C | ~~Edge 侧无 `spinning_line` 消费方~~ **已闭合（2026-11-11）**：`SyncClient.DownloadData` 拉取 `spinning_lines` / `grades` 并按 Center 的 UUID 落地（同名冲突时保留本地 ID 并告警）；报表 `by_spinning_line` 新增 `spinning_line_name`，查不到时为 `null` | — | — |
+| D | ~~看板一所需的 `lot.start_time` 无生产者、不在同步载荷内~~ **已闭合（2026-11-11）**，见 §1.2 补记 | — | — |
 
 A 与 D 都能用 PLN-17 打通 `doffing.operator_id` 的同一手法解决（两端各加一处），成本可控；但都改同步协议，需单独裁定，不应顺带塞进报表实现。C 的方向相反，成本取决于 Edge 下载链路本身，属另一个子系统。
 

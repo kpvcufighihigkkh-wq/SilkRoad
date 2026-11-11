@@ -48,6 +48,13 @@ export interface QualityDistribution {
 
 export interface SpinningLineStat {
   spinning_line_id: string
+  /**
+   * 机台名称，可空。
+   *
+   * 报表在 Center 本地按 spinning_line_id 关联线体表得出；Edge 未从
+   * Center 拉取过线体配置时查不到对应行，此处为 null。
+   */
+  spinning_line_name: string | null
   doffing_count: number
   actual_weight: number
 }
