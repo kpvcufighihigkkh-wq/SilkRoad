@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/service"
 )
@@ -402,4 +403,262 @@ func TestPalletService_SealPallet_ResetsPalletSyncState(t *testing.T) {
 	if !row.SyncedAt.IsZero() {
 		t.Errorf("SyncedAt = %v, want 零值", row.SyncedAt)
 	}
+}
+
+// DTY 托盘只能码箱，直接码锭的接口必须拒绝它。
+func TestPalletService_PackBobbins_RejectsCartonPallet(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-001")
+	bobbins := seedPackableBobbins(t, client, lotID, 1)
+
+	p, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+
+	if _, err := svc.PackBobbins(ctx, p.ID, &service.PackBobbinsRequest{
+		BobbinIDs: bobbins,
+	}); err == nil {
+		t.Fatal("want error：DTY 码箱托盘不能码丝锭")
+	}
+}
+
+// 码锭托盘不能码箱。
+func TestPalletService_PackCartons_RejectsBobbinPallet(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-002")
+	cartons := seedSealedCartons(t, client, lotID, 1)
+
+	p, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{LotID: lotID.String()})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+
+	if _, err := svc.PackCartons(ctx, p.ID, &service.PackCartonsRequest{
+		CartonIDs: cartons,
+	}); err == nil {
+		t.Fatal("want error：直接码锭托盘不能码纸箱")
+	}
+}
+
+func TestPalletService_PackCartons_SetsPalletAndCount(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-003")
+	cartons := seedSealedCartons(t, client, lotID, 3)
+
+	p, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+
+	got, err := svc.PackCartons(ctx, p.ID, &service.PackCartonsRequest{CartonIDs: cartons})
+	if err != nil {
+		t.Fatalf("PackCartons: %v", err)
+	}
+	if got.CartonsCount != 3 {
+		t.Errorf("CartonsCount = %d, want 3", got.CartonsCount)
+	}
+	if got.BobbinsCount != 0 {
+		t.Errorf("BobbinsCount = %d, want 0（码箱托盘不装丝锭）", got.BobbinsCount)
+	}
+
+	rows, err := client.Carton.Query().Where(carton.IDIn(mustUUIDs(t, cartons)...)).All(ctx)
+	if err != nil {
+		t.Fatalf("query cartons: %v", err)
+	}
+	for _, c := range rows {
+		if c.PalletID.String() != p.ID {
+			t.Errorf("纸箱 %s 的 PalletID = %s, want %s", c.CartonNumber, c.PalletID, p.ID)
+		}
+	}
+}
+
+// 未封箱的纸箱不能码垛：箱里还能装，挂在托盘上会让账实不符。
+func TestPalletService_PackCartons_RejectsUnsealedCarton(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	cartonSvc := service.NewCartonService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-004")
+	bobbins := seedPackableBobbins(t, client, lotID, 1)
+
+	c, err := cartonSvc.CreateCarton(ctx, &service.CreateCartonRequest{LotID: lotID.String()})
+	if err != nil {
+		t.Fatalf("CreateCarton: %v", err)
+	}
+	if _, err := cartonSvc.PackBobbins(ctx, c.ID, &service.PackIntoCartonRequest{BobbinIDs: bobbins}); err != nil {
+		t.Fatalf("PackBobbins: %v", err)
+	}
+	// 刻意不封箱
+
+	p, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+
+	if _, err := svc.PackCartons(ctx, p.ID, &service.PackCartonsRequest{
+		CartonIDs: []string{c.ID},
+	}); err == nil {
+		t.Fatal("want error：未封箱的纸箱不能码垛")
+	}
+}
+
+func TestPalletService_PackCartons_RejectsCartonOnAnotherPallet(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-005")
+	cartons := seedSealedCartons(t, client, lotID, 1)
+
+	first, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+	if _, err := svc.PackCartons(ctx, first.ID, &service.PackCartonsRequest{CartonIDs: cartons}); err != nil {
+		t.Fatalf("first pack: %v", err)
+	}
+
+	second, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+	if _, err := svc.PackCartons(ctx, second.ID, &service.PackCartonsRequest{CartonIDs: cartons}); err == nil {
+		t.Fatal("want error：纸箱已码在其它托盘上")
+	}
+}
+
+func TestPalletService_PackCartons_IsIdempotent(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-006")
+	cartons := seedSealedCartons(t, client, lotID, 2)
+
+	p, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+
+	req := &service.PackCartonsRequest{CartonIDs: cartons}
+	if _, err := svc.PackCartons(ctx, p.ID, req); err != nil {
+		t.Fatalf("first pack: %v", err)
+	}
+	got, err := svc.PackCartons(ctx, p.ID, req)
+	if err != nil {
+		t.Fatalf("second pack: %v", err)
+	}
+	if got.CartonsCount != 2 {
+		t.Errorf("CartonsCount = %d, want 2（重复提交不应重复计数）", got.CartonsCount)
+	}
+}
+
+// 码箱改变纸箱归属，必须重新排队同步。
+func TestPalletService_PackCartons_ResetsCartonSyncState(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	ctx := context.Background()
+
+	lotID := seedDTYLot(t, client, "PAL-CARTON-007")
+	cartons := seedSealedCartons(t, client, lotID, 1)
+
+	id := mustUUIDs(t, cartons)[0]
+	if _, err := client.Carton.UpdateOneID(id).
+		SetSyncStatus(carton.SyncStatusSynced).
+		SetSyncRetryCount(3).
+		Save(ctx); err != nil {
+		t.Fatalf("seed synced carton: %v", err)
+	}
+
+	p, err := svc.CreatePallet(ctx, &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "carton",
+	})
+	if err != nil {
+		t.Fatalf("CreatePallet: %v", err)
+	}
+	if _, err := svc.PackCartons(ctx, p.ID, &service.PackCartonsRequest{CartonIDs: cartons}); err != nil {
+		t.Fatalf("PackCartons: %v", err)
+	}
+
+	row, err := client.Carton.Get(ctx, id)
+	if err != nil {
+		t.Fatalf("reload carton: %v", err)
+	}
+	if row.SyncStatus != carton.SyncStatusPending {
+		t.Errorf("SyncStatus = %q, want pending（码垛后必须重新排队）", row.SyncStatus)
+	}
+	if row.SyncRetryCount != 0 {
+		t.Errorf("SyncRetryCount = %d, want 0", row.SyncRetryCount)
+	}
+}
+
+func TestPalletService_CreatePallet_RejectsInvalidType(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewPalletService(client)
+	lotID := seedLot(t, client, "PAL-TYPE-001")
+
+	if _, err := svc.CreatePallet(context.Background(), &service.CreatePalletRequest{
+		LotID:      lotID.String(),
+		PalletType: "barrel",
+	}); err == nil {
+		t.Fatal("want error：无效的托盘类型")
+	}
+}
+
+// seedSealedCartons 在指定 DTY 批次下造 n 个已封箱的纸箱。
+func seedSealedCartons(t *testing.T, client *ent.Client, lotID uuid.UUID, n int) []string {
+	t.Helper()
+
+	ctx := context.Background()
+	cartonSvc := service.NewCartonService(client)
+	bobbinSvc := seedPackableBobbins(t, client, lotID, n)
+
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		c, err := cartonSvc.CreateCarton(ctx, &service.CreateCartonRequest{LotID: lotID.String()})
+		if err != nil {
+			t.Fatalf("seed carton #%d: %v", i, err)
+		}
+		if _, err := cartonSvc.PackBobbins(ctx, c.ID, &service.PackIntoCartonRequest{
+			BobbinIDs: []string{bobbinSvc[i]},
+		}); err != nil {
+			t.Fatalf("pack carton #%d: %v", i, err)
+		}
+		if _, err := cartonSvc.SealCarton(ctx, c.ID, &service.SealCartonRequest{}); err != nil {
+			t.Fatalf("seal carton #%d: %v", i, err)
+		}
+		out = append(out, c.ID)
+	}
+
+	return out
 }

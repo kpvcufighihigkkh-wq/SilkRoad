@@ -12159,8 +12159,11 @@ type PalletMutation struct {
 	edge_id             *uuid.UUID
 	level               *int
 	addlevel            *int
+	pallet_type         *pallet.PalletType
 	bobbins_count       *int
 	addbobbins_count    *int
+	cartons_count       *int
+	addcartons_count    *int
 	net_weight          *float64
 	addnet_weight       *float64
 	gross_weight        *float64
@@ -12470,6 +12473,42 @@ func (m *PalletMutation) ResetLevel() {
 	m.addlevel = nil
 }
 
+// SetPalletType sets the "pallet_type" field.
+func (m *PalletMutation) SetPalletType(pt pallet.PalletType) {
+	m.pallet_type = &pt
+}
+
+// PalletType returns the value of the "pallet_type" field in the mutation.
+func (m *PalletMutation) PalletType() (r pallet.PalletType, exists bool) {
+	v := m.pallet_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPalletType returns the old "pallet_type" field's value of the Pallet entity.
+// If the Pallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PalletMutation) OldPalletType(ctx context.Context) (v pallet.PalletType, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPalletType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPalletType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPalletType: %w", err)
+	}
+	return oldValue.PalletType, nil
+}
+
+// ResetPalletType resets all changes to the "pallet_type" field.
+func (m *PalletMutation) ResetPalletType() {
+	m.pallet_type = nil
+}
+
 // SetBobbinsCount sets the "bobbins_count" field.
 func (m *PalletMutation) SetBobbinsCount(i int) {
 	m.bobbins_count = &i
@@ -12524,6 +12563,62 @@ func (m *PalletMutation) AddedBobbinsCount() (r int, exists bool) {
 func (m *PalletMutation) ResetBobbinsCount() {
 	m.bobbins_count = nil
 	m.addbobbins_count = nil
+}
+
+// SetCartonsCount sets the "cartons_count" field.
+func (m *PalletMutation) SetCartonsCount(i int) {
+	m.cartons_count = &i
+	m.addcartons_count = nil
+}
+
+// CartonsCount returns the value of the "cartons_count" field in the mutation.
+func (m *PalletMutation) CartonsCount() (r int, exists bool) {
+	v := m.cartons_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCartonsCount returns the old "cartons_count" field's value of the Pallet entity.
+// If the Pallet object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PalletMutation) OldCartonsCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCartonsCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCartonsCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCartonsCount: %w", err)
+	}
+	return oldValue.CartonsCount, nil
+}
+
+// AddCartonsCount adds i to the "cartons_count" field.
+func (m *PalletMutation) AddCartonsCount(i int) {
+	if m.addcartons_count != nil {
+		*m.addcartons_count += i
+	} else {
+		m.addcartons_count = &i
+	}
+}
+
+// AddedCartonsCount returns the value that was added to the "cartons_count" field in this mutation.
+func (m *PalletMutation) AddedCartonsCount() (r int, exists bool) {
+	v := m.addcartons_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCartonsCount resets all changes to the "cartons_count" field.
+func (m *PalletMutation) ResetCartonsCount() {
+	m.cartons_count = nil
+	m.addcartons_count = nil
 }
 
 // SetNetWeight sets the "net_weight" field.
@@ -13283,7 +13378,7 @@ func (m *PalletMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PalletMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 20)
 	if m.pallet_code != nil {
 		fields = append(fields, pallet.FieldPalletCode)
 	}
@@ -13296,8 +13391,14 @@ func (m *PalletMutation) Fields() []string {
 	if m.level != nil {
 		fields = append(fields, pallet.FieldLevel)
 	}
+	if m.pallet_type != nil {
+		fields = append(fields, pallet.FieldPalletType)
+	}
 	if m.bobbins_count != nil {
 		fields = append(fields, pallet.FieldBobbinsCount)
+	}
+	if m.cartons_count != nil {
+		fields = append(fields, pallet.FieldCartonsCount)
 	}
 	if m.net_weight != nil {
 		fields = append(fields, pallet.FieldNetWeight)
@@ -13354,8 +13455,12 @@ func (m *PalletMutation) Field(name string) (ent.Value, bool) {
 		return m.LotID()
 	case pallet.FieldLevel:
 		return m.Level()
+	case pallet.FieldPalletType:
+		return m.PalletType()
 	case pallet.FieldBobbinsCount:
 		return m.BobbinsCount()
+	case pallet.FieldCartonsCount:
+		return m.CartonsCount()
 	case pallet.FieldNetWeight:
 		return m.NetWeight()
 	case pallet.FieldGrossWeight:
@@ -13399,8 +13504,12 @@ func (m *PalletMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldLotID(ctx)
 	case pallet.FieldLevel:
 		return m.OldLevel(ctx)
+	case pallet.FieldPalletType:
+		return m.OldPalletType(ctx)
 	case pallet.FieldBobbinsCount:
 		return m.OldBobbinsCount(ctx)
+	case pallet.FieldCartonsCount:
+		return m.OldCartonsCount(ctx)
 	case pallet.FieldNetWeight:
 		return m.OldNetWeight(ctx)
 	case pallet.FieldGrossWeight:
@@ -13464,12 +13573,26 @@ func (m *PalletMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLevel(v)
 		return nil
+	case pallet.FieldPalletType:
+		v, ok := value.(pallet.PalletType)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPalletType(v)
+		return nil
 	case pallet.FieldBobbinsCount:
 		v, ok := value.(int)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBobbinsCount(v)
+		return nil
+	case pallet.FieldCartonsCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCartonsCount(v)
 		return nil
 	case pallet.FieldNetWeight:
 		v, ok := value.(float64)
@@ -13576,6 +13699,9 @@ func (m *PalletMutation) AddedFields() []string {
 	if m.addbobbins_count != nil {
 		fields = append(fields, pallet.FieldBobbinsCount)
 	}
+	if m.addcartons_count != nil {
+		fields = append(fields, pallet.FieldCartonsCount)
+	}
 	if m.addnet_weight != nil {
 		fields = append(fields, pallet.FieldNetWeight)
 	}
@@ -13600,6 +13726,8 @@ func (m *PalletMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedLevel()
 	case pallet.FieldBobbinsCount:
 		return m.AddedBobbinsCount()
+	case pallet.FieldCartonsCount:
+		return m.AddedCartonsCount()
 	case pallet.FieldNetWeight:
 		return m.AddedNetWeight()
 	case pallet.FieldGrossWeight:
@@ -13630,6 +13758,13 @@ func (m *PalletMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddBobbinsCount(v)
+		return nil
+	case pallet.FieldCartonsCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCartonsCount(v)
 		return nil
 	case pallet.FieldNetWeight:
 		v, ok := value.(float64)
@@ -13749,8 +13884,14 @@ func (m *PalletMutation) ResetField(name string) error {
 	case pallet.FieldLevel:
 		m.ResetLevel()
 		return nil
+	case pallet.FieldPalletType:
+		m.ResetPalletType()
+		return nil
 	case pallet.FieldBobbinsCount:
 		m.ResetBobbinsCount()
+		return nil
+	case pallet.FieldCartonsCount:
+		m.ResetCartonsCount()
 		return nil
 	case pallet.FieldNetWeight:
 		m.ResetNetWeight()

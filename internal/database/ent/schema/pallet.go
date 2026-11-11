@@ -47,11 +47,26 @@ func (Pallet) Fields() []ent.Field {
 			Max(9).
 			Comment("栈板层级（1-9）"),
 
+		// 托盘类型：bobbin = POY/FDY 直接码锭，carton = DTY 码箱
+		//
+		// 两种类型互斥：同一托盘不能既装锭又装箱。
+		// 建托盘时由调用方指定，默认 bobbin。
+		field.Enum("pallet_type").
+			Values("bobbin", "carton").
+			Default("bobbin").
+			Comment("托盘类型（bobbin=直接码锭/carton=DTY码箱）"),
+
 		// 托盘内丝锭数量
 		field.Int("bobbins_count").
 			Default(0).
 			NonNegative().
 			Comment("托盘内丝锭数量"),
+
+		// 托盘内纸箱数量（仅 DTY carton 类型）
+		field.Int("cartons_count").
+			Default(0).
+			NonNegative().
+			Comment("托盘内纸箱数量（DTY carton 类型）"),
 
 		// 重量信息
 		field.Float("net_weight").

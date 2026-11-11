@@ -8,6 +8,7 @@ import {
   listPallets,
   palletStatusColor,
   palletStatusLabel,
+  palletTypeLabel,
   type Pallet,
   type PalletStatus,
 } from '@/api/pallets'
@@ -33,17 +34,28 @@ const columns: ColumnsType<Pallet> = [
     ),
   },
   {
+    title: '类型',
+    dataIndex: 'pallet_type',
+    width: 100,
+    // DTY 的托盘装纸箱，POY/FDY 装丝锭：两种口径混在一列会误导现场。
+    render: (value: string) => <Tag>{palletTypeLabel(value)}</Tag>,
+  },
+  {
     title: '层级',
     dataIndex: 'level',
     width: 80,
     align: 'right',
   },
   {
-    title: '丝锭数',
-    dataIndex: 'bobbins_count',
-    width: 90,
+    title: '装载',
+    key: 'loading',
+    width: 110,
     align: 'right',
-    render: (value: number) => value.toLocaleString(),
+    render: (_, row) =>
+      // 两种托盘类型装的东西不同，显示对应的那个计数。
+      row.pallet_type === 'carton'
+        ? `${row.cartons_count} 箱`
+        : `${row.bobbins_count} 锭`,
   },
   {
     title: '净重',

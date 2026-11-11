@@ -585,39 +585,45 @@ func init() {
 		}
 	}()
 	// palletDescBobbinsCount is the schema descriptor for bobbins_count field.
-	palletDescBobbinsCount := palletFields[5].Descriptor()
+	palletDescBobbinsCount := palletFields[6].Descriptor()
 	// pallet.DefaultBobbinsCount holds the default value on creation for the bobbins_count field.
 	pallet.DefaultBobbinsCount = palletDescBobbinsCount.Default.(int)
 	// pallet.BobbinsCountValidator is a validator for the "bobbins_count" field. It is called by the builders before save.
 	pallet.BobbinsCountValidator = palletDescBobbinsCount.Validators[0].(func(int) error)
+	// palletDescCartonsCount is the schema descriptor for cartons_count field.
+	palletDescCartonsCount := palletFields[7].Descriptor()
+	// pallet.DefaultCartonsCount holds the default value on creation for the cartons_count field.
+	pallet.DefaultCartonsCount = palletDescCartonsCount.Default.(int)
+	// pallet.CartonsCountValidator is a validator for the "cartons_count" field. It is called by the builders before save.
+	pallet.CartonsCountValidator = palletDescCartonsCount.Validators[0].(func(int) error)
 	// palletDescNetWeight is the schema descriptor for net_weight field.
-	palletDescNetWeight := palletFields[6].Descriptor()
+	palletDescNetWeight := palletFields[8].Descriptor()
 	// pallet.NetWeightValidator is a validator for the "net_weight" field. It is called by the builders before save.
 	pallet.NetWeightValidator = palletDescNetWeight.Validators[0].(func(float64) error)
 	// palletDescGrossWeight is the schema descriptor for gross_weight field.
-	palletDescGrossWeight := palletFields[7].Descriptor()
+	palletDescGrossWeight := palletFields[9].Descriptor()
 	// pallet.GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
 	pallet.GrossWeightValidator = palletDescGrossWeight.Validators[0].(func(float64) error)
 	// palletDescTareWeight is the schema descriptor for tare_weight field.
-	palletDescTareWeight := palletFields[8].Descriptor()
+	palletDescTareWeight := palletFields[10].Descriptor()
 	// pallet.TareWeightValidator is a validator for the "tare_weight" field. It is called by the builders before save.
 	pallet.TareWeightValidator = palletDescTareWeight.Validators[0].(func(float64) error)
 	// palletDescPrinted is the schema descriptor for printed field.
-	palletDescPrinted := palletFields[11].Descriptor()
+	palletDescPrinted := palletFields[13].Descriptor()
 	// pallet.DefaultPrinted holds the default value on creation for the printed field.
 	pallet.DefaultPrinted = palletDescPrinted.Default.(bool)
 	// palletDescSyncRetryCount is the schema descriptor for sync_retry_count field.
-	palletDescSyncRetryCount := palletFields[16].Descriptor()
+	palletDescSyncRetryCount := palletFields[18].Descriptor()
 	// pallet.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
 	pallet.DefaultSyncRetryCount = palletDescSyncRetryCount.Default.(int)
 	// pallet.SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
 	pallet.SyncRetryCountValidator = palletDescSyncRetryCount.Validators[0].(func(int) error)
 	// palletDescCreatedAt is the schema descriptor for created_at field.
-	palletDescCreatedAt := palletFields[17].Descriptor()
+	palletDescCreatedAt := palletFields[19].Descriptor()
 	// pallet.DefaultCreatedAt holds the default value on creation for the created_at field.
 	pallet.DefaultCreatedAt = palletDescCreatedAt.Default.(func() time.Time)
 	// palletDescUpdatedAt is the schema descriptor for updated_at field.
-	palletDescUpdatedAt := palletFields[18].Descriptor()
+	palletDescUpdatedAt := palletFields[20].Descriptor()
 	// pallet.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	pallet.DefaultUpdatedAt = palletDescUpdatedAt.Default.(func() time.Time)
 	// pallet.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

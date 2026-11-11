@@ -549,7 +549,9 @@ func (u *Uploader) collectPallets(ctx context.Context, limit int) ([]models.Uplo
 			"lot_id":        r.LotID.String(),
 			"lot_number":    lotNumbers[r.LotID],
 			"level":         r.Level,
+			"pallet_type":   string(r.PalletType),
 			"bobbins_count": r.BobbinsCount,
+			"cartons_count": r.CartonsCount,
 			"status":        string(r.Status),
 			"printed":       r.Printed,
 		}
@@ -622,6 +624,24 @@ func (u *Uploader) collectCartons(ctx context.Context, limit int) ([]models.Uplo
 		return nil, err
 	}
 
+	// 已码垛到托盘的纸箱需要带 pallet_code，供 Center 解引用。
+	palletIDsForCartons := make([]uuid.UUID, 0, len(rows))
+	seenPalletC := make(map[uuid.UUID]struct{}, len(rows))
+	for _, r := range rows {
+		if r.PalletID == uuid.Nil {
+			continue
+		}
+		if _, ok := seenPalletC[r.PalletID]; ok {
+			continue
+		}
+		seenPalletC[r.PalletID] = struct{}{}
+		palletIDsForCartons = append(palletIDsForCartons, r.PalletID)
+	}
+	palletCodes, err := u.palletCodesFor(ctx, palletIDsForCartons)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]models.UploadEntry, 0, len(rows))
 	for _, r := range rows {
 		data := map[string]interface{}{
@@ -635,6 +655,12 @@ func (u *Uploader) collectCartons(ctx context.Context, limit int) ([]models.Uplo
 		if r.LotID != uuid.Nil {
 			data["lot_id"] = r.LotID.String()
 			data["lot_number"] = lotNumbers[r.LotID]
+		}
+		if r.PalletID != uuid.Nil {
+			data["pallet_id"] = r.PalletID.String()
+			if code, ok := palletCodes[r.PalletID]; ok && code != "" {
+				data["pallet_code"] = code
+			}
 		}
 		// 可选字段只在有值时才进载荷：Center 端的 getXxxPtr 是「键存在即取指针」，
 		// 键在而值为零会被写成零值而非 NULL。

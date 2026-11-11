@@ -27,8 +27,12 @@ type Pallet struct {
 	LotID uuid.UUID `json:"lot_id,omitempty"`
 	// 栈板层级（1-9）
 	Level int `json:"level,omitempty"`
+	// 托盘类型（bobbin=直接码锭/carton=DTY码箱）
+	PalletType pallet.PalletType `json:"pallet_type,omitempty"`
 	// 托盘内丝锭数量
 	BobbinsCount int `json:"bobbins_count,omitempty"`
+	// 托盘内纸箱数量（DTY carton 类型）
+	CartonsCount int `json:"cartons_count,omitempty"`
 	// 净重（kg）
 	NetWeight float64 `json:"net_weight,omitempty"`
 	// 毛重（kg）
@@ -101,9 +105,9 @@ func (*Pallet) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case pallet.FieldNetWeight, pallet.FieldGrossWeight, pallet.FieldTareWeight:
 			values[i] = new(sql.NullFloat64)
-		case pallet.FieldLevel, pallet.FieldBobbinsCount, pallet.FieldSyncRetryCount:
+		case pallet.FieldLevel, pallet.FieldBobbinsCount, pallet.FieldCartonsCount, pallet.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
-		case pallet.FieldPalletCode, pallet.FieldStatus, pallet.FieldSyncStatus:
+		case pallet.FieldPalletCode, pallet.FieldPalletType, pallet.FieldStatus, pallet.FieldSyncStatus:
 			values[i] = new(sql.NullString)
 		case pallet.FieldPrintedAt, pallet.FieldCompletedAt, pallet.FieldSyncedAt, pallet.FieldCreatedAt, pallet.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -154,11 +158,23 @@ func (_m *Pallet) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Level = int(value.Int64)
 			}
+		case pallet.FieldPalletType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field pallet_type", values[i])
+			} else if value.Valid {
+				_m.PalletType = pallet.PalletType(value.String)
+			}
 		case pallet.FieldBobbinsCount:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field bobbins_count", values[i])
 			} else if value.Valid {
 				_m.BobbinsCount = int(value.Int64)
+			}
+		case pallet.FieldCartonsCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field cartons_count", values[i])
+			} else if value.Valid {
+				_m.CartonsCount = int(value.Int64)
 			}
 		case pallet.FieldNetWeight:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -296,8 +312,14 @@ func (_m *Pallet) String() string {
 	builder.WriteString("level=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Level))
 	builder.WriteString(", ")
+	builder.WriteString("pallet_type=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PalletType))
+	builder.WriteString(", ")
 	builder.WriteString("bobbins_count=")
 	builder.WriteString(fmt.Sprintf("%v", _m.BobbinsCount))
+	builder.WriteString(", ")
+	builder.WriteString("cartons_count=")
+	builder.WriteString(fmt.Sprintf("%v", _m.CartonsCount))
 	builder.WriteString(", ")
 	builder.WriteString("net_weight=")
 	builder.WriteString(fmt.Sprintf("%v", _m.NetWeight))

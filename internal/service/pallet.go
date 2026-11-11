@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 )
 
@@ -33,12 +34,21 @@ type CreatePalletRequest struct {
 	PalletCode   string `json:"pallet_code"`
 	Level        int    `json:"level"`
 	PalletizerID string `json:"palletizer_id"`
+	// PalletType 区分 POY/FDY 直接码锭（bobbin，默认）与 DTY 码箱（carton）。
+	// 一旦创建就不允许修改，PackBobbins/PackCartons 会按此拒绝错误的码法。
+	PalletType string `json:"pallet_type"`
 }
 
 // PackBobbinsRequest 把丝锭码到托盘上。
 type PackBobbinsRequest struct {
 	// BobbinIDs 是要码上托盘的丝锭 ID 列表。
 	BobbinIDs []string `json:"bobbin_ids" binding:"required,min=1"`
+}
+
+// PackCartonsRequest DTY 码箱请求。
+type PackCartonsRequest struct {
+	// CartonIDs 是已封箱且待码垛的纸箱 ID 列表。
+	CartonIDs []string `json:"carton_ids" binding:"required,min=1"`
 }
 
 // SealPalletRequest 封托请求。
@@ -57,7 +67,9 @@ type PalletResponse struct {
 	LotID        string    `json:"lot_id"`
 	EdgeID       *string   `json:"edge_id"`
 	Level        int       `json:"level"`
+	PalletType   string    `json:"pallet_type"`
 	BobbinsCount int       `json:"bobbins_count"`
+	CartonsCount int       `json:"cartons_count"`
 	Status       string    `json:"status"`
 	NetWeight    *float64  `json:"net_weight"`
 	GrossWeight  *float64  `json:"gross_weight"`
@@ -102,7 +114,17 @@ func (s *PalletService) CreatePallet(ctx context.Context, req *CreatePalletReque
 		SetLotID(lotID).
 		SetLevel(level).
 		SetBobbinsCount(0).
+		SetCartonsCount(0).
 		SetStatus(pallet.StatusBuilding)
+
+	palletType := pallet.PalletType(req.PalletType)
+	if req.PalletType == "" {
+		palletType = pallet.PalletTypeBobbin
+	}
+	if err := pallet.PalletTypeValidator(palletType); err != nil {
+		return nil, &ServiceError{Code: 10001, Message: "无效的托盘类型：" + req.PalletType}
+	}
+	builder.SetPalletType(palletType)
 
 	if req.PalletizerID != "" {
 		palletizerID, err := uuid.Parse(req.PalletizerID)
@@ -158,6 +180,10 @@ func (s *PalletService) PackBobbins(ctx context.Context, palletID string, req *P
 	if target.Status != pallet.StatusBuilding {
 		return nil, &ServiceError{Code: 30001, Message: "只有 building 状态的托盘可以码垛"}
 	}
+	// 直接码锭的接口只接受 bobbin 类型托盘：DTY 的 carton 托盘要走 PackCartons。
+	if target.PalletType != pallet.PalletTypeBobbin {
+		return nil, &ServiceError{Code: 30001, Message: "该托盘是 DTY 码箱类型，不能码丝锭"}
+	}
 
 	ids := make([]uuid.UUID, 0, len(req.BobbinIDs))
 	for _, raw := range req.BobbinIDs {
@@ -208,6 +234,106 @@ func (s *PalletService) PackBobbins(ctx context.Context, palletID string, req *P
 
 	updated, err := tx.Pallet.UpdateOneID(pid).
 		SetBobbinsCount(target.BobbinsCount + added).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return toPalletResponse(updated), nil
+}
+
+// PackCartons 把已封箱的纸箱码到 DTY 托盘上。
+//
+// 校验：
+//   - 托盘必须是 building 且 pallet_type=carton（与 PackBobbins 互斥）；
+//   - 纸箱必须存在、已封箱（packed）、与托盘同批次；
+//   - 纸箱不得已码在别的托盘上；
+//   - 已在本托盘上的纸箱重复提交是幂等的。
+//
+// 码箱会改变纸箱的 pallet_id，必须重新排队同步，否则 Center 看不到挂载关系。
+// 托盘本身的 cartons_count 与 sync_status 也一并重置。
+func (s *PalletService) PackCartons(ctx context.Context, palletID string, req *PackCartonsRequest) (*PalletResponse, error) {
+	pid, err := uuid.Parse(palletID)
+	if err != nil {
+		return nil, &ServiceError{Code: 10001, Message: "无效的托盘ID"}
+	}
+	if len(req.CartonIDs) == 0 {
+		return nil, &ServiceError{Code: 10001, Message: "至少需要一个纸箱"}
+	}
+
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	target, err := tx.Pallet.Get(ctx, pid)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, &ServiceError{Code: 40001, Message: "托盘不存在"}
+		}
+		return nil, err
+	}
+	if target.Status != pallet.StatusBuilding {
+		return nil, &ServiceError{Code: 30001, Message: "只有 building 状态的托盘可以码箱"}
+	}
+	if target.PalletType != pallet.PalletTypeCarton {
+		return nil, &ServiceError{Code: 30001, Message: "该托盘是直接码锭类型，不能码纸箱"}
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.CartonIDs))
+	for _, raw := range req.CartonIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, &ServiceError{Code: 10001, Message: "无效的纸箱ID：" + raw}
+		}
+		ids = append(ids, id)
+	}
+
+	rows, err := tx.Carton.Query().Where(carton.IDIn(ids...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) != len(ids) {
+		return nil, &ServiceError{Code: 40001, Message: "存在无效的纸箱ID"}
+	}
+
+	added := 0
+	for _, c := range rows {
+		// 纸箱 lot_id 可空，但码上托盘必须与托盘同批：用 lot_id 非空做前提。
+		if c.LotID == uuid.Nil || c.LotID != target.LotID {
+			return nil, &ServiceError{Code: 30001, Message: "纸箱与托盘不属于同一批次"}
+		}
+		if c.Status != carton.StatusPacked {
+			return nil, &ServiceError{Code: 30001, Message: "只有已封箱的纸箱可以码垛：" + c.CartonNumber}
+		}
+		if c.PalletID != uuid.Nil && c.PalletID != pid {
+			return nil, &ServiceError{Code: 30001, Message: "纸箱已码在其它托盘上：" + c.CartonNumber}
+		}
+		if c.PalletID == pid {
+			continue // 幂等
+		}
+
+		if _, err := tx.Carton.UpdateOneID(c.ID).
+			SetPalletID(pid).
+			SetSyncStatus(carton.SyncStatusPending).
+			SetSyncRetryCount(0).
+			ClearSyncedAt().
+			Save(ctx); err != nil {
+			return nil, err
+		}
+		added++
+	}
+
+	updated, err := tx.Pallet.UpdateOneID(pid).
+		SetCartonsCount(target.CartonsCount + added).
+		SetSyncStatus(pallet.SyncStatusPending).
+		SetSyncRetryCount(0).
+		ClearSyncedAt().
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -343,7 +469,9 @@ func toPalletResponse(p *ent.Pallet) *PalletResponse {
 		PalletCode:   p.PalletCode,
 		LotID:        p.LotID.String(),
 		Level:        p.Level,
+		PalletType:   string(p.PalletType),
 		BobbinsCount: p.BobbinsCount,
+		CartonsCount: p.CartonsCount,
 		Status:       string(p.Status),
 		Printed:      p.Printed,
 		CreatedAt:    p.CreatedAt,
