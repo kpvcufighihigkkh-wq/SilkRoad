@@ -415,6 +415,111 @@ curl -X POST http://localhost:8081/v1/pallets/{id}/seal \
 状态且已码入至少一枚丝锭的托盘可以封托；封托后状态推进到 `completed`，
 不可再追加丝锭。
 
+### 落纱桶
+
+桶是落纱工位上的载具：单个落纱操作产出的丝锭按锭位（1-9）装进桶，
+装满后整桶流转到下一工段。
+
+#### 1. 创建桶
+
+```bash
+curl -X POST http://localhost:8081/v1/barrels \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"lot_id": "<lot-uuid>", "capacity": 9}'
+```
+
+`capacity` 省略时默认 9，`barrel_number` 省略时由系统生成（`BRL-YYYYMMDD-<随机段>`）。
+
+#### 2. 按锭位装锭
+
+```bash
+curl -X POST http://localhost:8081/v1/barrels/{id}/load \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bobbin_ids": ["<bobbin-uuid>", "<bobbin-uuid>"],
+    "spin_positions": [1, 2]
+  }'
+```
+
+- `spin_positions` 与 `bobbin_ids` 必须一一对应且长度相同 —— 桶内锭位是
+  物理位置，不能从丝锭自身的 `spinning_position`（线体位号）推断。
+- 锭位须在 `1..capacity` 内，同一锭位不得被两枚丝锭占用。
+- 丝锭必须与桶同批次，且不得已码盘；一个丝锭只能有一个上级容器。
+- 装满后自动转 `full` 并记录 `filled_at`，不需要额外确认。
+
+#### 3. 封桶
+
+```bash
+curl -X POST http://localhost:8081/v1/barrels/{id}/seal \
+  -H "Authorization: Bearer <token>"
+```
+
+空桶不能封桶；重复封桶是幂等的。
+
+### 纸箱（DTY 专属）
+
+纸箱是 DTY 的包装环节：**先装箱，再按 8 箱/托盘码垛**。POY/FDY 丝锭直接
+码到托盘上，因此**非 DTY 批次创建纸箱会被拒绝**。
+
+```bash
+# 建箱
+curl -X POST http://localhost:8081/v1/cartons \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"lot_id": "<dty-lot-uuid>", "capacity": 12}'
+
+# 装箱
+curl -X POST http://localhost:8081/v1/cartons/{id}/pack \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"bobbin_ids": ["<bobbin-uuid>"]}'
+
+# 封箱（body 可省略）
+curl -X POST http://localhost:8081/v1/cartons/{id}/seal \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"total_weight": 62.5}'
+```
+
+- 装箱不得超过容量上限；丝锭不得已码盘或已装桶。
+- 封箱的 `total_weight` 省略时按箱内丝锭净重累加（纸箱不称皮重；
+  与托盘的「毛重 − 皮重」口径不同）。
+- 封箱后不可再装箱。
+
+### 吊车
+
+吊车是物流载具，一次能吊两个装满的落纱桶。
+
+```bash
+# 建车
+curl -X POST http://localhost:8081/v1/modules \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"rfid": "E200-001"}'
+
+# 装桶（1-2 个）
+curl -X POST http://localhost:8081/v1/modules/{id}/load \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"barrel_ids": ["<barrel-uuid>", "<barrel-uuid>"]}'
+
+# 更新状态
+curl -X POST http://localhost:8081/v1/modules/{id}/status \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "transporting", "current_location": "A 区 3 号货道"}'
+```
+
+- 两个挂位不能是同一个桶；一个桶同时只能在一台吊车上。
+- 只装一个桶时，第二挂位会被清空。
+- 状态取值：`loading` / `transporting` / `sorting` / `warehouse` / `idle`。
+  不强制顺序流转 —— 现场可能跳过某一步，强制顺序只会逼操作员补一个
+  不存在的中间态。
+- 吊车不要求两个桶同批次：换批时工位上的残留桶会与相邻批次共车，
+  强行要求同批反而逼操作员先卸后装。批次归属由桶自己携带。
+
 ### 数据同步
 
 #### 1. 上传数据到中心端
