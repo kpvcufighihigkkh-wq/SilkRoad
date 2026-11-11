@@ -7,11 +7,20 @@ import (
 	"sort"
 	"time"
 
+	entsql "entgo.io/ent/dialect/sql"
+
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 )
+
+// defectScanCap 缺陷原因分组在 SQL 层的最大取数。
+//
+// 缺陷原因是自由文本，分组数没有天然上限；Top N 的 N 通常不超过 50，
+// 这里留一倍余量。上限存在的意义是给内存与查询时间一个确定边界，
+// 不是为了在业务上限制原因种类。
+const DefectScanCap = 100
 
 // ReportService 报表聚合服务。
 //
@@ -332,12 +341,31 @@ func (s *ReportService) QualityDistribution(ctx context.Context, start, end time
 		return byGrade[i].Grade < byGrade[j].Grade
 	})
 
+	// 缺陷原因是自由文本，分组数没有天然上限：一条产线几年下来能攒出
+	// 几百种写法（错别字、简繁混用、多写空格）。原实现在 Go 里截断，
+	// 意味着先把全部分组读进内存再扔掉 —— 分组多时既慢又占内存。
+	//
+	// 改为在 SQL 层排序并限制：ORDER BY COUNT(*) DESC, defect_reason ASC
+	// 保证与 Go 侧排序口径一致（先按计数降序，同数按名称升序），
+	// 因此 LIMIT 取到的就是最终 Top N，Go 侧无需再排。
+	//
+	// 探针已验证 ent 0.14.6 的分组查询支持在闭包里追加 OrderBy/Limit。
+	maxRows := DefectScanCap
+	if top > 0 && top < maxRows {
+		maxRows = top
+	}
+
 	var defectRows []defectGroupRow
 	if err := base().
-		Where(
-			bobbingrade.DefectReasonNotNil(),
-			bobbingrade.DefectReasonNEQ(""),
-		).
+		Where(func(sel *entsql.Selector) {
+			col := sel.C(bobbingrade.FieldDefectReason)
+			sel.Where(entsql.NotNull(col))
+			sel.Where(entsql.NEQ(col, ""))
+			// 同数时按名称升序，保证结果稳定：否则同数的分组顺序由存储引擎
+			// 决定，翻页或重跑会出现「同一份数据两种 Top N」。
+			sel.OrderBy(entsql.Desc("COUNT(*)"), entsql.Asc(col))
+			sel.Limit(maxRows)
+		}).
 		GroupBy(bobbingrade.FieldDefectReason).
 		Aggregate(ent.Count()).
 		Scan(ctx, &defectRows); err != nil {
@@ -347,15 +375,6 @@ func (s *ReportService) QualityDistribution(ctx context.Context, start, end time
 	defects := make([]DefectCount, 0, len(defectRows))
 	for _, r := range defectRows {
 		defects = append(defects, DefectCount{DefectReason: r.DefectReason, Count: r.Count})
-	}
-	sort.Slice(defects, func(i, j int) bool {
-		if defects[i].Count != defects[j].Count {
-			return defects[i].Count > defects[j].Count
-		}
-		return defects[i].DefectReason < defects[j].DefectReason
-	})
-	if top > 0 && len(defects) > top {
-		defects = defects[:top]
 	}
 
 	return &QualityDistributionResponse{
