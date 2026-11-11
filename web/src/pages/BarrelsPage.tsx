@@ -34,12 +34,14 @@ const columns: ColumnsType<Barrel> = [
     title: '装载',
     key: 'loading',
     width: 160,
-    // 直接展示 N/容量 并配进度条：两个数字比「百分比」更能说明现场状态。
+    // 圆环自身已经表达了比例，这里只补「N/容量」的绝对值。
+    // 内嵌百分比会让窄列读成「22 2/9」，反而看不清。
     render: (_, row) => (
       <Space size={8}>
         <Progress
           type="circle"
-          size={28}
+          size={24}
+          showInfo={false}
           percent={row.capacity ? Math.round((row.current_count / row.capacity) * 100) : 0}
         />
         <span>
