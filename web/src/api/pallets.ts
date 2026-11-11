@@ -2,6 +2,18 @@ import http from './client'
 import { toPageResult, type PageQuery } from './auth'
 import type { ApiResponse, PaginatedResponse } from '@/types/api'
 
+/** 托盘类型：bobbin = POY/FDY 直接码锭，carton = DTY 码箱。 */
+export type PalletType = 'bobbin' | 'carton'
+
+export const PALLET_TYPE_LABEL: Record<PalletType, string> = {
+  bobbin: '码丝锭',
+  carton: '码纸箱',
+}
+
+export function palletTypeLabel(t: string): string {
+  return PALLET_TYPE_LABEL[t as PalletType] ?? t
+}
+
 /** 托盘状态枚举。与 schema pallet.go 的 Values 一致。 */
 export type PalletStatus = 'building' | 'completed' | 'shipped'
 
@@ -40,7 +52,9 @@ export interface Pallet {
   lot_id: string
   edge_id: string | null
   level: number
+  pallet_type: string
   bobbins_count: number
+  cartons_count: number
   status: string
   net_weight: number | null
   gross_weight: number | null

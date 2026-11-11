@@ -100,6 +100,20 @@ func (_u *PalletUpdate) AddLevel(v int) *PalletUpdate {
 	return _u
 }
 
+// SetPalletType sets the "pallet_type" field.
+func (_u *PalletUpdate) SetPalletType(v pallet.PalletType) *PalletUpdate {
+	_u.mutation.SetPalletType(v)
+	return _u
+}
+
+// SetNillablePalletType sets the "pallet_type" field if the given value is not nil.
+func (_u *PalletUpdate) SetNillablePalletType(v *pallet.PalletType) *PalletUpdate {
+	if v != nil {
+		_u.SetPalletType(*v)
+	}
+	return _u
+}
+
 // SetBobbinsCount sets the "bobbins_count" field.
 func (_u *PalletUpdate) SetBobbinsCount(v int) *PalletUpdate {
 	_u.mutation.ResetBobbinsCount()
@@ -118,6 +132,27 @@ func (_u *PalletUpdate) SetNillableBobbinsCount(v *int) *PalletUpdate {
 // AddBobbinsCount adds value to the "bobbins_count" field.
 func (_u *PalletUpdate) AddBobbinsCount(v int) *PalletUpdate {
 	_u.mutation.AddBobbinsCount(v)
+	return _u
+}
+
+// SetCartonsCount sets the "cartons_count" field.
+func (_u *PalletUpdate) SetCartonsCount(v int) *PalletUpdate {
+	_u.mutation.ResetCartonsCount()
+	_u.mutation.SetCartonsCount(v)
+	return _u
+}
+
+// SetNillableCartonsCount sets the "cartons_count" field if the given value is not nil.
+func (_u *PalletUpdate) SetNillableCartonsCount(v *int) *PalletUpdate {
+	if v != nil {
+		_u.SetCartonsCount(*v)
+	}
+	return _u
+}
+
+// AddCartonsCount adds value to the "cartons_count" field.
+func (_u *PalletUpdate) AddCartonsCount(v int) *PalletUpdate {
+	_u.mutation.AddCartonsCount(v)
 	return _u
 }
 
@@ -451,9 +486,19 @@ func (_u *PalletUpdate) check() error {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Pallet.level": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PalletType(); ok {
+		if err := pallet.PalletTypeValidator(v); err != nil {
+			return &ValidationError{Name: "pallet_type", err: fmt.Errorf(`ent: validator failed for field "Pallet.pallet_type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.BobbinsCount(); ok {
 		if err := pallet.BobbinsCountValidator(v); err != nil {
 			return &ValidationError{Name: "bobbins_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.bobbins_count": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CartonsCount(); ok {
+		if err := pallet.CartonsCountValidator(v); err != nil {
+			return &ValidationError{Name: "cartons_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.cartons_count": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.NetWeight(); ok {
@@ -519,11 +564,20 @@ func (_u *PalletUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedLevel(); ok {
 		_spec.AddField(pallet.FieldLevel, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.PalletType(); ok {
+		_spec.SetField(pallet.FieldPalletType, field.TypeEnum, value)
+	}
 	if value, ok := _u.mutation.BobbinsCount(); ok {
 		_spec.SetField(pallet.FieldBobbinsCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AddedBobbinsCount(); ok {
 		_spec.AddField(pallet.FieldBobbinsCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.CartonsCount(); ok {
+		_spec.SetField(pallet.FieldCartonsCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCartonsCount(); ok {
+		_spec.AddField(pallet.FieldCartonsCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.NetWeight(); ok {
 		_spec.SetField(pallet.FieldNetWeight, field.TypeFloat64, value)
@@ -757,6 +811,20 @@ func (_u *PalletUpdateOne) AddLevel(v int) *PalletUpdateOne {
 	return _u
 }
 
+// SetPalletType sets the "pallet_type" field.
+func (_u *PalletUpdateOne) SetPalletType(v pallet.PalletType) *PalletUpdateOne {
+	_u.mutation.SetPalletType(v)
+	return _u
+}
+
+// SetNillablePalletType sets the "pallet_type" field if the given value is not nil.
+func (_u *PalletUpdateOne) SetNillablePalletType(v *pallet.PalletType) *PalletUpdateOne {
+	if v != nil {
+		_u.SetPalletType(*v)
+	}
+	return _u
+}
+
 // SetBobbinsCount sets the "bobbins_count" field.
 func (_u *PalletUpdateOne) SetBobbinsCount(v int) *PalletUpdateOne {
 	_u.mutation.ResetBobbinsCount()
@@ -775,6 +843,27 @@ func (_u *PalletUpdateOne) SetNillableBobbinsCount(v *int) *PalletUpdateOne {
 // AddBobbinsCount adds value to the "bobbins_count" field.
 func (_u *PalletUpdateOne) AddBobbinsCount(v int) *PalletUpdateOne {
 	_u.mutation.AddBobbinsCount(v)
+	return _u
+}
+
+// SetCartonsCount sets the "cartons_count" field.
+func (_u *PalletUpdateOne) SetCartonsCount(v int) *PalletUpdateOne {
+	_u.mutation.ResetCartonsCount()
+	_u.mutation.SetCartonsCount(v)
+	return _u
+}
+
+// SetNillableCartonsCount sets the "cartons_count" field if the given value is not nil.
+func (_u *PalletUpdateOne) SetNillableCartonsCount(v *int) *PalletUpdateOne {
+	if v != nil {
+		_u.SetCartonsCount(*v)
+	}
+	return _u
+}
+
+// AddCartonsCount adds value to the "cartons_count" field.
+func (_u *PalletUpdateOne) AddCartonsCount(v int) *PalletUpdateOne {
+	_u.mutation.AddCartonsCount(v)
 	return _u
 }
 
@@ -1121,9 +1210,19 @@ func (_u *PalletUpdateOne) check() error {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Pallet.level": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.PalletType(); ok {
+		if err := pallet.PalletTypeValidator(v); err != nil {
+			return &ValidationError{Name: "pallet_type", err: fmt.Errorf(`ent: validator failed for field "Pallet.pallet_type": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.BobbinsCount(); ok {
 		if err := pallet.BobbinsCountValidator(v); err != nil {
 			return &ValidationError{Name: "bobbins_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.bobbins_count": %w`, err)}
+		}
+	}
+	if v, ok := _u.mutation.CartonsCount(); ok {
+		if err := pallet.CartonsCountValidator(v); err != nil {
+			return &ValidationError{Name: "cartons_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.cartons_count": %w`, err)}
 		}
 	}
 	if v, ok := _u.mutation.NetWeight(); ok {
@@ -1206,11 +1305,20 @@ func (_u *PalletUpdateOne) sqlSave(ctx context.Context) (_node *Pallet, err erro
 	if value, ok := _u.mutation.AddedLevel(); ok {
 		_spec.AddField(pallet.FieldLevel, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.PalletType(); ok {
+		_spec.SetField(pallet.FieldPalletType, field.TypeEnum, value)
+	}
 	if value, ok := _u.mutation.BobbinsCount(); ok {
 		_spec.SetField(pallet.FieldBobbinsCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.AddedBobbinsCount(); ok {
 		_spec.AddField(pallet.FieldBobbinsCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.CartonsCount(); ok {
+		_spec.SetField(pallet.FieldCartonsCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCartonsCount(); ok {
+		_spec.AddField(pallet.FieldCartonsCount, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.NetWeight(); ok {
 		_spec.SetField(pallet.FieldNetWeight, field.TypeFloat64, value)

@@ -24,8 +24,12 @@ const (
 	FieldLotID = "lot_id"
 	// FieldLevel holds the string denoting the level field in the database.
 	FieldLevel = "level"
+	// FieldPalletType holds the string denoting the pallet_type field in the database.
+	FieldPalletType = "pallet_type"
 	// FieldBobbinsCount holds the string denoting the bobbins_count field in the database.
 	FieldBobbinsCount = "bobbins_count"
+	// FieldCartonsCount holds the string denoting the cartons_count field in the database.
+	FieldCartonsCount = "cartons_count"
 	// FieldNetWeight holds the string denoting the net_weight field in the database.
 	FieldNetWeight = "net_weight"
 	// FieldGrossWeight holds the string denoting the gross_weight field in the database.
@@ -81,7 +85,9 @@ var Columns = []string{
 	FieldEdgeID,
 	FieldLotID,
 	FieldLevel,
+	FieldPalletType,
 	FieldBobbinsCount,
+	FieldCartonsCount,
 	FieldNetWeight,
 	FieldGrossWeight,
 	FieldTareWeight,
@@ -118,6 +124,10 @@ var (
 	DefaultBobbinsCount int
 	// BobbinsCountValidator is a validator for the "bobbins_count" field. It is called by the builders before save.
 	BobbinsCountValidator func(int) error
+	// DefaultCartonsCount holds the default value on creation for the "cartons_count" field.
+	DefaultCartonsCount int
+	// CartonsCountValidator is a validator for the "cartons_count" field. It is called by the builders before save.
+	CartonsCountValidator func(int) error
 	// NetWeightValidator is a validator for the "net_weight" field. It is called by the builders before save.
 	NetWeightValidator func(float64) error
 	// GrossWeightValidator is a validator for the "gross_weight" field. It is called by the builders before save.
@@ -139,6 +149,32 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// PalletType defines the type for the "pallet_type" enum field.
+type PalletType string
+
+// PalletTypeBobbin is the default value of the PalletType enum.
+const DefaultPalletType = PalletTypeBobbin
+
+// PalletType values.
+const (
+	PalletTypeBobbin PalletType = "bobbin"
+	PalletTypeCarton PalletType = "carton"
+)
+
+func (pt PalletType) String() string {
+	return string(pt)
+}
+
+// PalletTypeValidator is a validator for the "pallet_type" field enum values. It is called by the builders before save.
+func PalletTypeValidator(pt PalletType) error {
+	switch pt {
+	case PalletTypeBobbin, PalletTypeCarton:
+		return nil
+	default:
+		return fmt.Errorf("pallet: invalid enum value for pallet_type field: %q", pt)
+	}
+}
 
 // Status defines the type for the "status" enum field.
 type Status string
@@ -222,9 +258,19 @@ func ByLevel(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLevel, opts...).ToFunc()
 }
 
+// ByPalletType orders the results by the pallet_type field.
+func ByPalletType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPalletType, opts...).ToFunc()
+}
+
 // ByBobbinsCountField orders the results by the bobbins_count field.
 func ByBobbinsCountField(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBobbinsCount, opts...).ToFunc()
+}
+
+// ByCartonsCount orders the results by the cartons_count field.
+func ByCartonsCount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCartonsCount, opts...).ToFunc()
 }
 
 // ByNetWeight orders the results by the net_weight field.

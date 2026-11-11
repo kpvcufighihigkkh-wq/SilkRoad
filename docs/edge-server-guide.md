@@ -488,6 +488,28 @@ curl -X POST http://localhost:8081/v1/cartons/{id}/seal \
   与托盘的「毛重 − 皮重」口径不同）。
 - 封箱后不可再装箱。
 
+#### 4. 封箱纸箱码垛（DTY）
+
+封好的纸箱按 8 箱/托盘码到 carton 类型的托盘上。先建一个 carton 托盘：
+
+```bash
+curl -X POST http://localhost:8081/v1/pallets \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"lot_id": "<dty-lot-uuid>", "pallet_type": "carton", "level": 1}'
+
+curl -X POST http://localhost:8081/v1/pallets/{id}/pack-cartons \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"carton_ids": ["<carton-uuid>", "<carton-uuid>"]}'
+```
+
+- `pallet_type` 两种取值：`bobbin`（默认，POY/FDY 直接码锭）与
+  `carton`（DTY 码箱）。两者互斥：`pack` 只接受 bobbin 托盘，
+  `pack-cartons` 只接受 carton 托盘。
+- 纸箱必须**已封箱**且与托盘同批次；不得码在其它托盘上；重复提交幂等。
+- 码垛后纸箱与托盘的同步状态都会复位，Center 才能收到挂载关系。
+
 ### 吊车
 
 吊车是物流载具，一次能吊两个装满的落纱桶。

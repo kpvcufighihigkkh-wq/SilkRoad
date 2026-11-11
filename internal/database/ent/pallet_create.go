@@ -63,6 +63,20 @@ func (_c *PalletCreate) SetNillableLevel(v *int) *PalletCreate {
 	return _c
 }
 
+// SetPalletType sets the "pallet_type" field.
+func (_c *PalletCreate) SetPalletType(v pallet.PalletType) *PalletCreate {
+	_c.mutation.SetPalletType(v)
+	return _c
+}
+
+// SetNillablePalletType sets the "pallet_type" field if the given value is not nil.
+func (_c *PalletCreate) SetNillablePalletType(v *pallet.PalletType) *PalletCreate {
+	if v != nil {
+		_c.SetPalletType(*v)
+	}
+	return _c
+}
+
 // SetBobbinsCount sets the "bobbins_count" field.
 func (_c *PalletCreate) SetBobbinsCount(v int) *PalletCreate {
 	_c.mutation.SetBobbinsCount(v)
@@ -73,6 +87,20 @@ func (_c *PalletCreate) SetBobbinsCount(v int) *PalletCreate {
 func (_c *PalletCreate) SetNillableBobbinsCount(v *int) *PalletCreate {
 	if v != nil {
 		_c.SetBobbinsCount(*v)
+	}
+	return _c
+}
+
+// SetCartonsCount sets the "cartons_count" field.
+func (_c *PalletCreate) SetCartonsCount(v int) *PalletCreate {
+	_c.mutation.SetCartonsCount(v)
+	return _c
+}
+
+// SetNillableCartonsCount sets the "cartons_count" field if the given value is not nil.
+func (_c *PalletCreate) SetNillableCartonsCount(v *int) *PalletCreate {
+	if v != nil {
+		_c.SetCartonsCount(*v)
 	}
 	return _c
 }
@@ -332,9 +360,17 @@ func (_c *PalletCreate) defaults() {
 		v := pallet.DefaultLevel
 		_c.mutation.SetLevel(v)
 	}
+	if _, ok := _c.mutation.PalletType(); !ok {
+		v := pallet.DefaultPalletType
+		_c.mutation.SetPalletType(v)
+	}
 	if _, ok := _c.mutation.BobbinsCount(); !ok {
 		v := pallet.DefaultBobbinsCount
 		_c.mutation.SetBobbinsCount(v)
+	}
+	if _, ok := _c.mutation.CartonsCount(); !ok {
+		v := pallet.DefaultCartonsCount
+		_c.mutation.SetCartonsCount(v)
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := pallet.DefaultStatus
@@ -387,12 +423,28 @@ func (_c *PalletCreate) check() error {
 			return &ValidationError{Name: "level", err: fmt.Errorf(`ent: validator failed for field "Pallet.level": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.PalletType(); !ok {
+		return &ValidationError{Name: "pallet_type", err: errors.New(`ent: missing required field "Pallet.pallet_type"`)}
+	}
+	if v, ok := _c.mutation.PalletType(); ok {
+		if err := pallet.PalletTypeValidator(v); err != nil {
+			return &ValidationError{Name: "pallet_type", err: fmt.Errorf(`ent: validator failed for field "Pallet.pallet_type": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.BobbinsCount(); !ok {
 		return &ValidationError{Name: "bobbins_count", err: errors.New(`ent: missing required field "Pallet.bobbins_count"`)}
 	}
 	if v, ok := _c.mutation.BobbinsCount(); ok {
 		if err := pallet.BobbinsCountValidator(v); err != nil {
 			return &ValidationError{Name: "bobbins_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.bobbins_count": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CartonsCount(); !ok {
+		return &ValidationError{Name: "cartons_count", err: errors.New(`ent: missing required field "Pallet.cartons_count"`)}
+	}
+	if v, ok := _c.mutation.CartonsCount(); ok {
+		if err := pallet.CartonsCountValidator(v); err != nil {
+			return &ValidationError{Name: "cartons_count", err: fmt.Errorf(`ent: validator failed for field "Pallet.cartons_count": %w`, err)}
 		}
 	}
 	if v, ok := _c.mutation.NetWeight(); ok {
@@ -493,9 +545,17 @@ func (_c *PalletCreate) createSpec() (*Pallet, *sqlgraph.CreateSpec) {
 		_spec.SetField(pallet.FieldLevel, field.TypeInt, value)
 		_node.Level = value
 	}
+	if value, ok := _c.mutation.PalletType(); ok {
+		_spec.SetField(pallet.FieldPalletType, field.TypeEnum, value)
+		_node.PalletType = value
+	}
 	if value, ok := _c.mutation.BobbinsCount(); ok {
 		_spec.SetField(pallet.FieldBobbinsCount, field.TypeInt, value)
 		_node.BobbinsCount = value
+	}
+	if value, ok := _c.mutation.CartonsCount(); ok {
+		_spec.SetField(pallet.FieldCartonsCount, field.TypeInt, value)
+		_node.CartonsCount = value
 	}
 	if value, ok := _c.mutation.NetWeight(); ok {
 		_spec.SetField(pallet.FieldNetWeight, field.TypeFloat64, value)

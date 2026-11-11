@@ -152,9 +152,10 @@ func (s *EdgeServer) registerRoutes() {
 
 		pallets := authorized.Group("/pallets")
 		{
-			pallets.POST("", palletHandler.CreatePallet)         // 创建托盘
-			pallets.POST("/:id/pack", palletHandler.PackBobbins) // 丝锭码盘
-			pallets.POST("/:id/seal", palletHandler.SealPallet)  // 封托
+			pallets.POST("", palletHandler.CreatePallet)                 // 创建托盘
+			pallets.POST("/:id/pack", palletHandler.PackBobbins)         // 丝锭码盘（POY/FDY）
+			pallets.POST("/:id/pack-cartons", palletHandler.PackCartons) // 纸箱码垛（DTY）
+			pallets.POST("/:id/seal", palletHandler.SealPallet)          // 封托
 		}
 
 		// 落纱桶：落纱工位建桶、按锭位装锭、封桶

@@ -81,6 +81,11 @@ func BobbinsCount(v int) predicate.Pallet {
 	return predicate.Pallet(sql.FieldEQ(FieldBobbinsCount, v))
 }
 
+// CartonsCount applies equality check predicate on the "cartons_count" field. It's identical to CartonsCountEQ.
+func CartonsCount(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldCartonsCount, v))
+}
+
 // NetWeight applies equality check predicate on the "net_weight" field. It's identical to NetWeightEQ.
 func NetWeight(v float64) predicate.Pallet {
 	return predicate.Pallet(sql.FieldEQ(FieldNetWeight, v))
@@ -311,6 +316,26 @@ func LevelLTE(v int) predicate.Pallet {
 	return predicate.Pallet(sql.FieldLTE(FieldLevel, v))
 }
 
+// PalletTypeEQ applies the EQ predicate on the "pallet_type" field.
+func PalletTypeEQ(v PalletType) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldPalletType, v))
+}
+
+// PalletTypeNEQ applies the NEQ predicate on the "pallet_type" field.
+func PalletTypeNEQ(v PalletType) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldPalletType, v))
+}
+
+// PalletTypeIn applies the In predicate on the "pallet_type" field.
+func PalletTypeIn(vs ...PalletType) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldPalletType, vs...))
+}
+
+// PalletTypeNotIn applies the NotIn predicate on the "pallet_type" field.
+func PalletTypeNotIn(vs ...PalletType) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldPalletType, vs...))
+}
+
 // BobbinsCountEQ applies the EQ predicate on the "bobbins_count" field.
 func BobbinsCountEQ(v int) predicate.Pallet {
 	return predicate.Pallet(sql.FieldEQ(FieldBobbinsCount, v))
@@ -349,6 +374,46 @@ func BobbinsCountLT(v int) predicate.Pallet {
 // BobbinsCountLTE applies the LTE predicate on the "bobbins_count" field.
 func BobbinsCountLTE(v int) predicate.Pallet {
 	return predicate.Pallet(sql.FieldLTE(FieldBobbinsCount, v))
+}
+
+// CartonsCountEQ applies the EQ predicate on the "cartons_count" field.
+func CartonsCountEQ(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldEQ(FieldCartonsCount, v))
+}
+
+// CartonsCountNEQ applies the NEQ predicate on the "cartons_count" field.
+func CartonsCountNEQ(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNEQ(FieldCartonsCount, v))
+}
+
+// CartonsCountIn applies the In predicate on the "cartons_count" field.
+func CartonsCountIn(vs ...int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldIn(FieldCartonsCount, vs...))
+}
+
+// CartonsCountNotIn applies the NotIn predicate on the "cartons_count" field.
+func CartonsCountNotIn(vs ...int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldNotIn(FieldCartonsCount, vs...))
+}
+
+// CartonsCountGT applies the GT predicate on the "cartons_count" field.
+func CartonsCountGT(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGT(FieldCartonsCount, v))
+}
+
+// CartonsCountGTE applies the GTE predicate on the "cartons_count" field.
+func CartonsCountGTE(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldGTE(FieldCartonsCount, v))
+}
+
+// CartonsCountLT applies the LT predicate on the "cartons_count" field.
+func CartonsCountLT(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLT(FieldCartonsCount, v))
+}
+
+// CartonsCountLTE applies the LTE predicate on the "cartons_count" field.
+func CartonsCountLTE(v int) predicate.Pallet {
+	return predicate.Pallet(sql.FieldLTE(FieldCartonsCount, v))
 }
 
 // NetWeightEQ applies the EQ predicate on the "net_weight" field.

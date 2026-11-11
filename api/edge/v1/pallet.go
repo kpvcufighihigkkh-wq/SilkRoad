@@ -73,6 +73,33 @@ func (h *PalletHandler) PackBobbins(c *gin.Context) {
 	c.JSON(http.StatusOK, api.Success(resp))
 }
 
+// PackCartons godoc
+// @Summary DTY 纸箱码垛
+// @Tags pallets
+// @Accept json
+// @Produce json
+// @Param id path string true "托盘ID"
+// @Param body body service.PackCartonsRequest true "纸箱列表"
+// @Success 200 {object} api.Response{data=service.PalletResponse}
+// @Router /v1/pallets/{id}/pack-cartons [post]
+func (h *PalletHandler) PackCartons(c *gin.Context) {
+	id := c.Param("id")
+
+	var req service.PackCartonsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.Error(api.CodeParamError, err.Error()))
+		return
+	}
+
+	resp, err := h.palletService.PackCartons(c.Request.Context(), id, &req)
+	if err != nil {
+		respondPalletError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(resp))
+}
+
 // SealPallet godoc
 // @Summary 封托
 // @Tags pallets

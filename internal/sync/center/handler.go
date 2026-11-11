@@ -293,7 +293,9 @@ func (h *UploadHandler) upsertPallet(ctx context.Context, entry *models.UploadEn
 			SetPalletCode(code).
 			SetLotID(lotID).
 			SetLevel(getInt(data, "level")).
+			SetPalletType(palletTypeFromPayload(data)).
 			SetBobbinsCount(getInt(data, "bobbins_count")).
+			SetCartonsCount(getInt(data, "cartons_count")).
 			SetStatus(pallet.Status(getString(data, "status"))).
 			SetPrinted(getBool(data, "printed")).
 			SetNillablePalletizerID(getUUIDPtr(data, "palletizer_id")).
@@ -336,7 +338,9 @@ func (h *UploadHandler) updatePalletRow(ctx context.Context, row *ent.Pallet, da
 	err = row.Update().
 		SetLotID(lotID).
 		SetLevel(getInt(data, "level")).
+		SetPalletType(palletTypeFromPayload(data)).
 		SetBobbinsCount(getInt(data, "bobbins_count")).
+		SetCartonsCount(getInt(data, "cartons_count")).
 		SetStatus(pallet.Status(getString(data, "status"))).
 		SetPrinted(getBool(data, "printed")).
 		SetNillablePalletizerID(getUUIDPtr(data, "palletizer_id")).
@@ -503,6 +507,10 @@ func (h *UploadHandler) upsertCarton(ctx context.Context, entry *models.UploadEn
 	if err != nil {
 		return err
 	}
+	palletID, err := h.resolvePalletByCode(ctx, data)
+	if err != nil {
+		return err
+	}
 
 	if target == nil {
 		created, err := h.client.Carton.Create().
@@ -513,6 +521,7 @@ func (h *UploadHandler) upsertCarton(ctx context.Context, entry *models.UploadEn
 			SetStatus(carton.Status(getString(data, "status"))).
 			SetLabelPrinted(getBool(data, "label_printed")).
 			SetNillableLotID(lotID).
+			SetNillablePalletID(palletID).
 			SetNillableTotalWeight(getFloatPtr(data, "total_weight")).
 			SetNillablePrintedAt(getTimePtr(data, "printed_at")).
 			SetNillablePackedAt(getTimePtr(data, "packed_at")).
@@ -538,6 +547,10 @@ func (h *UploadHandler) updateCartonRow(ctx context.Context, row *ent.Carton, da
 	if err != nil {
 		return err
 	}
+	palletID, err := h.resolvePalletByCode(ctx, data)
+	if err != nil {
+		return err
+	}
 
 	err = row.Update().
 		SetBobbinCount(getInt(data, "bobbin_count")).
@@ -545,6 +558,7 @@ func (h *UploadHandler) updateCartonRow(ctx context.Context, row *ent.Carton, da
 		SetStatus(carton.Status(getString(data, "status"))).
 		SetLabelPrinted(getBool(data, "label_printed")).
 		SetNillableLotID(lotID).
+		SetNillablePalletID(palletID).
 		SetNillableTotalWeight(getFloatPtr(data, "total_weight")).
 		SetNillablePrintedAt(getTimePtr(data, "printed_at")).
 		SetNillablePackedAt(getTimePtr(data, "packed_at")).
@@ -569,6 +583,38 @@ func (h *UploadHandler) optionalLotID(ctx context.Context, data map[string]inter
 		return nil, err
 	}
 	return &resolved, nil
+}
+
+// palletTypeFromPayload 读托盘类型；载荷缺该键时回落到 bobbin。
+//
+// 这是向前兼容：pallet_type 是后加的字段，升级前的 Edge 不会发送它，
+// 而那些托盘按当时的口径全部是直接码锭。缺键即 bobbin 才是正确历史语义，
+// 绝不能让它落成空串 —— 那会让整条托盘记录被 Ent 的枚举校验拒绝。
+func palletTypeFromPayload(data map[string]interface{}) pallet.PalletType {
+	raw := getString(data, "pallet_type")
+	if raw == "" {
+		return pallet.PalletTypeBobbin
+	}
+	return pallet.PalletType(raw)
+}
+
+// resolvePalletByCode 按 pallet_code 查 Center 侧托盘，供纸箱解引用。
+//
+// 纸箱的 pallet_id 可空：载荷未带 pallet_code 时返回 nil（写 NULL），
+// 带了却查不到说明托盘尚未到达，返回错误计重试。
+func (h *UploadHandler) resolvePalletByCode(ctx context.Context, data map[string]interface{}) (*uuid.UUID, error) {
+	code := getString(data, "pallet_code")
+	if code == "" {
+		return nil, nil
+	}
+	parent, err := h.client.Pallet.Query().Where(pallet.PalletCodeEQ(code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("parent pallet %q not found: %w", code, err)
+		}
+		return nil, err
+	}
+	return &parent.ID, nil
 }
 
 // resolveCartonByNumber 按编号查 Center 侧纸箱，供 bobbin 解引用。
