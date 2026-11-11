@@ -163,7 +163,7 @@ func TestHandleSyncResync_RejectsBadInput(t *testing.T) {
 		want int
 	}{
 		// 表名是调用方给的，非法值属客户端错误。返 500 会污染错误率看板。
-		{"未知表名", `{"mode":"failed","table":"barrels"}`, http.StatusBadRequest},
+		{"未知表名", `{"mode":"failed","table":"lot"}`, http.StatusBadRequest},
 		{"非法 mode", `{"mode":"everything"}`, http.StatusBadRequest},
 		{"缺少 mode", `{"table":"lots"}`, http.StatusBadRequest},
 	}
@@ -186,7 +186,7 @@ func TestHandleSyncResync_UnknownTableListsValidTables(t *testing.T) {
 	client := newServerTestClient(t)
 	router, token := newResyncTestServer(t, client)
 
-	w := postResync(t, router, token, `{"mode":"failed","table":"barrels"}`)
+	w := postResync(t, router, token, `{"mode":"failed","table":"lot"}`)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%s", w.Code, w.Body.String())
 	}

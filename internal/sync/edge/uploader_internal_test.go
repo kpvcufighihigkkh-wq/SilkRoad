@@ -173,6 +173,90 @@ func TestUploader_MarksEveryMarkableTable(t *testing.T) {
 			},
 		},
 		{
+			// 纸箱引用批次：先造父批次，再建纸箱。
+			table: "cartons",
+			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
+				t.Helper()
+				lotRow, err := client.Lot.Create().
+					SetLotNumber("LOT-MARK-CARTON").
+					SetProductType("DTY").
+					SetPlannedQuantity(1).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed lot for carton: %v", err)
+				}
+				row, err := client.Carton.Create().
+					SetCartonNumber("CTN-MARK").
+					SetLotID(lotRow.ID).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed carton: %v", err)
+				}
+				return row.ID
+			},
+			check: func(t *testing.T, client *ent.Client, ctx context.Context, id uuid.UUID) (string, int) {
+				t.Helper()
+				row, err := client.Carton.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload carton: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount
+			},
+		},
+		{
+			// 吊车无外键，直接建。
+			table: "modules",
+			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
+				t.Helper()
+				row, err := client.Module.Create().
+					SetModuleNumber("MDL-MARK").
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed module: %v", err)
+				}
+				return row.ID
+			},
+			check: func(t *testing.T, client *ent.Client, ctx context.Context, id uuid.UUID) (string, int) {
+				t.Helper()
+				row, err := client.Module.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload module: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount
+			},
+		},
+		{
+			// 托盘引用批次：先造父批次，再建托盘。
+			table: "pallets",
+			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
+				t.Helper()
+				lotRow, err := client.Lot.Create().
+					SetLotNumber("LOT-MARK-PALLET").
+					SetProductType("FDY").
+					SetPlannedQuantity(1).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed lot for pallet: %v", err)
+				}
+				row, err := client.Pallet.Create().
+					SetPalletCode("PLT-MARK").
+					SetLotID(lotRow.ID).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed pallet: %v", err)
+				}
+				return row.ID
+			},
+			check: func(t *testing.T, client *ent.Client, ctx context.Context, id uuid.UUID) (string, int) {
+				t.Helper()
+				row, err := client.Pallet.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload pallet: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount
+			},
+		},
+		{
 			table: "bobbins",
 			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
 				t.Helper()

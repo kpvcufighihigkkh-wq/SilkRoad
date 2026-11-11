@@ -402,15 +402,15 @@ func TestResync_EmptyTableMeansAll(t *testing.T) {
 
 // 未知表名是错误，而非静默 no-op。
 //
-// 尤其 barrels：它在 markableTables 里但**不被采集**，重置它只会造出
-// 永远排不出去的积压（采集器不取、计数不增、markExhausted 也碰不到）。
+// 重置一张不被采集的表只会造出永远排不出去的积压（采集器不取、
+// 计数不增、markExhausted 也碰不到），因此表名必须精确匹配。
 func TestResync_UnknownTableIsError(t *testing.T) {
 	client := setupEdgeClient(t)
 	ctx := context.Background()
 
 	u := edge.NewUploader(client, "edge-001", "http://center:8080", "token")
 
-	for _, table := range []string{"barrels", "no_such_table", "Lots"} {
+	for _, table := range []string{"lot", "no_such_table", "Lots"} {
 		if _, err := u.ResyncFailed(ctx, table); err == nil {
 			t.Errorf("ResyncFailed(%q) 应返回错误，实际为 nil", table)
 		}

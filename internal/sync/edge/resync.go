@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 )
 
 // ResyncFailed 把指定表中重试超限的记录重置为待同步。
@@ -142,6 +146,50 @@ func (u *Uploader) resetOneTable(ctx context.Context, table string, opts resetOp
 				doffing.SyncRetryCountGTE(maxRetryCount),
 				doffing.Or, doffing.And, extra)).
 			SetSyncStatus(doffing.SyncStatusPending).
+			SetSyncRetryCount(0).
+			ClearSyncedAt().
+			Save(ctx)
+	case "barrels":
+		return u.client.Barrel.Update().
+			Where(orRetryExhausted(
+				barrel.SyncStatusEQ(barrel.SyncStatus(opts.status)),
+				barrel.SyncStatusEQ(barrel.SyncStatusPending),
+				barrel.SyncRetryCountGTE(maxRetryCount),
+				barrel.Or, barrel.And, extra)).
+			SetSyncStatus(barrel.SyncStatusPending).
+			SetSyncRetryCount(0).
+			ClearSyncedAt().
+			Save(ctx)
+	case "cartons":
+		return u.client.Carton.Update().
+			Where(orRetryExhausted(
+				carton.SyncStatusEQ(carton.SyncStatus(opts.status)),
+				carton.SyncStatusEQ(carton.SyncStatusPending),
+				carton.SyncRetryCountGTE(maxRetryCount),
+				carton.Or, carton.And, extra)).
+			SetSyncStatus(carton.SyncStatusPending).
+			SetSyncRetryCount(0).
+			ClearSyncedAt().
+			Save(ctx)
+	case "modules":
+		return u.client.Module.Update().
+			Where(orRetryExhausted(
+				module.SyncStatusEQ(module.SyncStatus(opts.status)),
+				module.SyncStatusEQ(module.SyncStatusPending),
+				module.SyncRetryCountGTE(maxRetryCount),
+				module.Or, module.And, extra)).
+			SetSyncStatus(module.SyncStatusPending).
+			SetSyncRetryCount(0).
+			ClearSyncedAt().
+			Save(ctx)
+	case "pallets":
+		return u.client.Pallet.Update().
+			Where(orRetryExhausted(
+				pallet.SyncStatusEQ(pallet.SyncStatus(opts.status)),
+				pallet.SyncStatusEQ(pallet.SyncStatusPending),
+				pallet.SyncRetryCountGTE(maxRetryCount),
+				pallet.Or, pallet.And, extra)).
+			SetSyncStatus(pallet.SyncStatusPending).
 			SetSyncRetryCount(0).
 			ClearSyncedAt().
 			Save(ctx)

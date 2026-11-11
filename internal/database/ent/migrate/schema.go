@@ -246,6 +246,8 @@ var (
 		{Name: "edge_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "lot_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "bobbin_count", Type: field.TypeInt, Default: 0},
+		{Name: "capacity", Type: field.TypeInt, Default: 12},
+		{Name: "pallet_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "total_weight", Type: field.TypeFloat64, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"packing", "packed", "shipped"}, Default: "packing"},
 		{Name: "label_printed", Type: field.TypeBool, Default: false},
@@ -271,27 +273,32 @@ var (
 			{
 				Name:    "carton_status",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[6]},
+				Columns: []*schema.Column{CartonsColumns[8]},
 			},
 			{
 				Name:    "carton_packed_at",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[9]},
+				Columns: []*schema.Column{CartonsColumns[11]},
 			},
 			{
 				Name:    "carton_sync_status",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[10]},
+				Columns: []*schema.Column{CartonsColumns[12]},
 			},
 			{
 				Name:    "carton_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{CartonsColumns[13]},
+				Columns: []*schema.Column{CartonsColumns[15]},
 			},
 			{
 				Name:    "carton_edge_id",
 				Unique:  false,
 				Columns: []*schema.Column{CartonsColumns[2]},
+			},
+			{
+				Name:    "carton_pallet_id",
+				Unique:  false,
+				Columns: []*schema.Column{CartonsColumns[6]},
 			},
 		},
 	}

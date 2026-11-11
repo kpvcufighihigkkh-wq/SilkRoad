@@ -24,6 +24,10 @@ const (
 	FieldLotID = "lot_id"
 	// FieldBobbinCount holds the string denoting the bobbin_count field in the database.
 	FieldBobbinCount = "bobbin_count"
+	// FieldCapacity holds the string denoting the capacity field in the database.
+	FieldCapacity = "capacity"
+	// FieldPalletID holds the string denoting the pallet_id field in the database.
+	FieldPalletID = "pallet_id"
 	// FieldTotalWeight holds the string denoting the total_weight field in the database.
 	FieldTotalWeight = "total_weight"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -64,6 +68,8 @@ var Columns = []string{
 	FieldEdgeID,
 	FieldLotID,
 	FieldBobbinCount,
+	FieldCapacity,
+	FieldPalletID,
 	FieldTotalWeight,
 	FieldStatus,
 	FieldLabelPrinted,
@@ -93,6 +99,10 @@ var (
 	DefaultBobbinCount int
 	// BobbinCountValidator is a validator for the "bobbin_count" field. It is called by the builders before save.
 	BobbinCountValidator func(int) error
+	// DefaultCapacity holds the default value on creation for the "capacity" field.
+	DefaultCapacity int
+	// CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
+	CapacityValidator func(int) error
 	// TotalWeightValidator is a validator for the "total_weight" field. It is called by the builders before save.
 	TotalWeightValidator func(float64) error
 	// DefaultLabelPrinted holds the default value on creation for the "label_printed" field.
@@ -191,6 +201,16 @@ func ByLotID(opts ...sql.OrderTermOption) OrderOption {
 // ByBobbinCount orders the results by the bobbin_count field.
 func ByBobbinCount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBobbinCount, opts...).ToFunc()
+}
+
+// ByCapacity orders the results by the capacity field.
+func ByCapacity(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCapacity, opts...).ToFunc()
+}
+
+// ByPalletID orders the results by the pallet_id field.
+func ByPalletID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPalletID, opts...).ToFunc()
 }
 
 // ByTotalWeight orders the results by the total_weight field.

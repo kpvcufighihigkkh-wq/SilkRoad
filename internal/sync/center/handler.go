@@ -9,25 +9,30 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
 
 // entityDependencyOrder 定义上传实体的依赖顺序。
 //
-// 外键要求被引用者先到：barrel 引用 lot，bobbin 引用 lot 与 barrel。
+// 外键要求被引用者先到：barrel 引用 lot，bobbin 引用 lot 与 barrel，
+// 并可能引用 pallet（按 pallet_code 解引用，见 resolveParentPalletID）。
 // 乱序到达会使 Ent 的 FK 校验失败，导致整批记录被拒。
 var entityDependencyOrder = map[string]int{
 	"lots":     0,
 	"doffings": 1,
 	"barrels":  2,
-	"bobbins":  3,
-	"modules":  4,
-	"pallets":  5,
-	"cartons":  6,
+	"pallets":  3,
+	"cartons":  4,
+	"modules":  5,
+	"bobbins":  6,
 }
 
 // SortEntriesByDependency 按外键依赖顺序稳定排序上传条目。
@@ -137,6 +142,14 @@ func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEn
 	switch entry.Table {
 	case "lots":
 		return h.upsertLot(ctx, entry, edgeID)
+	case "pallets":
+		return h.upsertPallet(ctx, entry, edgeID)
+	case "barrels":
+		return h.upsertBarrel(ctx, entry)
+	case "cartons":
+		return h.upsertCarton(ctx, entry)
+	case "modules":
+		return h.upsertModule(ctx, entry)
 	case "bobbins":
 		return h.upsertBobbin(ctx, entry, edgeID)
 	case "doffings":
@@ -228,6 +241,456 @@ func (h *UploadHandler) upsertLot(ctx context.Context, entry *models.UploadEntry
 //
 // 先 ID 后编号的顺序不可交换：ID 命中说明这就是 Edge 那条记录（正常重传），
 // 优先认它是为了在「同 ID 行被改过编号」时仍能正确定位。
+func (h *UploadHandler) resolvePallet(ctx context.Context, id uuid.UUID, code string) (*ent.Pallet, error) {
+	byID, err := h.client.Pallet.Query().Where(pallet.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byCode, err := h.client.Pallet.Query().Where(pallet.PalletCodeEQ(code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byCode, nil
+}
+
+// upsertPallet 插入或更新托盘记录。
+//
+// 与批次同理：Edge 与 Center 各自生成主键，两端的同一业务托盘 ID 不同。
+// 先按 ID 查，未命中再按 pallet_code 认领（该字段唯一），认领时保留
+// Center 行的 ID —— 丝锭的 pallet_id 外键指向它，换 ID 会断开既有引用。
+func (h *UploadHandler) upsertPallet(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	code := getString(data, "pallet_code")
+	if code == "" {
+		// pallet_code 是 NotEmpty + Unique，按编号认领也依赖它。
+		return fmt.Errorf("missing pallet_code for entry %s（按编号认领需要它）", id)
+	}
+
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	target, err := h.resolvePallet(ctx, id, code)
+	if err != nil {
+		return err
+	}
+
+	if target == nil {
+		builder := h.client.Pallet.Create().
+			SetID(id).
+			SetPalletCode(code).
+			SetLotID(lotID).
+			SetLevel(getInt(data, "level")).
+			SetBobbinsCount(getInt(data, "bobbins_count")).
+			SetStatus(pallet.Status(getString(data, "status"))).
+			SetPrinted(getBool(data, "printed")).
+			SetNillablePalletizerID(getUUIDPtr(data, "palletizer_id")).
+			SetNillableNetWeight(getFloatPtr(data, "net_weight")).
+			SetNillableGrossWeight(getFloatPtr(data, "gross_weight")).
+			SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
+			SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+			SetNillableCompletedAt(getTimePtr(data, "completed_at"))
+
+		// 来源设备以鉴权层推导的身份为准，不采信载荷：
+		// 与批次一致，避免伪造 edge_id。
+		if edgeID != uuid.Nil {
+			builder.SetEdgeID(edgeID)
+		}
+
+		created, err := builder.Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolvePallet(ctx, id, code); rerr == nil && again != nil {
+					return h.updatePalletRow(ctx, again, data)
+				}
+			}
+			return fmt.Errorf("create pallet: %w", err)
+		}
+		log.Printf("✅ Created pallet: %s", created.PalletCode)
+		return nil
+	}
+
+	return h.updatePalletRow(ctx, target, data)
+}
+
+// updatePalletRow 以 Edge 数据更新既有托盘（Edge 是权威源）。
+// 保留 Center 行的 ID；pallet_code 是认领依据，不重写。
+func (h *UploadHandler) updatePalletRow(ctx context.Context, row *ent.Pallet, data map[string]interface{}) error {
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	err = row.Update().
+		SetLotID(lotID).
+		SetLevel(getInt(data, "level")).
+		SetBobbinsCount(getInt(data, "bobbins_count")).
+		SetStatus(pallet.Status(getString(data, "status"))).
+		SetPrinted(getBool(data, "printed")).
+		SetNillablePalletizerID(getUUIDPtr(data, "palletizer_id")).
+		SetNillableNetWeight(getFloatPtr(data, "net_weight")).
+		SetNillableGrossWeight(getFloatPtr(data, "gross_weight")).
+		SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
+		SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+		SetNillableCompletedAt(getTimePtr(data, "completed_at")).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("update pallet: %w", err)
+	}
+	log.Printf("🔁 Updated pallet: %s", row.PalletCode)
+	return nil
+}
+
+// resolveBarrel 按 ID 再按桶编号定位既有行；都不存在返回 (nil, nil)。
+func (h *UploadHandler) resolveBarrel(ctx context.Context, id uuid.UUID, number string) (*ent.Barrel, error) {
+	byID, err := h.client.Barrel.Query().Where(barrel.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byNumber, err := h.client.Barrel.Query().Where(barrel.BarrelNumberEQ(number)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byNumber, nil
+}
+
+// upsertBarrel 插入或更新落纱桶。
+//
+// 与托盘同理：先按 ID 查，未命中再按 barrel_number 认领，认领时保留
+// Center 行的 ID —— 丝锭的 barrel_id 外键指向它。
+func (h *UploadHandler) upsertBarrel(ctx context.Context, entry *models.UploadEntry) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	number := getString(data, "barrel_number")
+	if number == "" {
+		return fmt.Errorf("missing barrel_number for entry %s（按编号认领需要它）", id)
+	}
+
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	target, err := h.resolveBarrel(ctx, id, number)
+	if err != nil {
+		return err
+	}
+
+	if target == nil {
+		_, err = h.client.Barrel.Create().
+			SetID(id).
+			SetBarrelNumber(number).
+			SetLotID(lotID).
+			SetCapacity(getInt(data, "capacity")).
+			SetCurrentCount(getInt(data, "current_count")).
+			SetStatus(barrel.Status(getString(data, "status"))).
+			Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolveBarrel(ctx, id, number); rerr == nil && again != nil {
+					return h.updateBarrelRow(ctx, again, data)
+				}
+			}
+			return fmt.Errorf("create barrel: %w", err)
+		}
+		log.Printf("✅ Created barrel: %s", number)
+		return nil
+	}
+
+	return h.updateBarrelRow(ctx, target, data)
+}
+
+// updateBarrelRow 以 Edge 数据更新既有桶。保留 Center 行 ID；编号不重写。
+func (h *UploadHandler) updateBarrelRow(ctx context.Context, row *ent.Barrel, data map[string]interface{}) error {
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	err = row.Update().
+		SetLotID(lotID).
+		SetCapacity(getInt(data, "capacity")).
+		SetCurrentCount(getInt(data, "current_count")).
+		SetStatus(barrel.Status(getString(data, "status"))).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("update barrel: %w", err)
+	}
+	log.Printf("🔁 Updated barrel: %s", row.BarrelNumber)
+	return nil
+}
+
+// resolveParentBarrelID 按载荷的 barrel_number 查 Center 侧的桶行。
+//
+// 与托盘同一契约：丝锭未装桶时载荷不带 barrel_number，返回 (nil, nil)；
+// 带了却查不到说明桶尚未到达，必须报错计重试 —— 静默当成「未装桶」
+// 会把已装载的丝锭记成散锭。
+func (h *UploadHandler) resolveParentBarrelID(ctx context.Context, data map[string]interface{}) (*uuid.UUID, error) {
+	number := getString(data, "barrel_number")
+	if number == "" {
+		return nil, nil
+	}
+	parent, err := h.client.Barrel.Query().Where(barrel.BarrelNumberEQ(number)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("parent barrel %q not found: %w", number, err)
+		}
+		return nil, err
+	}
+	return &parent.ID, nil
+}
+
+// resolveCarton 按 ID 再按纸箱编号定位既有行；都不存在返回 (nil, nil)。
+func (h *UploadHandler) resolveCarton(ctx context.Context, id uuid.UUID, number string) (*ent.Carton, error) {
+	byID, err := h.client.Carton.Query().Where(carton.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byNumber, err := h.client.Carton.Query().Where(carton.CartonNumberEQ(number)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byNumber, nil
+}
+
+// upsertCarton 插入或更新纸箱（DTY 专属环节）。
+func (h *UploadHandler) upsertCarton(ctx context.Context, entry *models.UploadEntry) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	number := getString(data, "carton_number")
+	if number == "" {
+		return fmt.Errorf("missing carton_number for entry %s（按编号认领需要它）", id)
+	}
+
+	target, err := h.resolveCarton(ctx, id, number)
+	if err != nil {
+		return err
+	}
+
+	lotID, err := h.optionalLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	if target == nil {
+		created, err := h.client.Carton.Create().
+			SetID(id).
+			SetCartonNumber(number).
+			SetBobbinCount(getInt(data, "bobbin_count")).
+			SetCapacity(getInt(data, "capacity")).
+			SetStatus(carton.Status(getString(data, "status"))).
+			SetLabelPrinted(getBool(data, "label_printed")).
+			SetNillableLotID(lotID).
+			SetNillableTotalWeight(getFloatPtr(data, "total_weight")).
+			SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+			SetNillablePackedAt(getTimePtr(data, "packed_at")).
+			Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolveCarton(ctx, id, number); rerr == nil && again != nil {
+					return h.updateCartonRow(ctx, again, data)
+				}
+			}
+			return fmt.Errorf("create carton: %w", err)
+		}
+		log.Printf("✅ Created carton: %s", created.CartonNumber)
+		return nil
+	}
+
+	return h.updateCartonRow(ctx, target, data)
+}
+
+// updateCartonRow 以 Edge 数据更新既有纸箱。保留 Center 行 ID；编号不重写。
+func (h *UploadHandler) updateCartonRow(ctx context.Context, row *ent.Carton, data map[string]interface{}) error {
+	lotID, err := h.optionalLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	err = row.Update().
+		SetBobbinCount(getInt(data, "bobbin_count")).
+		SetCapacity(getInt(data, "capacity")).
+		SetStatus(carton.Status(getString(data, "status"))).
+		SetLabelPrinted(getBool(data, "label_printed")).
+		SetNillableLotID(lotID).
+		SetNillableTotalWeight(getFloatPtr(data, "total_weight")).
+		SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+		SetNillablePackedAt(getTimePtr(data, "packed_at")).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("update carton: %w", err)
+	}
+	log.Printf("🔁 Updated carton: %s", row.CartonNumber)
+	return nil
+}
+
+// optionalLotID 解引用可选父批次：载荷未带 lot_number 时返回 nil（写 NULL）。
+//
+// 纸箱的 lot_id 在 schema 里是可空的，与桶/丝锭的必填外键不同 ——
+// 用 resolveParentLotID 会把「没有批次」当成错误。
+func (h *UploadHandler) optionalLotID(ctx context.Context, data map[string]interface{}) (*uuid.UUID, error) {
+	if getString(data, "lot_number") == "" {
+		return nil, nil
+	}
+	resolved, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	return &resolved, nil
+}
+
+// resolveCartonByNumber 按编号查 Center 侧纸箱，供 bobbin 解引用。
+func (h *UploadHandler) resolveCartonByNumber(ctx context.Context, number string) (*uuid.UUID, error) {
+	if number == "" {
+		return nil, nil
+	}
+	parent, err := h.client.Carton.Query().Where(carton.CartonNumberEQ(number)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("parent carton %q not found: %w", number, err)
+		}
+		return nil, err
+	}
+	return &parent.ID, nil
+}
+
+// resolveBarrelByNumber 按编号查 Center 侧桶，供吊车解引用。
+func (h *UploadHandler) resolveBarrelByNumber(ctx context.Context, number string) (*uuid.UUID, error) {
+	if number == "" {
+		return nil, nil
+	}
+	parent, err := h.client.Barrel.Query().Where(barrel.BarrelNumberEQ(number)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, fmt.Errorf("parent barrel %q not found: %w", number, err)
+		}
+		return nil, err
+	}
+	return &parent.ID, nil
+}
+
+// resolveModule 按 ID 再按吊车编号定位既有行。
+func (h *UploadHandler) resolveModule(ctx context.Context, id uuid.UUID, number string) (*ent.Module, error) {
+	byID, err := h.client.Module.Query().Where(module.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byNumber, err := h.client.Module.Query().Where(module.ModuleNumberEQ(number)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byNumber, nil
+}
+
+// upsertModule 插入或更新吊车。
+//
+// 两个挂位按 barrel1_number / barrel2_number 解引用；缺编号即视为空挂位。
+// 挂位关系不影响丝锭的工艺归属，不值得为它卡住整条记录。
+func (h *UploadHandler) upsertModule(ctx context.Context, entry *models.UploadEntry) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	number := getString(data, "module_number")
+	if number == "" {
+		return fmt.Errorf("missing module_number for entry %s", id)
+	}
+
+	barrel1, err := h.resolveBarrelByNumber(ctx, getString(data, "barrel1_number"))
+	if err != nil {
+		return err
+	}
+	barrel2, err := h.resolveBarrelByNumber(ctx, getString(data, "barrel2_number"))
+	if err != nil {
+		return err
+	}
+
+	target, err := h.resolveModule(ctx, id, number)
+	if err != nil {
+		return err
+	}
+
+	if target == nil {
+		_, err = h.client.Module.Create().
+			SetID(id).
+			SetModuleNumber(number).
+			SetStatus(module.Status(getString(data, "status"))).
+			SetNillableRfid(getStringPtr(data, "rfid")).
+			SetNillableCurrentLocation(getStringPtr(data, "current_location")).
+			SetNillableBarrel1ID(barrel1).
+			SetNillableBarrel2ID(barrel2).
+			Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolveModule(ctx, id, number); rerr == nil && again != nil {
+					return h.updateModuleRow(ctx, again, data, barrel1, barrel2)
+				}
+			}
+			return fmt.Errorf("create module: %w", err)
+		}
+		log.Printf("✅ Created module: %s", number)
+		return nil
+	}
+
+	return h.updateModuleRow(ctx, target, data, barrel1, barrel2)
+}
+
+// updateModuleRow 以 Edge 数据更新既有吊车。
+func (h *UploadHandler) updateModuleRow(ctx context.Context, row *ent.Module, data map[string]interface{}, barrel1, barrel2 *uuid.UUID) error {
+	err := row.Update().
+		SetStatus(module.Status(getString(data, "status"))).
+		SetNillableRfid(getStringPtr(data, "rfid")).
+		SetNillableCurrentLocation(getStringPtr(data, "current_location")).
+		SetNillableBarrel1ID(barrel1).
+		SetNillableBarrel2ID(barrel2).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("update module: %w", err)
+	}
+	log.Printf("🔁 Updated module: %s", row.ModuleNumber)
+	return nil
+}
+
 func (h *UploadHandler) resolveLot(ctx context.Context, id uuid.UUID, lotNumber string) (*ent.Lot, error) {
 	byID, err := h.client.Lot.Query().Where(lot.IDEQ(id)).Only(ctx)
 	if err == nil {
@@ -267,6 +730,31 @@ func (h *UploadHandler) resolveParentLotID(ctx context.Context, data map[string]
 		return uuid.Nil, err
 	}
 	return parent.ID, nil
+}
+
+// resolveParentPalletID 按载荷的 pallet_code 查 Center 侧的托盘行，返回其 ID。
+//
+// 与 resolveParentLotID 同一原则：载荷里的 pallet_id 是 Edge 本地 UUID，
+// 两端主键不保证一致，只能按业务编号解引用。
+//
+// 与批次不同，托盘是**可选**父行：丝锭尚未码盘时载荷里根本没有 pallet_code，
+// 这不是错误，返回 (nil, nil) 表示「无托盘」。但一旦带了 pallet_code 却查不到，
+// 就必须报错计重试 —— 静默当成「无托盘」会把已包装的丝锭记成散锭。
+func (h *UploadHandler) resolveParentPalletID(ctx context.Context, data map[string]interface{}) (*uuid.UUID, error) {
+	code := getString(data, "pallet_code")
+	if code == "" {
+		return nil, nil
+	}
+	parent, err := h.client.Pallet.Query().Where(pallet.PalletCodeEQ(code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			// 托盘尚未到达：计重试。collectors() 中 pallets 排在 bobbins 之前，
+			// 正常情况下不会走到这里；走到说明托盘上传失败或被跳过。
+			return nil, fmt.Errorf("parent pallet %q not found: %w", code, err)
+		}
+		return nil, err
+	}
+	return &parent.ID, nil
 }
 
 // updateLotRow 以 Edge 侧数据更新既有行。整行以 Edge 为准（单向归属）。
@@ -325,6 +813,20 @@ func (h *UploadHandler) upsertBobbin(ctx context.Context, entry *models.UploadEn
 	if err != nil {
 		return err
 	}
+	// 托盘同理按 pallet_code 解引用；未码盘的丝锭得到 nil。
+	palletID, err := h.resolveParentPalletID(ctx, data)
+	if err != nil {
+		return err
+	}
+	// 纸箱与桶同理按业务编号解引用；未装箱/未装桶时得到 nil。
+	cartonID, err := h.resolveCartonByNumber(ctx, getString(data, "carton_number"))
+	if err != nil {
+		return err
+	}
+	barrelID, err := h.resolveParentBarrelID(ctx, data)
+	if err != nil {
+		return err
+	}
 	bobbinNumber := getString(data, "bobbin_number")
 	if bobbinNumber == "" {
 		// bobbin_number 是 NotEmpty + Unique；按编号认领也依赖它，缺失即无法处理。
@@ -345,6 +847,9 @@ func (h *UploadHandler) upsertBobbin(ctx context.Context, entry *models.UploadEn
 			SetSpinningPosition(getInt(data, "spinning_position")).
 			SetGrossWeight(getFloat(data, "gross_weight")).
 			SetNetWeight(getFloat(data, "net_weight")).
+			SetNillablePalletID(palletID).
+			SetNillableCartonID(cartonID).
+			SetNillableBarrelID(barrelID).
 			SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
 			SetNillableGrade(getStringPtr(data, "grade")).
 			SetStatus(bobbin.Status(getString(data, "status"))).
@@ -394,15 +899,34 @@ func (h *UploadHandler) resolveBobbin(ctx context.Context, id uuid.UUID, bobbinN
 // grade/tare_weight 用 Nillable 版本：载荷未带该键时传 nil，Setter 内的
 // `if v != nil` 使其成为 no-op，从而**保留 Center 既有的值**。这是刻意的
 // 取舍（Edge 侧有意抹除该字段不会传播），故此处不加 Clear*。
+//
+// pallet_id 是例外：丝锭从散锭码上托盘时，载荷才首次带上 pallet_code；
+// 而 Edge 不会把丝锭从托盘上摘下（没有拆盘接口），所以「本来有托盘、新载荷
+// 没有」只可能是同一托盘尚未重传，用 Nillable 保留既有关联才是对的。
 func (h *UploadHandler) updateBobbinRow(ctx context.Context, row *ent.Bobbin, data map[string]interface{}) error {
 	// 载荷中的 lot_id 是 Edge 本地 UUID，一律不采信；按 lot_number 解引用父行。
 	lotID, err := h.resolveParentLotID(ctx, data)
 	if err != nil {
 		return err
 	}
+	palletID, err := h.resolveParentPalletID(ctx, data)
+	if err != nil {
+		return err
+	}
+	cartonID, err := h.resolveCartonByNumber(ctx, getString(data, "carton_number"))
+	if err != nil {
+		return err
+	}
+	barrelID, err := h.resolveParentBarrelID(ctx, data)
+	if err != nil {
+		return err
+	}
 
 	err = row.Update().
 		SetLotID(lotID).
+		SetNillablePalletID(palletID).
+		SetNillableCartonID(cartonID).
+		SetNillableBarrelID(barrelID).
 		SetSpinningPosition(getInt(data, "spinning_position")).
 		SetGrossWeight(getFloat(data, "gross_weight")).
 		SetNetWeight(getFloat(data, "net_weight")).
@@ -696,4 +1220,22 @@ func getTimePtr(m map[string]interface{}, key string) *time.Time {
 		}
 	}
 	return nil
+}
+
+// getUUIDPtr 读取可选 UUID 字段；键缺席、类型不符或串非法时返回 nil。
+//
+// 非法 UUID 按「未提供」处理而不是报错：palletizer_id 这类引用列不参与
+// 业务解引用，静默丢弃比整条拒绝更合适 —— 非法的码垛机 ID 不该让托盘本身
+// 丢失。真正需要校验 UUID 的字段（insector_id 等）各有显式解析路径。
+func getUUIDPtr(m map[string]interface{}, key string) *uuid.UUID {
+	raw := getString(m, key)
+	if raw == "" {
+		return nil
+	}
+	parsed, err := uuid.Parse(raw)
+	if err != nil {
+		log.Printf("⚠️  忽略非法 %s=%q：%v", key, raw, err)
+		return nil
+	}
+	return &parsed
 }
