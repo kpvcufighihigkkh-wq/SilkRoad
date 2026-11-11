@@ -144,6 +144,19 @@ func (s *EdgeServer) registerRoutes() {
 			bobbins.POST("/:id/print", bobbinHandler.MarkBobbinPrinted)  // 标记已打印
 		}
 
+		// 托盘点：包装线创建托盘、码入丝锭、称重封托
+		//
+		// 只在 Edge 侧提供写接口 —— 托盘由包装线产生，Center 只读。
+		palletService := service.NewPalletService(s.client)
+		palletHandler := edgev1.NewPalletHandler(palletService)
+
+		pallets := authorized.Group("/pallets")
+		{
+			pallets.POST("", palletHandler.CreatePallet)         // 创建托盘
+			pallets.POST("/:id/pack", palletHandler.PackBobbins) // 丝锭码盘
+			pallets.POST("/:id/seal", palletHandler.SealPallet)  // 封托
+		}
+
 		// 数据同步
 		sync := authorized.Group("/sync")
 		{

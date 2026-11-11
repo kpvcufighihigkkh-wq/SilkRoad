@@ -13,20 +13,22 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
 
 // entityDependencyOrder 定义上传实体的依赖顺序。
 //
-// 外键要求被引用者先到：barrel 引用 lot，bobbin 引用 lot 与 barrel。
+// 外键要求被引用者先到：barrel 引用 lot，bobbin 引用 lot 与 barrel，
+// 并可能引用 pallet（按 pallet_code 解引用，见 resolveParentPalletID）。
 // 乱序到达会使 Ent 的 FK 校验失败，导致整批记录被拒。
 var entityDependencyOrder = map[string]int{
 	"lots":     0,
 	"doffings": 1,
 	"barrels":  2,
-	"bobbins":  3,
-	"modules":  4,
-	"pallets":  5,
+	"pallets":  3,
+	"bobbins":  4,
+	"modules":  5,
 	"cartons":  6,
 }
 
@@ -137,6 +139,8 @@ func (h *UploadHandler) handleCreate(ctx context.Context, entry *models.UploadEn
 	switch entry.Table {
 	case "lots":
 		return h.upsertLot(ctx, entry, edgeID)
+	case "pallets":
+		return h.upsertPallet(ctx, entry, edgeID)
 	case "bobbins":
 		return h.upsertBobbin(ctx, entry, edgeID)
 	case "doffings":
@@ -228,6 +232,118 @@ func (h *UploadHandler) upsertLot(ctx context.Context, entry *models.UploadEntry
 //
 // 先 ID 后编号的顺序不可交换：ID 命中说明这就是 Edge 那条记录（正常重传），
 // 优先认它是为了在「同 ID 行被改过编号」时仍能正确定位。
+func (h *UploadHandler) resolvePallet(ctx context.Context, id uuid.UUID, code string) (*ent.Pallet, error) {
+	byID, err := h.client.Pallet.Query().Where(pallet.IDEQ(id)).Only(ctx)
+	if err == nil {
+		return byID, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	byCode, err := h.client.Pallet.Query().Where(pallet.PalletCodeEQ(code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return byCode, nil
+}
+
+// upsertPallet 插入或更新托盘记录。
+//
+// 与批次同理：Edge 与 Center 各自生成主键，两端的同一业务托盘 ID 不同。
+// 先按 ID 查，未命中再按 pallet_code 认领（该字段唯一），认领时保留
+// Center 行的 ID —— 丝锭的 pallet_id 外键指向它，换 ID 会断开既有引用。
+func (h *UploadHandler) upsertPallet(ctx context.Context, entry *models.UploadEntry, edgeID uuid.UUID) error {
+	data := entry.Data
+
+	id, err := uuid.Parse(getString(data, "id"))
+	if err != nil {
+		return fmt.Errorf("invalid entry id %q: %w", getString(data, "id"), err)
+	}
+	code := getString(data, "pallet_code")
+	if code == "" {
+		// pallet_code 是 NotEmpty + Unique，按编号认领也依赖它。
+		return fmt.Errorf("missing pallet_code for entry %s（按编号认领需要它）", id)
+	}
+
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	target, err := h.resolvePallet(ctx, id, code)
+	if err != nil {
+		return err
+	}
+
+	if target == nil {
+		builder := h.client.Pallet.Create().
+			SetID(id).
+			SetPalletCode(code).
+			SetLotID(lotID).
+			SetLevel(getInt(data, "level")).
+			SetBobbinsCount(getInt(data, "bobbins_count")).
+			SetStatus(pallet.Status(getString(data, "status"))).
+			SetPrinted(getBool(data, "printed")).
+			SetNillablePalletizerID(getUUIDPtr(data, "palletizer_id")).
+			SetNillableNetWeight(getFloatPtr(data, "net_weight")).
+			SetNillableGrossWeight(getFloatPtr(data, "gross_weight")).
+			SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
+			SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+			SetNillableCompletedAt(getTimePtr(data, "completed_at"))
+
+		// 来源设备以鉴权层推导的身份为准，不采信载荷：
+		// 与批次一致，避免伪造 edge_id。
+		if edgeID != uuid.Nil {
+			builder.SetEdgeID(edgeID)
+		}
+
+		created, err := builder.Save(ctx)
+		if err != nil {
+			if ent.IsConstraintError(err) {
+				if again, rerr := h.resolvePallet(ctx, id, code); rerr == nil && again != nil {
+					return h.updatePalletRow(ctx, again, data)
+				}
+			}
+			return fmt.Errorf("create pallet: %w", err)
+		}
+		log.Printf("✅ Created pallet: %s", created.PalletCode)
+		return nil
+	}
+
+	return h.updatePalletRow(ctx, target, data)
+}
+
+// updatePalletRow 以 Edge 数据更新既有托盘（Edge 是权威源）。
+// 保留 Center 行的 ID；pallet_code 是认领依据，不重写。
+func (h *UploadHandler) updatePalletRow(ctx context.Context, row *ent.Pallet, data map[string]interface{}) error {
+	lotID, err := h.resolveParentLotID(ctx, data)
+	if err != nil {
+		return err
+	}
+
+	err = row.Update().
+		SetLotID(lotID).
+		SetLevel(getInt(data, "level")).
+		SetBobbinsCount(getInt(data, "bobbins_count")).
+		SetStatus(pallet.Status(getString(data, "status"))).
+		SetPrinted(getBool(data, "printed")).
+		SetNillablePalletizerID(getUUIDPtr(data, "palletizer_id")).
+		SetNillableNetWeight(getFloatPtr(data, "net_weight")).
+		SetNillableGrossWeight(getFloatPtr(data, "gross_weight")).
+		SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
+		SetNillablePrintedAt(getTimePtr(data, "printed_at")).
+		SetNillableCompletedAt(getTimePtr(data, "completed_at")).
+		Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("update pallet: %w", err)
+	}
+	log.Printf("🔁 Updated pallet: %s", row.PalletCode)
+	return nil
+}
+
 func (h *UploadHandler) resolveLot(ctx context.Context, id uuid.UUID, lotNumber string) (*ent.Lot, error) {
 	byID, err := h.client.Lot.Query().Where(lot.IDEQ(id)).Only(ctx)
 	if err == nil {
@@ -267,6 +383,31 @@ func (h *UploadHandler) resolveParentLotID(ctx context.Context, data map[string]
 		return uuid.Nil, err
 	}
 	return parent.ID, nil
+}
+
+// resolveParentPalletID 按载荷的 pallet_code 查 Center 侧的托盘行，返回其 ID。
+//
+// 与 resolveParentLotID 同一原则：载荷里的 pallet_id 是 Edge 本地 UUID，
+// 两端主键不保证一致，只能按业务编号解引用。
+//
+// 与批次不同，托盘是**可选**父行：丝锭尚未码盘时载荷里根本没有 pallet_code，
+// 这不是错误，返回 (nil, nil) 表示「无托盘」。但一旦带了 pallet_code 却查不到，
+// 就必须报错计重试 —— 静默当成「无托盘」会把已包装的丝锭记成散锭。
+func (h *UploadHandler) resolveParentPalletID(ctx context.Context, data map[string]interface{}) (*uuid.UUID, error) {
+	code := getString(data, "pallet_code")
+	if code == "" {
+		return nil, nil
+	}
+	parent, err := h.client.Pallet.Query().Where(pallet.PalletCodeEQ(code)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			// 托盘尚未到达：计重试。collectors() 中 pallets 排在 bobbins 之前，
+			// 正常情况下不会走到这里；走到说明托盘上传失败或被跳过。
+			return nil, fmt.Errorf("parent pallet %q not found: %w", code, err)
+		}
+		return nil, err
+	}
+	return &parent.ID, nil
 }
 
 // updateLotRow 以 Edge 侧数据更新既有行。整行以 Edge 为准（单向归属）。
@@ -325,6 +466,11 @@ func (h *UploadHandler) upsertBobbin(ctx context.Context, entry *models.UploadEn
 	if err != nil {
 		return err
 	}
+	// 托盘同理按 pallet_code 解引用；未码盘的丝锭得到 nil。
+	palletID, err := h.resolveParentPalletID(ctx, data)
+	if err != nil {
+		return err
+	}
 	bobbinNumber := getString(data, "bobbin_number")
 	if bobbinNumber == "" {
 		// bobbin_number 是 NotEmpty + Unique；按编号认领也依赖它，缺失即无法处理。
@@ -345,6 +491,7 @@ func (h *UploadHandler) upsertBobbin(ctx context.Context, entry *models.UploadEn
 			SetSpinningPosition(getInt(data, "spinning_position")).
 			SetGrossWeight(getFloat(data, "gross_weight")).
 			SetNetWeight(getFloat(data, "net_weight")).
+			SetNillablePalletID(palletID).
 			SetNillableTareWeight(getFloatPtr(data, "tare_weight")).
 			SetNillableGrade(getStringPtr(data, "grade")).
 			SetStatus(bobbin.Status(getString(data, "status"))).
@@ -394,15 +541,24 @@ func (h *UploadHandler) resolveBobbin(ctx context.Context, id uuid.UUID, bobbinN
 // grade/tare_weight 用 Nillable 版本：载荷未带该键时传 nil，Setter 内的
 // `if v != nil` 使其成为 no-op，从而**保留 Center 既有的值**。这是刻意的
 // 取舍（Edge 侧有意抹除该字段不会传播），故此处不加 Clear*。
+//
+// pallet_id 是例外：丝锭从散锭码上托盘时，载荷才首次带上 pallet_code；
+// 而 Edge 不会把丝锭从托盘上摘下（没有拆盘接口），所以「本来有托盘、新载荷
+// 没有」只可能是同一托盘尚未重传，用 Nillable 保留既有关联才是对的。
 func (h *UploadHandler) updateBobbinRow(ctx context.Context, row *ent.Bobbin, data map[string]interface{}) error {
 	// 载荷中的 lot_id 是 Edge 本地 UUID，一律不采信；按 lot_number 解引用父行。
 	lotID, err := h.resolveParentLotID(ctx, data)
 	if err != nil {
 		return err
 	}
+	palletID, err := h.resolveParentPalletID(ctx, data)
+	if err != nil {
+		return err
+	}
 
 	err = row.Update().
 		SetLotID(lotID).
+		SetNillablePalletID(palletID).
 		SetSpinningPosition(getInt(data, "spinning_position")).
 		SetGrossWeight(getFloat(data, "gross_weight")).
 		SetNetWeight(getFloat(data, "net_weight")).
@@ -696,4 +852,22 @@ func getTimePtr(m map[string]interface{}, key string) *time.Time {
 		}
 	}
 	return nil
+}
+
+// getUUIDPtr 读取可选 UUID 字段；键缺席、类型不符或串非法时返回 nil。
+//
+// 非法 UUID 按「未提供」处理而不是报错：palletizer_id 这类引用列不参与
+// 业务解引用，静默丢弃比整条拒绝更合适 —— 非法的码垛机 ID 不该让托盘本身
+// 丢失。真正需要校验 UUID 的字段（insector_id 等）各有显式解析路径。
+func getUUIDPtr(m map[string]interface{}, key string) *uuid.UUID {
+	raw := getString(m, key)
+	if raw == "" {
+		return nil
+	}
+	parsed, err := uuid.Parse(raw)
+	if err != nil {
+		log.Printf("⚠️  忽略非法 %s=%q：%v", key, raw, err)
+		return nil
+	}
+	return &parsed
 }

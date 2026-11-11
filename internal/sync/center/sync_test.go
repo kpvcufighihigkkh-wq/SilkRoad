@@ -1705,3 +1705,208 @@ func TestUpsertBobbinGrade_AbsentIsQualifiedIsNull(t *testing.T) {
 		t.Errorf("IsQualified = %v, want NULL（键缺席必须落 NULL，不得被推断成一个结论）", *got.IsQualified)
 	}
 }
+
+// 丝锭按 pallet_code 解引用托盘：载荷里的 pallet_id 是 Edge 本地 UUID，
+// 不得采信；Center 必须挂到按编号查到的那一行上。
+//
+// 这条关联是整个包装链的接缝：载荷带 pallet_code 却解不到父行时若静默
+// 当成「无托盘」，已包装的丝锭会被永久记成散锭，托盘详情页也永远空着。
+func TestUploadBobbin_DereferencesParentPalletByCode(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-PAL-DEREF-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+	// Center 侧已有托盘（UUID 与 Edge 本地不同）
+	centerPallet, err := client.Pallet.Create().
+		SetPalletCode("PLT-DEREF-1").
+		SetLotID(centerLot.ID).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed pallet: %v", err)
+	}
+
+	edgeLocalPalletID := uuid.New() // Edge 本地托盘 UUID，Center 不认识
+	bobbinID := uuid.New()
+
+	handler := center.NewUploadHandler(client)
+	upload := func(palletCode string) *models.UploadResponse {
+		data := map[string]interface{}{
+			"id":                bobbinID.String(),
+			"bobbin_number":     "BOBBIN-PAL-DEREF-1",
+			"lot_number":        "LOT-PAL-DEREF-1",
+			"pallet_id":         edgeLocalPalletID.String(), // 陷阱：会被忽略
+			"spinning_position": 1,
+			"gross_weight":      5.4,
+			"net_weight":        5.0,
+			"status":            "packed",
+		}
+		if palletCode != "" {
+			data["pallet_code"] = palletCode // 真依据
+		}
+		resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+			EdgeID: edgeRowID(t, client).String(),
+			Entries: []models.UploadEntry{{
+				Table: "bobbins", Operation: "create", ID: bobbinID, Data: data,
+			}},
+		})
+		if err != nil {
+			t.Fatalf("HandleUpload: %v", err)
+		}
+		return resp
+	}
+
+	if resp := upload("PLT-DEREF-1"); resp.Applied != 1 {
+		t.Fatalf("applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	got, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("get bobbin: %v", err)
+	}
+	if got.PalletID != centerPallet.ID {
+		t.Errorf("PalletID = %v, want %v（必须按编号解引用到 Center 的托盘）",
+			got.PalletID, centerPallet.ID)
+	}
+	if got.PalletID == edgeLocalPalletID {
+		t.Error("采信了载荷中的 pallet_id —— 两端主键不一致，会挂到不存在的行")
+	}
+
+	// 第二遍走 updateBobbinRow（认领路径），同样必须按编号解引用。
+	// 载荷此时不带 pallet_code（同一托盘尚未重传），Nillable 语义应保留既有关联。
+	if resp := upload(""); resp.Applied != 1 {
+		t.Fatalf("second pass applied = %d, want 1; errors=%v", resp.Applied, resp.Errors)
+	}
+	got2, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("get bobbin after second pass: %v", err)
+	}
+	if got2.PalletID != centerPallet.ID {
+		t.Errorf("第二遍后 PalletID = %v, want %v（载荷未带 pallet_code 不得清除既有关联）",
+			got2.PalletID, centerPallet.ID)
+	}
+}
+
+// 带 pallet_code 却查不到父托盘时，该条目必须计重试，不能静默当散锭。
+func TestUploadBobbin_MissingPalletRejected(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	if _, err := client.Lot.Create().
+		SetLotNumber("LOT-PAL-MISS-1").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx); err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+
+	bobbinID := uuid.New()
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{{
+			Table: "bobbins", Operation: "create", ID: bobbinID,
+			Data: map[string]interface{}{
+				"id":            bobbinID.String(),
+				"bobbin_number": "BOBBIN-PAL-MISS-1",
+				"lot_number":    "LOT-PAL-MISS-1",
+				"pallet_code":   "PLT-NOT-ARRIVED",
+				"status":        "packed",
+			},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+
+	if resp.Applied != 0 || resp.Rejected != 1 {
+		t.Errorf("applied=%d rejected=%d, want 0/1（父托盘未到必须计重试）",
+			resp.Applied, resp.Rejected)
+	}
+	if exists, err := client.Bobbin.Query().Where(bobbin.IDEQ(bobbinID)).Exist(ctx); err != nil {
+		t.Fatalf("check bobbin: %v", err)
+	} else if exists {
+		t.Error("父托盘未到时不得落库：否则丝锭的包装关联会永久为空")
+	}
+}
+
+// 托盘与丝锭同批到达时必须先处理托盘 —— entityDependencyOrder 的排序保证。
+// 若托盘排在丝锭之后，丝锭解引用失败，整条包装链断在第一批数据上。
+func TestHandleUpload_SortsPalletsBeforeBobbins(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	lotID := uuid.New()
+	palletID := uuid.New()
+	bobbinID := uuid.New()
+
+	// 刻意乱序：丝锭条目先于托盘条目
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{
+			{
+				Table: "bobbins", Operation: "create", ID: bobbinID,
+				Data: map[string]interface{}{
+					"id":                bobbinID.String(),
+					"bobbin_number":     "BOBBIN-PAL-ORDER-1",
+					"lot_number":        "LOT-PAL-ORDER-1",
+					"pallet_code":       "PLT-PAL-ORDER-1",
+					"spinning_position": 1,
+					"gross_weight":      5.4,
+					"net_weight":        5.0,
+					"status":            "packed",
+				},
+			},
+			{
+				Table: "pallets", Operation: "create", ID: palletID,
+				Data: map[string]interface{}{
+					"id":          palletID.String(),
+					"pallet_code": "PLT-PAL-ORDER-1",
+					"lot_number":  "LOT-PAL-ORDER-1",
+					"level":       1,
+					"status":      "building",
+				},
+			},
+			{
+				Table: "lots", Operation: "create", ID: lotID,
+				Data: map[string]interface{}{
+					"id":               lotID.String(),
+					"lot_number":       "LOT-PAL-ORDER-1",
+					"product_type":     "FDY",
+					"planned_quantity": 100,
+					"status":           "in_progress",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 3 || resp.Rejected != 0 {
+		t.Fatalf("applied=%d rejected=%d, want 3/0; errors=%v",
+			resp.Applied, resp.Rejected, resp.Errors)
+	}
+
+	got, err := client.Bobbin.Get(ctx, bobbinID)
+	if err != nil {
+		t.Fatalf("get bobbin: %v", err)
+	}
+	pallet, err := client.Pallet.Get(ctx, palletID)
+	if err != nil {
+		t.Fatalf("get pallet: %v", err)
+	}
+	if got.PalletID != pallet.ID {
+		t.Errorf("PalletID = %v, want %v（同批到达时托盘必须先于丝锭处理）",
+			got.PalletID, pallet.ID)
+	}
+}

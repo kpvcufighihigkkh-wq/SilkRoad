@@ -69,6 +69,27 @@ func TestResync_EveryCollectableTableIsResettable(t *testing.T) {
 			}
 			return row.ID
 		},
+		// 托盘引用批次：先造父批次，再建 failed 的托盘。
+		"pallets": func() uuid.UUID {
+			parent, err := client.Lot.Create().
+				SetLotNumber("LOT-RESYNC-BIND-PALLET").
+				SetProductType("FDY").
+				SetPlannedQuantity(1).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed parent lot: %v", err)
+			}
+			row, err := client.Pallet.Create().
+				SetPalletCode("PLT-RESYNC-BIND").
+				SetLotID(parent.ID).
+				SetSyncStatus("failed").
+				SetSyncRetryCount(maxRetryCount).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed pallet: %v", err)
+			}
+			return row.ID
+		},
 		"bobbins": func() uuid.UUID {
 			parent, err := client.Lot.Create().
 				SetLotNumber("LOT-RESYNC-BIND-BOBBIN").
@@ -209,6 +230,12 @@ func reloadSyncState(t *testing.T, client *ent.Client, ctx context.Context, tabl
 		row, err := client.Doffing.Get(ctx, id)
 		if err != nil {
 			t.Fatalf("reload doffings: %v", err)
+		}
+		return string(row.SyncStatus), row.SyncRetryCount
+	case "pallets":
+		row, err := client.Pallet.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("reload pallets: %v", err)
 		}
 		return string(row.SyncStatus), row.SyncRetryCount
 	case "bobbins":

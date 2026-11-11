@@ -173,6 +173,37 @@ func TestUploader_MarksEveryMarkableTable(t *testing.T) {
 			},
 		},
 		{
+			// 托盘引用批次：先造父批次，再建托盘。
+			table: "pallets",
+			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
+				t.Helper()
+				lotRow, err := client.Lot.Create().
+					SetLotNumber("LOT-MARK-PALLET").
+					SetProductType("FDY").
+					SetPlannedQuantity(1).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed lot for pallet: %v", err)
+				}
+				row, err := client.Pallet.Create().
+					SetPalletCode("PLT-MARK").
+					SetLotID(lotRow.ID).
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("seed pallet: %v", err)
+				}
+				return row.ID
+			},
+			check: func(t *testing.T, client *ent.Client, ctx context.Context, id uuid.UUID) (string, int) {
+				t.Helper()
+				row, err := client.Pallet.Get(ctx, id)
+				if err != nil {
+					t.Fatalf("reload pallet: %v", err)
+				}
+				return string(row.SyncStatus), row.SyncRetryCount
+			},
+		},
+		{
 			table: "bobbins",
 			seed: func(t *testing.T, client *ent.Client, ctx context.Context) uuid.UUID {
 				t.Helper()

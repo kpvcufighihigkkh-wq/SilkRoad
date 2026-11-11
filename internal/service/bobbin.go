@@ -41,6 +41,9 @@ type BobbinResponse struct {
 	NetWeight        float64 `json:"net_weight"`
 	TareWeight       float64 `json:"tare_weight"`
 	Grade            string  `json:"grade,omitempty"`
+	// PalletID 为 null 表示尚未码盘。托盘详情页靠它列出盘内丝锭，
+	// 缺了这个字段就只剩一个计数，看不到是哪几枚。
+	PalletID         *string `json:"pallet_id"`
 	Status           string  `json:"status"`
 	LabelPrinted     bool    `json:"label_printed"`
 	PrintedAt        *string `json:"printed_at,omitempty"`
@@ -212,6 +215,13 @@ func (s *BobbinService) toBobbinResponse(b *ent.Bobbin) *BobbinResponse {
 
 	if b.Grade != "" {
 		resp.Grade = b.Grade
+	}
+
+	// pallet_id 在 schema 里是 Optional：未码盘时为零值，转成 JSON null，
+	// 避免前端把「未码盘」显示成一串全零 UUID。
+	if b.PalletID != uuid.Nil {
+		str := b.PalletID.String()
+		resp.PalletID = &str
 	}
 
 	if !b.PrintedAt.IsZero() {

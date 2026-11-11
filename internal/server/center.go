@@ -218,6 +218,19 @@ func (s *CenterServer) registerRoutes() {
 		doffingHandler := centerv1.NewCenterDoffingHandler(doffingService)
 		authorized.GET("/doffings", doffingHandler.ListDoffings)
 
+		// 托盘（只读）
+		//
+		// 同一 PalletService，但这里只挂查询：写接口在 Edge 侧，
+		// 托盘由包装线产生，Center 不得创建或修改。
+		palletService := service.NewPalletService(s.client)
+		palletHandler := centerv1.NewCenterPalletHandler(palletService)
+
+		pallets := authorized.Group("/pallets")
+		{
+			pallets.GET("", palletHandler.ListPallets)
+			pallets.GET("/:id", palletHandler.GetPallet)
+		}
+
 		// 报表（全部已登录角色）
 		//
 		// 不挂 requireRole：spec 2026-10-12 §6.3 的权限矩阵把报表与

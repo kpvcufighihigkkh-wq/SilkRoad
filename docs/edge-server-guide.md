@@ -368,6 +368,53 @@ curl -X PUT http://localhost:8081/v1/bobbins/{id}/inspect \
 - `C`: 合格品
 - `D`: 不合格品
 
+### 托盘码垛（POY/FDY）
+
+托盘由包装线在 Edge 侧产生，Center 只读。完整流程是**建盘 → 码盘 → 封托**，
+每一步都由 Edge 自动排队上传到 Center。
+
+#### 1. 创建托盘
+
+```bash
+curl -X POST http://localhost:8081/v1/pallets \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lot_id": "<lot-uuid>",
+    "level": 1
+  }'
+```
+
+`pallet_code` 省略时由系统生成（`PLT-YYYYMMDD-<随机段>`）。初始状态 `building`，
+三层重量均为 `null` —— 未称重与「称得 0 kg」是两件事。
+
+#### 2. 丝锭码盘
+
+```bash
+curl -X POST http://localhost:8081/v1/pallets/{id}/pack \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"bobbin_ids": ["<bobbin-uuid>", "<bobbin-uuid>"]}'
+```
+
+- 丝锭必须与托盘属于同一批次，且不得已码在其它托盘上。
+- 重复提交同一批丝锭是幂等的，不会重复计数。
+- 码盘会把这些丝锭重新排队同步（`sync_status` 复位为 `pending`），
+  否则 Center 拿不到 `pallet_code`，包装关系会永远缺失。
+
+#### 3. 封托
+
+```bash
+curl -X POST http://localhost:8081/v1/pallets/{id}/seal \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"gross_weight": 210.5, "tare_weight": 20.5}'
+```
+
+净重默认按「毛重 − 皮重」计算，可用 `net_weight` 显式覆盖。只有 `building`
+状态且已码入至少一枚丝锭的托盘可以封托；封托后状态推进到 `completed`，
+不可再追加丝锭。
+
 ### 数据同步
 
 #### 1. 上传数据到中心端
