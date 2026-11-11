@@ -19,12 +19,17 @@ import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import {
   fetchMachineOperator,
+  fetchProductionOverview,
   fetchQualityDistribution,
   type DefectCount,
+  type EdgeLotStat,
   type GradeCount,
   type InspectorStat,
+  type LotStatusStat,
   type MachineOperator,
   type OperatorStat,
+  type ProductTypeStat,
+  type ProductionOverview,
   type QualityDistribution,
   type SpinningLineStat,
 } from '@/api/reports'
@@ -91,6 +96,93 @@ const operatorColumns: ColumnsType<OperatorStat> = [
   },
 ]
 
+/** 批次状态的中文标签与颜色，与后端 lot.status 枚举一一对应。 */
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  in_progress: { label: '生产中', color: 'processing' },
+  paused: { label: '已暂停', color: 'warning' },
+  completed: { label: '已完工', color: 'success' },
+  cancelled: { label: '已取消', color: 'default' },
+}
+
+const statusColumns: ColumnsType<LotStatusStat> = [
+  {
+    title: '状态',
+    dataIndex: 'status',
+    render: (v: string) => {
+      const s = STATUS_LABELS[v] ?? { label: v, color: 'default' }
+      return <Tag color={s.color}>{s.label}</Tag>
+    },
+  },
+  {
+    title: '批次数',
+    dataIndex: 'lot_count',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '计划量',
+    dataIndex: 'planned_quantity',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '实际量',
+    dataIndex: 'actual_quantity',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+]
+
+const productColumns: ColumnsType<ProductTypeStat> = [
+  { title: '产品类型', dataIndex: 'product_type', render: (v: string) => <Tag>{v}</Tag> },
+  {
+    title: '批次数',
+    dataIndex: 'lot_count',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '计划量',
+    dataIndex: 'planned_quantity',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '实际量',
+    dataIndex: 'actual_quantity',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+]
+
+const edgeColumns: ColumnsType<EdgeLotStat> = [
+  {
+    title: '来源设备',
+    dataIndex: 'edge_id',
+    // null 组是「未记录来源」的批次，必须显式展示，不能丢。
+    render: (v: string | null) =>
+      v ? <span className="mono">{v.slice(0, 8)}</span> : <Tag color="default">未记录</Tag>,
+  },
+  {
+    title: '批次数',
+    dataIndex: 'lot_count',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '计划量',
+    dataIndex: 'planned_quantity',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '实际量',
+    dataIndex: 'actual_quantity',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+]
+
 const inspectorColumns: ColumnsType<InspectorStat> = [
   {
     title: '检测员',
@@ -114,17 +206,20 @@ export default function ReportsPage() {
   ])
   const [quality, setQuality] = useState<QualityDistribution | null>(null)
   const [machine, setMachine] = useState<MachineOperator | null>(null)
+  const [production, setProduction] = useState<ProductionOverview | null>(null)
   const [loading, setLoading] = useState(false)
 
   const load = useCallback(async (r: [Dayjs, Dayjs]) => {
     setLoading(true)
     try {
-      // 两个看板可以并行拉取：它们互不依赖。
+      // 三个看板可以并行拉取：它们互不依赖。
       const query = { start: r[0].toISOString(), end: r[1].toISOString() }
-      const [q, m] = await Promise.all([
+      const [p, q, m] = await Promise.all([
+        fetchProductionOverview(query),
         fetchQualityDistribution(query),
         fetchMachineOperator(query),
       ])
+      setProduction(p)
       setQuality(q)
       setMachine(m)
     } catch (err) {
@@ -184,6 +279,82 @@ export default function ReportsPage() {
             最近 7 天
           </Button>
         </Space>
+      </Card>
+
+      <Card title="生产概览" size="small" loading={loading}>
+        {production && production.totals.lot_count > 0 ? (
+          <>
+            <Row gutter={16}>
+              <Col xs={12} md={6}>
+                <Statistic title="批次数" value={production.totals.lot_count} />
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="计划产量"
+                  value={production.totals.planned_quantity}
+                  valueStyle={{ color: '#595959' }}
+                />
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic title="实际产量" value={production.totals.actual_quantity} />
+              </Col>
+              <Col xs={12} md={6}>
+                <Statistic
+                  title="完成率"
+                  value={Math.round(production.totals.completion_rate * 1000) / 10}
+                  suffix="%"
+                  valueStyle={{
+                    color:
+                      production.totals.completion_rate >= 0.95
+                        ? '#3f8600'
+                        : production.totals.completion_rate >= 0.7
+                          ? '#d48806'
+                          : '#cf1322',
+                  }}
+                />
+              </Col>
+            </Row>
+
+            <Row gutter={16} style={{ marginTop: 16 }}>
+              <Col xs={24} lg={8}>
+                <Title level={5}>按状态</Title>
+                <Table<LotStatusStat>
+                  rowKey="status"
+                  columns={statusColumns}
+                  dataSource={production.by_status}
+                  size="small"
+                  pagination={false}
+                />
+              </Col>
+              <Col xs={24} lg={8}>
+                <Title level={5}>按产品类型</Title>
+                <Table<ProductTypeStat>
+                  rowKey="product_type"
+                  columns={productColumns}
+                  dataSource={production.by_product}
+                  size="small"
+                  pagination={false}
+                />
+              </Col>
+              <Col xs={24} lg={8}>
+                <Title level={5}>按来源设备</Title>
+                <Table<EdgeLotStat>
+                  // 分组键可空，rowKey 必须能唯一标识 null 组。
+                  rowKey={(r) => r.edge_id ?? '__null__'}
+                  columns={edgeColumns}
+                  dataSource={production.by_edge}
+                  size="small"
+                  pagination={false}
+                />
+              </Col>
+            </Row>
+          </>
+        ) : (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="区间内无批次。批次由 Edge 投产时创建，若长期为空请检查 Edge 是否已上报。"
+          />
+        )}
       </Card>
 
       <Row gutter={16}>

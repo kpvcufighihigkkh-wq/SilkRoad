@@ -117,6 +117,19 @@ func (s *EdgeServer) registerRoutes() {
 	authorized := v1.Group("")
 	authorized.Use(s.jwtMiddleware())
 	{
+		// 批次：Edge 是批次的产生方，Center 只读。
+		//
+		// 开工时刻 start_time 在此写定 —— 看板一（生产概览）依赖它做区间过滤，
+		// 此前全仓库没有任何代码写这一列。
+		lotService := service.NewLotService(s.client)
+		lotHandler := edgev1.NewLotHandler(lotService)
+
+		lots := authorized.Group("/lots")
+		{
+			lots.POST("", lotHandler.CreateLot)              // 创建批次并记录开工时刻
+			lots.PUT("/:id/status", lotHandler.UpdateStatus) // 状态流转（写结束时刻）
+		}
+
 		// 落纱操作
 		doffingService := service.NewDoffingService(s.client)
 		doffingHandler := edgev1.NewDoffingHandler(doffingService)

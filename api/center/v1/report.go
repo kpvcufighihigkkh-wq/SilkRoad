@@ -81,6 +81,31 @@ func (h *ReportHandler) MachineOperator(c *gin.Context) {
 	c.JSON(http.StatusOK, api.Success(resp))
 }
 
+// ProductionOverview godoc
+// @Summary 生产概览
+// @Tags reports
+// @Produce json
+// @Param start query string false "区间起点（RFC3339）"
+// @Param end query string false "区间终点（RFC3339）"
+// @Success 200 {object} api.Response{data=service.ProductionOverviewResponse}
+// @Failure 400 {object} api.ErrorResponse
+// @Router /v1/reports/production-overview [get]
+func (h *ReportHandler) ProductionOverview(c *gin.Context) {
+	start, end, err := parseTimeRange(c.Query("start"), c.Query("end"), time.Now())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, api.Error(api.CodeInvalidParams, err.Error()))
+		return
+	}
+
+	resp, err := h.reportService.ProductionOverview(c.Request.Context(), start, end)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, api.Error(api.CodeServerError, err.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(resp))
+}
+
 // 报表端点的区间与数量约束。
 const (
 	// reportDefaultWindow 是缺省统计窗口：spec §5.2「缺省为最近 7 天」。

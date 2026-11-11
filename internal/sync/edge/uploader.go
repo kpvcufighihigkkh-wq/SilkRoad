@@ -930,6 +930,12 @@ func lotToEntry(r *ent.Lot) models.UploadEntry {
 	if r.ProductSpec != "" {
 		data["product_spec"] = r.ProductSpec
 	}
+	if !r.StartTime.IsZero() {
+		data["start_time"] = r.StartTime
+	}
+	if !r.EndTime.IsZero() {
+		data["end_time"] = r.EndTime
+	}
 
 	return models.UploadEntry{
 		Table:     "lots",

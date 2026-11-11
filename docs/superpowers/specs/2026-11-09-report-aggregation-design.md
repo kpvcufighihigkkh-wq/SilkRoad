@@ -54,6 +54,12 @@
 
 **裁定（2026-11-09，主人选定）：** 看板一移出本计划。它需要「Edge 侧批次产生路径 + 同步载荷补 `start_time`」这一整条数据链，属同步协议与 Edge 操作子系统变更，另行立项。本文交付的看板二、看板三不受影响。
 
+**补记（2026-11-11）：** 上述前置数据链已补齐，看板一随本次一并交付：
+
+- Edge 侧新增批次写接口 `POST /v1/lots` 与 `PUT /v1/lots/:id/status`（`api/edge/v1/lot.go`、`internal/service/lot.go`）。批次创建即视为投产，`start_time` 在 `CreateLot` 写入；状态流转到 `completed` / `cancelled` 时写 `end_time`，且只在**首次**进入对应状态时写（重复提交幂等）。
+- `lotToEntry`（`internal/sync/edge/uploader.go`）的上传载荷补上 `start_time` / `end_time`。
+- 区间过滤按 §3.2.3 的 `COALESCE(start_time, created_at)` 口径，历史批次（`start_time` 为空）按行创建时刻参与统计，不会整批消失。
+
 ### 1.3 `bobbin_grade` 的字段缺口
 
 Schema 里有、但**同步链两端都不携带**的字段：
@@ -90,11 +96,19 @@ Schema 里有、但**同步链两端都不携带**的字段：
 | 5 | 按操作员落纱数 | `doffing GROUP BY operator_id`，count | `doffing.doffing_time` |
 | 6 | 按检测员工检数 | `bobbin_grade GROUP BY inspector_id`，count | `bobbin_grade.inspected_at` |
 
+**看板一：生产概览**（数据源 `lot`，时间过滤 `COALESCE(lot.start_time, lot.created_at)`）
+
+| # | 指标 | 计算 |
+|---|---|---|
+| 7 | 状态分布 | `GROUP BY status`，count + `SUM(planned_quantity)` + `SUM(actual_quantity)` |
+| 8 | 按产品类型 | `GROUP BY product_type`，同上 |
+| 9 | 按来源设备 | `GROUP BY edge_id`，同上；`edge_id` 为空归入 null 组 |
+| 10 | 总计与完成率 | 各状态行累加；完成率 = `actual / planned`，保留三位小数 |
+
 ### 2.2 明确不做
 
 | 不做 | 理由 |
 |---|---|
-| 看板一（生产概览）全部指标 | 数据链不完整，见 §1.2 |
 | 五维度合格率、平均分 | 字段未同步，见 §1.3 |
 | 包装单元维度统计 | 四表恒为空，见 §1.1 |
 | 实时推送 / 缓存 | spec §5.3 已裁定不做；页面进入时拉取一次 |
@@ -113,6 +127,7 @@ Schema 里有、但**同步链两端都不携带**的字段：
 |---|---|---|
 | GET | `/v1/reports/quality-distribution` | 看板二 |
 | GET | `/v1/reports/machine-operator` | 看板三 |
+| GET | `/v1/reports/production-overview` | 看板一 |
 
 依据 spec §6.3 权限矩阵：「`GET /v1/lots`、`/v1/bobbins` 及**报表**」允许**全部已登录角色**。设备凭证被组级的 `requireUserPrincipal` 挡在外面，与批次/丝锭路由姿态一致。
 
@@ -163,6 +178,18 @@ Schema 里有、但**同步链两端都不携带**的字段：
 理由：`cancelled` 表示这次落纱被显式作废（`cancel_reason` 有值），计入产量会让「按机台产量」与「按操作员落纱数」这两个本应对齐的数字被作废记录污染。而 `pending` 只是「尚未确认」，落纱动作已经发生，实际产出存在，排除它会低估产量。
 
 **代价：** 若现场认为「未确认即不可信」，则应改为只统计 `confirmed`。这是一行 `Where` 的差异，测试种子里放一条 `cancelled` 即可捕获口径变化。
+
+### 3.2.3 看板一的区间字段用 COALESCE(start_time, created_at)
+
+`lot.start_time` 是真正的开工时刻，由 Edge 侧 `CreateLot` 写定。但该列在引入批次写接口之前的存量行上为空，且早期补传的批次也可能缺这一列。
+
+**裁定：区间过滤统一用 `COALESCE(lot.start_time, lot.created_at)`。**
+
+- `start_time` 有值 → 以它为准。这就是「本期开工的批次」，也是报表语义上唯一正确的读法。
+- `start_time` 为空 → 退回 `created_at`（行插入时刻）。牺牲精确性换取「历史数据不会整批消失」。
+- 不用 `created_at` 兜底全表的理由：两者混用会让「补录批次」与「同步到达时刻」混淆。COALESCE 的语义是明确的——有开工时刻就用开工时刻。
+
+实现上该表达式无法用 ent 的谓词构造器表达（`GTE("COALESCE(...)")` 会把整条表达式当成标识符加引号），改用 `Where(func(sel *entsql.Selector))` 闭包里的 `entsql.P(func(b *entsql.Builder) { b.Ident(col).WriteOp(entsql.OpGTE).Arg(start) })`。`Builder.Arg` 会按方言生成 `$n` 占位符，Postgres 与 SQLite 都正确。
 
 ### 3.3 响应形态
 
@@ -243,6 +270,42 @@ Schema 里有、但**同步链两端都不携带**的字段：
 - **只返回 UUID，不返回名称。** `user` 表虽有 `full_name`，但 `operator_id` / `inspector_id` 是 Edge 侧身份，不保证能在 Center `users` 里找到对应行。**注意：不能用 `GET /v1/users` 做前端映射**——该端点挂在 `requireRole("admin")` 下（`center.go` 的 `users` 组），而报表对全部已登录角色开放，viewer 看得到报表却调不了映射接口。当前结论：**所有角色都只看到 UUID**。
 
   机台名称的补法见 §6 缺口 C：正确方向**不是**由 Edge 上报，而是把 Center 已有的 `spinning_line` 配置下发到 Edge——Center 是这张表的权威源。
+
+**看板一 `production-overview`：**
+
+```json
+{
+  "code": 0,
+  "data": {
+    "range": {...},
+    "totals": {
+      "lot_count": 12,
+      "planned_quantity": 48000,
+      "actual_quantity": 45360,
+      "completion_rate": 0.945
+    },
+    "by_status": [
+      {"status": "completed", "lot_count": 9, "planned_quantity": 36000, "actual_quantity": 35900},
+      {"status": "in_progress", "lot_count": 3, "planned_quantity": 12000, "actual_quantity": 9460}
+    ],
+    "by_product": [
+      {"product_type": "FDY", "lot_count": 6, "planned_quantity": 24000, "actual_quantity": 23800},
+      {"product_type": "DTY", "lot_count": 6, "planned_quantity": 24000, "actual_quantity": 21560}
+    ],
+    "by_edge": [
+      {"edge_id": "3d11df20-...", "lot_count": 8, "planned_quantity": 32000, "actual_quantity": 31000},
+      {"edge_id": null, "lot_count": 4, "planned_quantity": 16000, "actual_quantity": 14360}
+    ]
+  }
+}
+```
+
+要点：
+- `totals` 由 `by_status` 各行累加得出（状态是全集的划分），不额外发一次无分组聚合。
+- `completion_rate = actual / planned`，保留三位小数；`planned` 为 0 时返回 `0`（`planned_quantity` 有 `Positive()` 约束，走到这里是数据异常，返回 0 比返回 `NaN`/`Infinity` 安全——JSON 无法编码后两者）。
+- 三组分布都返回**空切片而非 null**：前端对 `null` 调 `.map` 会白屏。
+- `by_edge` 的 `edge_id` 可空，未记录来源的批次归入 `null` 组，**不丢弃**；`edge_id` 指针不加 `omitempty`，让前端能区分「没有这一组」与「这一组是未记录的」。
+- 所有分组用 `ent.As(ent.Sum(...), "sum_planned")` 起别名：ent 的扫描器把列名按 `"("` 截断后小写匹配结构体字段，两个未别名的 `SUM` 都会匹配到 `sum` 而互相覆盖。
 
 ---
 

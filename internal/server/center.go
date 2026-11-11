@@ -302,6 +302,7 @@ func (s *CenterServer) registerRoutes() {
 		{
 			reports.GET("/quality-distribution", reportHandler.QualityDistribution)
 			reports.GET("/machine-operator", reportHandler.MachineOperator)
+			reports.GET("/production-overview", reportHandler.ProductionOverview)
 		}
 
 		// 用户管理（仅管理员）

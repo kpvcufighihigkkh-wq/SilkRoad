@@ -81,6 +81,48 @@ export interface ReportQuery {
   end?: string
 }
 
+// 看板一「生产概览」。
+//
+// 区间过滤在后端用 COALESCE(start_time, created_at)：
+// start_time 缺失时回退到行创建时刻，避免历史数据整批消失。
+export interface LotStatusStat {
+  status: string
+  lot_count: number
+  planned_quantity: number
+  actual_quantity: number
+}
+
+export interface ProductTypeStat {
+  product_type: string
+  lot_count: number
+  planned_quantity: number
+  actual_quantity: number
+}
+
+/** 分组键可空：未记录来源设备的批次归入 null 组，前端不得丢弃。 */
+export interface EdgeLotStat {
+  edge_id: string | null
+  lot_count: number
+  planned_quantity: number
+  actual_quantity: number
+}
+
+export interface ProductionTotals {
+  lot_count: number
+  planned_quantity: number
+  actual_quantity: number
+  /** 完成率 = actual / planned，保留三位小数；planned 为 0 时为 0。 */
+  completion_rate: number
+}
+
+export interface ProductionOverview {
+  range: ReportRange
+  totals: ProductionTotals
+  by_status: LotStatusStat[]
+  by_product: ProductTypeStat[]
+  by_edge: EdgeLotStat[]
+}
+
 function toParams(query: ReportQuery & { top?: number }): Record<string, string> {
   const out: Record<string, string> = {}
   if (query.start) out.start = query.start
@@ -102,6 +144,14 @@ export async function fetchQualityDistribution(
 export async function fetchMachineOperator(query: ReportQuery): Promise<MachineOperator> {
   const { data } = await http.get<ApiResponse<MachineOperator>>(
     '/v1/reports/machine-operator',
+    { params: toParams(query) },
+  )
+  return data.data
+}
+
+export async function fetchProductionOverview(query: ReportQuery): Promise<ProductionOverview> {
+  const { data } = await http.get<ApiResponse<ProductionOverview>>(
+    '/v1/reports/production-overview',
     { params: toParams(query) },
   )
   return data.data

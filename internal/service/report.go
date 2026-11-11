@@ -13,6 +13,8 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
 )
 
 // defectScanCap 缺陷原因分组在 SQL 层的最大取数。
@@ -392,4 +394,204 @@ func (s *ReportService) QualityDistribution(ctx context.Context, start, end time
 		ByGrade:    byGrade,
 		TopDefects: defects,
 	}, nil
+}
+
+// LotStatusStat 按批次状态汇总的一行。
+type LotStatusStat struct {
+	Status          string `json:"status"`
+	LotCount        int    `json:"lot_count"`
+	PlannedQuantity int    `json:"planned_quantity"`
+	ActualQuantity  int    `json:"actual_quantity"`
+}
+
+// ProductTypeStat 按产品类型汇总的一行。
+type ProductTypeStat struct {
+	ProductType     string `json:"product_type"`
+	LotCount        int    `json:"lot_count"`
+	PlannedQuantity int    `json:"planned_quantity"`
+	ActualQuantity  int    `json:"actual_quantity"`
+}
+
+// EdgeLotStat 按来源设备汇总的一行。
+//
+// EdgeID 用指针且不加 omitempty，语义同 OperatorStat：未记录来源的批次
+// （早期 seed 数据、或 Edge 尚未带上 edge_id）归入 null 组，
+// 前端需要能把这一组与「没有这一组」区分开。
+type EdgeLotStat struct {
+	EdgeID          *string `json:"edge_id"`
+	LotCount        int     `json:"lot_count"`
+	PlannedQuantity int     `json:"planned_quantity"`
+	ActualQuantity  int     `json:"actual_quantity"`
+}
+
+// ProductionTotals 区间内的产量总计。
+//
+// CompletionRate 是实际/计划的比值，0 表示 100%。计划量为 0 时无意义，
+// 此时返回 0 而不是除零。
+type ProductionTotals struct {
+	LotCount        int     `json:"lot_count"`
+	PlannedQuantity int     `json:"planned_quantity"`
+	ActualQuantity  int     `json:"actual_quantity"`
+	CompletionRate  float64 `json:"completion_rate"`
+}
+
+// ProductionOverviewResponse 看板一「生产概览」的响应体。
+type ProductionOverviewResponse struct {
+	Range     ReportRange       `json:"range"`
+	Totals    ProductionTotals  `json:"totals"`
+	ByStatus  []LotStatusStat   `json:"by_status"`
+	ByProduct []ProductTypeStat `json:"by_product"`
+	ByEdge    []EdgeLotStat     `json:"by_edge"`
+}
+
+// lotGroupRow 是批次分组聚合的扫描目标。
+//
+// 两个 SUM 必须用 ent.As 起不同别名：ent 扫描器把列名按 "(" 截断后
+// 小写匹配结构体字段名，两个未别名的 SUM 都会匹配到 "sum"，第二个
+// 会覆盖第一个（sql/scan.go: scanStruct）。
+type lotGroupRow struct {
+	Status      string        `json:"status"`
+	ProductType string        `json:"product_type"`
+	EdgeID      *uuid.UUID    `json:"edge_id"`
+	Count       int           `json:"count"`
+	SumPlanned  sql.NullInt64 `json:"sum_planned"`
+	SumActual   sql.NullInt64 `json:"sum_actual"`
+}
+
+// ProductionOverview 汇总区间内的批次产出：状态分布、计划/实际产量、
+// 完成率、按产品类型与按来源设备。
+//
+// 区间过滤用 COALESCE(start_time, created_at)：start_time 是真正的开工
+// 时刻，但历史数据（以及 Edge 侧补写开工时刻之前产生的批次）该列为空，
+// 直接按 start_time 过滤会让整批历史从看板上消失。
+//
+// 四个统计共用同一个区间谓词，逐条构造而非共享查询对象 —— ent 的
+// Query 带可变状态，复用会让几次聚合的 Limit/OrderBy 相互污染。
+func (s *ReportService) ProductionOverview(ctx context.Context, start, end time.Time) (*ProductionOverviewResponse, error) {
+	inRange := func() predicate.Lot {
+		return func(sel *entsql.Selector) {
+			col := "COALESCE(" + sel.C(lot.FieldStartTime) + ", " + sel.C(lot.FieldCreatedAt) + ")"
+			sel.Where(entsql.P(func(b *entsql.Builder) {
+				b.Ident(col).WriteOp(entsql.OpGTE).Arg(start)
+			}))
+			sel.Where(entsql.P(func(b *entsql.Builder) {
+				b.Ident(col).WriteOp(entsql.OpLT).Arg(end)
+			}))
+		}
+	}
+
+	aggregate := func(groupBy string, v any) error {
+		return s.client.Lot.Query().Where(inRange()).
+			GroupBy(groupBy).
+			Aggregate(
+				ent.Count(),
+				ent.As(ent.Sum(lot.FieldPlannedQuantity), "sum_planned"),
+				ent.As(ent.Sum(lot.FieldActualQuantity), "sum_actual"),
+			).
+			Scan(ctx, v)
+	}
+
+	var statusRows []lotGroupRow
+	if err := aggregate(lot.FieldStatus, &statusRows); err != nil {
+		return nil, err
+	}
+	sort.Slice(statusRows, func(i, j int) bool {
+		if statusRows[i].Count != statusRows[j].Count {
+			return statusRows[i].Count > statusRows[j].Count
+		}
+		return statusRows[i].Status < statusRows[j].Status
+	})
+
+	var productRows []lotGroupRow
+	if err := aggregate(lot.FieldProductType, &productRows); err != nil {
+		return nil, err
+	}
+	sort.Slice(productRows, func(i, j int) bool {
+		if productRows[i].Count != productRows[j].Count {
+			return productRows[i].Count > productRows[j].Count
+		}
+		return productRows[i].ProductType < productRows[j].ProductType
+	})
+
+	var edgeRows []lotGroupRow
+	if err := aggregate(lot.FieldEdgeID, &edgeRows); err != nil {
+		return nil, err
+	}
+	sort.Slice(edgeRows, func(i, j int) bool {
+		if edgeRows[i].Count != edgeRows[j].Count {
+			return edgeRows[i].Count > edgeRows[j].Count
+		}
+		return ptrStringLess(uuidPtrToString(edgeRows[i].EdgeID), uuidPtrToString(edgeRows[j].EdgeID))
+	})
+
+	// 总计由状态分组累加得出：状态是全集的划分，四组计数之和即总数，
+	// 再跑一次不带 GroupBy 的聚合同样正确但多一次往返。
+	totals := ProductionTotals{}
+	byStatus := make([]LotStatusStat, 0, len(statusRows))
+	for _, r := range statusRows {
+		planned, actual := nullInt64ToInt(r.SumPlanned), nullInt64ToInt(r.SumActual)
+		byStatus = append(byStatus, LotStatusStat{
+			Status:          r.Status,
+			LotCount:        r.Count,
+			PlannedQuantity: planned,
+			ActualQuantity:  actual,
+		})
+		totals.LotCount += r.Count
+		totals.PlannedQuantity += planned
+		totals.ActualQuantity += actual
+	}
+	totals.CompletionRate = completionRate(totals.ActualQuantity, totals.PlannedQuantity)
+
+	byProduct := make([]ProductTypeStat, 0, len(productRows))
+	for _, r := range productRows {
+		byProduct = append(byProduct, ProductTypeStat{
+			ProductType:     r.ProductType,
+			LotCount:        r.Count,
+			PlannedQuantity: nullInt64ToInt(r.SumPlanned),
+			ActualQuantity:  nullInt64ToInt(r.SumActual),
+		})
+	}
+
+	byEdge := make([]EdgeLotStat, 0, len(edgeRows))
+	for _, r := range edgeRows {
+		byEdge = append(byEdge, EdgeLotStat{
+			EdgeID:          uuidPtrToString(r.EdgeID),
+			LotCount:        r.Count,
+			PlannedQuantity: nullInt64ToInt(r.SumPlanned),
+			ActualQuantity:  nullInt64ToInt(r.SumActual),
+		})
+	}
+
+	return &ProductionOverviewResponse{
+		Range: ReportRange{
+			Start: start.UTC().Format(time.RFC3339),
+			End:   end.UTC().Format(time.RFC3339),
+		},
+		Totals:    totals,
+		ByStatus:  byStatus,
+		ByProduct: byProduct,
+		ByEdge:    byEdge,
+	}, nil
+}
+
+// nullInt64ToInt 把 SUM 的 NULL 归一化为 0。
+//
+// SUM 在组内权重全为 NULL 时返回 NULL；批次的两列都有默认值，
+// 理论上不会为 NULL，但归一化让扫描目标与响应字段都不必携带可空语义。
+func nullInt64ToInt(v sql.NullInt64) int {
+	if !v.Valid {
+		return 0
+	}
+	return int(v.Int64)
+}
+
+// completionRate 计算完成率，保留三位小数。
+//
+// 计划量为 0 时返回 0：批次创建时 planned_quantity 有 Positive 约束，
+// 走到这里说明数据异常，返回 0 比返回 +Inf 或 NaN（JSON 无法编码）安全。
+func completionRate(actual, planned int) float64 {
+	if planned <= 0 {
+		return 0
+	}
+	return math.Round(float64(actual)/float64(planned)*1000) / 1000
 }
