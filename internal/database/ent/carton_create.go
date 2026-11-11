@@ -70,6 +70,34 @@ func (_c *CartonCreate) SetNillableBobbinCount(v *int) *CartonCreate {
 	return _c
 }
 
+// SetCapacity sets the "capacity" field.
+func (_c *CartonCreate) SetCapacity(v int) *CartonCreate {
+	_c.mutation.SetCapacity(v)
+	return _c
+}
+
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
+func (_c *CartonCreate) SetNillableCapacity(v *int) *CartonCreate {
+	if v != nil {
+		_c.SetCapacity(*v)
+	}
+	return _c
+}
+
+// SetPalletID sets the "pallet_id" field.
+func (_c *CartonCreate) SetPalletID(v uuid.UUID) *CartonCreate {
+	_c.mutation.SetPalletID(v)
+	return _c
+}
+
+// SetNillablePalletID sets the "pallet_id" field if the given value is not nil.
+func (_c *CartonCreate) SetNillablePalletID(v *uuid.UUID) *CartonCreate {
+	if v != nil {
+		_c.SetPalletID(*v)
+	}
+	return _c
+}
+
 // SetTotalWeight sets the "total_weight" field.
 func (_c *CartonCreate) SetTotalWeight(v float64) *CartonCreate {
 	_c.mutation.SetTotalWeight(v)
@@ -278,6 +306,10 @@ func (_c *CartonCreate) defaults() {
 		v := carton.DefaultBobbinCount
 		_c.mutation.SetBobbinCount(v)
 	}
+	if _, ok := _c.mutation.Capacity(); !ok {
+		v := carton.DefaultCapacity
+		_c.mutation.SetCapacity(v)
+	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := carton.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -324,6 +356,14 @@ func (_c *CartonCreate) check() error {
 	if v, ok := _c.mutation.BobbinCount(); ok {
 		if err := carton.BobbinCountValidator(v); err != nil {
 			return &ValidationError{Name: "bobbin_count", err: fmt.Errorf(`ent: validator failed for field "Carton.bobbin_count": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Capacity(); !ok {
+		return &ValidationError{Name: "capacity", err: errors.New(`ent: missing required field "Carton.capacity"`)}
+	}
+	if v, ok := _c.mutation.Capacity(); ok {
+		if err := carton.CapacityValidator(v); err != nil {
+			return &ValidationError{Name: "capacity", err: fmt.Errorf(`ent: validator failed for field "Carton.capacity": %w`, err)}
 		}
 	}
 	if v, ok := _c.mutation.TotalWeight(); ok {
@@ -414,6 +454,14 @@ func (_c *CartonCreate) createSpec() (*Carton, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.BobbinCount(); ok {
 		_spec.SetField(carton.FieldBobbinCount, field.TypeInt, value)
 		_node.BobbinCount = value
+	}
+	if value, ok := _c.mutation.Capacity(); ok {
+		_spec.SetField(carton.FieldCapacity, field.TypeInt, value)
+		_node.Capacity = value
+	}
+	if value, ok := _c.mutation.PalletID(); ok {
+		_spec.SetField(carton.FieldPalletID, field.TypeUUID, value)
+		_node.PalletID = value
 	}
 	if value, ok := _c.mutation.TotalWeight(); ok {
 		_spec.SetField(carton.FieldTotalWeight, field.TypeFloat64, value)

@@ -19,8 +19,10 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbin"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/module"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/pallet"
 	"github.com/yourusername/igh-silkroad/internal/sync/models"
 )
@@ -40,7 +42,7 @@ const (
 // 但历史上（或人工修补后）已存在的 pending 行仍需被正确标记 ——
 // 尤其是 markExhausted 要把重试超限的行翻成 failed，否则它们会
 // 永远停留在 pending 且不被采集，成为不可见的积压。
-var markableTables = []string{"lots", "doffings", "barrels", "pallets", "bobbins", "bobbin_grades"}
+var markableTables = []string{"lots", "doffings", "barrels", "pallets", "cartons", "modules", "bobbins", "bobbin_grades"}
 
 // uploadableEntity 一个可上传实体：表名与采集函数
 type uploadableEntity struct {
@@ -90,15 +92,19 @@ func NewUploader(client *ent.Client, edgeID, centerURL, token string) *Uploader 
 // 重新加入的条件（两者都必须满足）：
 //   - doffings：Center 的 handleCreate 已增加 "doffings" 分支 —— 已满足，故已加入
 //   - bobbin_grades：Center 的 handleCreate 已增加 "bobbin_grades" 分支 —— 已满足，故已加入
-//   - barrels：Center 的 handleCreate 增加 "barrels" 分支 —— 仍未满足
-//
-// barrels 仍不得加回本列表。
+//   - barrels：Center 的 handleCreate 已增加 "barrels" 分支 —— 已满足，故已加入
 func (u *Uploader) collectors() []uploadableEntity {
 	return []uploadableEntity{
 		{table: "lots", collect: u.collectLots},
 		{table: "doffings", collect: u.collectDoffings}, // Center 已实现接收
+		// 桶先于丝锭：bobbin 载荷里的 barrel_number 依赖桶已到达 Center。
+		{table: "barrels", collect: u.collectBarrels},
 		// 托盘先于丝锭：bobbin 载荷里的 pallet_code 依赖托盘已到达 Center。
 		{table: "pallets", collect: u.collectPallets},
+		// 纸箱先于丝锭：bobbin 载荷里的 carton_number 依赖纸箱已到达 Center。
+		{table: "cartons", collect: u.collectCartons},
+		// 吊车引用两个桶，故排在 barrels 之后。
+		{table: "modules", collect: u.collectModules},
 		{table: "bobbins", collect: u.BobbinQuery},
 		// 放在 bobbins 之后：bobbin_grades.bobbin_id 引用丝饼，父先子后。
 		{table: "bobbin_grades", collect: u.collectBobbinGrades},
@@ -374,6 +380,57 @@ func (u *Uploader) palletCodesFor(ctx context.Context, ids []uuid.UUID) (map[uui
 	return out, nil
 }
 
+// barrelNumbersFor 批量查桶编号。语义与 palletCodesFor 一致：
+// 两端主键不同，Center 只能按业务编号解引用。查不到的返回空串。
+func (u *Uploader) barrelNumbersFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	uniq := make(map[uuid.UUID]struct{}, len(ids))
+	list := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		list = append(list, id)
+	}
+	out := make(map[uuid.UUID]string, len(list))
+	if len(list) == 0 {
+		return out, nil
+	}
+	rows, err := u.client.Barrel.Query().Where(barrel.IDIn(list...)).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query parent barrels: %w", err)
+	}
+	for _, r := range rows {
+		out[r.ID] = r.BarrelNumber
+	}
+	return out, nil
+}
+
+// cartonNumbersFor 批量查纸箱编号。语义与 palletCodesFor 一致。
+func (u *Uploader) cartonNumbersFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
+	uniq := make(map[uuid.UUID]struct{}, len(ids))
+	list := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := uniq[id]; ok {
+			continue
+		}
+		uniq[id] = struct{}{}
+		list = append(list, id)
+	}
+	out := make(map[uuid.UUID]string, len(list))
+	if len(list) == 0 {
+		return out, nil
+	}
+	rows, err := u.client.Carton.Query().Where(carton.IDIn(list...)).All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query parent cartons: %w", err)
+	}
+	for _, r := range rows {
+		out[r.ID] = r.CartonNumber
+	}
+	return out, nil
+}
+
 func (u *Uploader) bobbinNumbersFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]string, error) {
 	uniq := make(map[uuid.UUID]struct{}, len(ids))
 	list := make([]uuid.UUID, 0, len(ids))
@@ -417,6 +474,22 @@ func (u *Uploader) collectBarrels(ctx context.Context, limit int) ([]models.Uplo
 	}
 
 	out := make([]models.UploadEntry, 0, len(rows))
+
+	// Center 按 lot_number 解引用父批次，不采信 Edge 本地 UUID ——
+	// 与 collectPallets 同理，本批涉及的批次一次查完。
+	lotIDs := make([]uuid.UUID, 0, len(rows))
+	seenLot := make(map[uuid.UUID]struct{}, len(rows))
+	for _, r := range rows {
+		if _, ok := seenLot[r.LotID]; !ok {
+			seenLot[r.LotID] = struct{}{}
+			lotIDs = append(lotIDs, r.LotID)
+		}
+	}
+	lotNumbers, err := u.lotNumbersFor(ctx, lotIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, r := range rows {
 		out = append(out, models.UploadEntry{
 			Table:     "barrels",
@@ -426,6 +499,7 @@ func (u *Uploader) collectBarrels(ctx context.Context, limit int) ([]models.Uplo
 				"id":            r.ID.String(),
 				"barrel_number": r.BarrelNumber,
 				"lot_id":        r.LotID.String(),
+				"lot_number":    lotNumbers[r.LotID],
 				"capacity":      r.Capacity,
 				"current_count": r.CurrentCount,
 				"status":        string(r.Status),
@@ -514,6 +588,149 @@ func (u *Uploader) collectPallets(ctx context.Context, limit int) ([]models.Uplo
 	return out, nil
 }
 
+// collectCartons 查询待同步纸箱。
+//
+// 必须在 bobbins 之前上传：bobbin 载荷里的 carton_number 是解引用依据。
+func (u *Uploader) collectCartons(ctx context.Context, limit int) ([]models.UploadEntry, error) {
+	rows, err := u.client.Carton.Query().
+		Where(
+			carton.SyncStatusEQ(carton.SyncStatusPending),
+			carton.SyncRetryCountLT(maxRetryCount),
+		).
+		Order(ent.Asc(carton.FieldCreatedAt)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query cartons: %w", err)
+	}
+
+	// 批次编号供 Center 解引用；纸箱的 lot_id 是可空的，跳过零值。
+	lotIDs := make([]uuid.UUID, 0, len(rows))
+	seenLot := make(map[uuid.UUID]struct{}, len(rows))
+	for _, r := range rows {
+		if r.LotID == uuid.Nil {
+			continue
+		}
+		if _, ok := seenLot[r.LotID]; ok {
+			continue
+		}
+		seenLot[r.LotID] = struct{}{}
+		lotIDs = append(lotIDs, r.LotID)
+	}
+	lotNumbers, err := u.lotNumbersFor(ctx, lotIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]models.UploadEntry, 0, len(rows))
+	for _, r := range rows {
+		data := map[string]interface{}{
+			"id":            r.ID.String(),
+			"carton_number": r.CartonNumber,
+			"bobbin_count":  r.BobbinCount,
+			"capacity":      r.Capacity,
+			"status":        string(r.Status),
+			"label_printed": r.LabelPrinted,
+		}
+		if r.LotID != uuid.Nil {
+			data["lot_id"] = r.LotID.String()
+			data["lot_number"] = lotNumbers[r.LotID]
+		}
+		// 可选字段只在有值时才进载荷：Center 端的 getXxxPtr 是「键存在即取指针」，
+		// 键在而值为零会被写成零值而非 NULL。
+		if r.TotalWeight != 0 {
+			data["total_weight"] = r.TotalWeight
+		}
+		if !r.PrintedAt.IsZero() {
+			data["printed_at"] = r.PrintedAt
+		}
+		if !r.PackedAt.IsZero() {
+			data["packed_at"] = r.PackedAt
+		}
+
+		out = append(out, models.UploadEntry{
+			Table:     "cartons",
+			Operation: "create",
+			ID:        r.ID,
+			Data:      data,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+
+	return out, nil
+}
+
+// collectModules 查询待同步吊车。
+//
+// 吊车引用两个桶，故排在 barrels 之后。桶按业务编号解引用（barrel1_number /
+// barrel2_number）：两端主键不同，Center 不采信 UUID。
+func (u *Uploader) collectModules(ctx context.Context, limit int) ([]models.UploadEntry, error) {
+	rows, err := u.client.Module.Query().
+		Where(
+			module.SyncStatusEQ(module.SyncStatusPending),
+			module.SyncRetryCountLT(maxRetryCount),
+		).
+		Order(ent.Asc(module.FieldCreatedAt)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("query modules: %w", err)
+	}
+
+	barrelIDs := make([]uuid.UUID, 0, len(rows)*2)
+	seen := make(map[uuid.UUID]struct{}, len(rows)*2)
+	for _, r := range rows {
+		for _, id := range []uuid.UUID{r.Barrel1ID, r.Barrel2ID} {
+			if id == uuid.Nil {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			barrelIDs = append(barrelIDs, id)
+		}
+	}
+	barrelNumbers, err := u.barrelNumbersFor(ctx, barrelIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]models.UploadEntry, 0, len(rows))
+	for _, r := range rows {
+		data := map[string]interface{}{
+			"id":               r.ID.String(),
+			"module_number":    r.ModuleNumber,
+			"status":           string(r.Status),
+			"rfid":             r.Rfid,
+			"current_location": r.CurrentLocation,
+		}
+		// 挂位为空时不带该键，Center 保留 NULL。
+		if r.Barrel1ID != uuid.Nil {
+			data["barrel1_id"] = r.Barrel1ID.String()
+			if number, ok := barrelNumbers[r.Barrel1ID]; ok && number != "" {
+				data["barrel1_number"] = number
+			}
+		}
+		if r.Barrel2ID != uuid.Nil {
+			data["barrel2_id"] = r.Barrel2ID.String()
+			if number, ok := barrelNumbers[r.Barrel2ID]; ok && number != "" {
+				data["barrel2_number"] = number
+			}
+		}
+
+		out = append(out, models.UploadEntry{
+			Table:     "modules",
+			Operation: "create",
+			ID:        r.ID,
+			Data:      data,
+			CreatedAt: r.CreatedAt,
+		})
+	}
+
+	return out, nil
+}
+
 // BobbinQuery 查询待同步丝饼（独立方法便于测试与复用）
 func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadEntry, error) {
 	rows, err := u.client.Bobbin.Query().
@@ -563,6 +780,42 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 		return nil, err
 	}
 
+	// 已装桶的丝锭同理：Center 按 barrel_number 解引用。
+	barrelIDs := make([]uuid.UUID, 0, len(rows))
+	seenBarrel := make(map[uuid.UUID]struct{}, len(rows))
+	for _, r := range rows {
+		if r.BarrelID == uuid.Nil {
+			continue
+		}
+		if _, ok := seenBarrel[r.BarrelID]; ok {
+			continue
+		}
+		seenBarrel[r.BarrelID] = struct{}{}
+		barrelIDs = append(barrelIDs, r.BarrelID)
+	}
+	barrelNumbers, err := u.barrelNumbersFor(ctx, barrelIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// 已装箱的丝锭同理：Center 按 carton_number 解引用。
+	cartonIDs := make([]uuid.UUID, 0, len(rows))
+	seenCarton := make(map[uuid.UUID]struct{}, len(rows))
+	for _, r := range rows {
+		if r.CartonID == uuid.Nil {
+			continue
+		}
+		if _, ok := seenCarton[r.CartonID]; ok {
+			continue
+		}
+		seenCarton[r.CartonID] = struct{}{}
+		cartonIDs = append(cartonIDs, r.CartonID)
+	}
+	cartonNumbers, err := u.cartonNumbersFor(ctx, cartonIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]models.UploadEntry, 0, len(rows))
 	for _, r := range rows {
 		// 父批次查不到时为空串，仍照常上传：Center 解引用时会拒绝该条
@@ -596,9 +849,20 @@ func (u *Uploader) BobbinQuery(ctx context.Context, limit int) ([]models.UploadE
 		}
 		if r.BarrelID != uuid.Nil {
 			data["barrel_id"] = r.BarrelID.String()
+			// 与 pallet_code 同理：Center 只按业务编号解引用，barrel_id 是
+			// Edge 本地 UUID。载荷里两个键都带，Center 只认编号。
+			if number, ok := barrelNumbers[r.BarrelID]; ok && number != "" {
+				data["barrel_number"] = number
+			}
 		}
 		if r.BarrelPosition != 0 {
 			data["barrel_position"] = r.BarrelPosition
+		}
+		if r.CartonID != uuid.Nil {
+			data["carton_id"] = r.CartonID.String()
+			if number, ok := cartonNumbers[r.CartonID]; ok && number != "" {
+				data["carton_number"] = number
+			}
 		}
 		// pallet_id 是 Edge 本地 UUID，Center 不采信 —— 与 lot_id 同理，
 		// 跨端主键不保证一致。因此额外带 pallet_code 供 Center 解引用；
@@ -949,6 +1213,18 @@ func (u *Uploader) markSynced(ctx context.Context, byTable map[string][]uuid.UUI
 				SetSyncStatus(pallet.SyncStatusSynced).
 				SetSyncedAt(now).
 				Exec(ctx)
+		case "cartons":
+			return u.client.Carton.Update().
+				Where(carton.IDIn(ids...)).
+				SetSyncStatus(carton.SyncStatusSynced).
+				SetSyncedAt(now).
+				Exec(ctx)
+		case "modules":
+			return u.client.Module.Update().
+				Where(module.IDIn(ids...)).
+				SetSyncStatus(module.SyncStatusSynced).
+				SetSyncedAt(now).
+				Exec(ctx)
 		case "bobbins":
 			return u.client.Bobbin.Update().
 				Where(bobbin.IDIn(ids...)).
@@ -981,6 +1257,10 @@ func (u *Uploader) markRetried(ctx context.Context, byTable map[string][]uuid.UU
 			return u.client.Barrel.Update().Where(barrel.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
 		case "pallets":
 			return u.client.Pallet.Update().Where(pallet.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
+		case "cartons":
+			return u.client.Carton.Update().Where(carton.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
+		case "modules":
+			return u.client.Module.Update().Where(module.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
 		case "bobbins":
 			return u.client.Bobbin.Update().Where(bobbin.IDIn(ids...)).AddSyncRetryCount(1).Exec(ctx)
 		case "bobbin_grades":
@@ -1039,6 +1319,26 @@ func (u *Uploader) markExhausted(ctx context.Context) error {
 			pallet.SyncStatusEQ(pallet.SyncStatusPending),
 		).
 		SetSyncStatus(pallet.SyncStatusFailed).
+		Save(ctx); err != nil {
+		return err
+	}
+
+	if _, err := u.client.Carton.Update().
+		Where(
+			carton.SyncRetryCountGTE(maxRetryCount),
+			carton.SyncStatusEQ(carton.SyncStatusPending),
+		).
+		SetSyncStatus(carton.SyncStatusFailed).
+		Save(ctx); err != nil {
+		return err
+	}
+
+	if _, err := u.client.Module.Update().
+		Where(
+			module.SyncRetryCountGTE(maxRetryCount),
+			module.SyncStatusEQ(module.SyncStatusPending),
+		).
+		SetSyncStatus(module.SyncStatusFailed).
 		Save(ctx); err != nil {
 		return err
 	}

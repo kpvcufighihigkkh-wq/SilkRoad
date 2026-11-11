@@ -76,6 +76,16 @@ func BobbinCount(v int) predicate.Carton {
 	return predicate.Carton(sql.FieldEQ(FieldBobbinCount, v))
 }
 
+// Capacity applies equality check predicate on the "capacity" field. It's identical to CapacityEQ.
+func Capacity(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldCapacity, v))
+}
+
+// PalletID applies equality check predicate on the "pallet_id" field. It's identical to PalletIDEQ.
+func PalletID(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldPalletID, v))
+}
+
 // TotalWeight applies equality check predicate on the "total_weight" field. It's identical to TotalWeightEQ.
 func TotalWeight(v float64) predicate.Carton {
 	return predicate.Carton(sql.FieldEQ(FieldTotalWeight, v))
@@ -319,6 +329,96 @@ func BobbinCountLT(v int) predicate.Carton {
 // BobbinCountLTE applies the LTE predicate on the "bobbin_count" field.
 func BobbinCountLTE(v int) predicate.Carton {
 	return predicate.Carton(sql.FieldLTE(FieldBobbinCount, v))
+}
+
+// CapacityEQ applies the EQ predicate on the "capacity" field.
+func CapacityEQ(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldCapacity, v))
+}
+
+// CapacityNEQ applies the NEQ predicate on the "capacity" field.
+func CapacityNEQ(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldNEQ(FieldCapacity, v))
+}
+
+// CapacityIn applies the In predicate on the "capacity" field.
+func CapacityIn(vs ...int) predicate.Carton {
+	return predicate.Carton(sql.FieldIn(FieldCapacity, vs...))
+}
+
+// CapacityNotIn applies the NotIn predicate on the "capacity" field.
+func CapacityNotIn(vs ...int) predicate.Carton {
+	return predicate.Carton(sql.FieldNotIn(FieldCapacity, vs...))
+}
+
+// CapacityGT applies the GT predicate on the "capacity" field.
+func CapacityGT(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldGT(FieldCapacity, v))
+}
+
+// CapacityGTE applies the GTE predicate on the "capacity" field.
+func CapacityGTE(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldGTE(FieldCapacity, v))
+}
+
+// CapacityLT applies the LT predicate on the "capacity" field.
+func CapacityLT(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldLT(FieldCapacity, v))
+}
+
+// CapacityLTE applies the LTE predicate on the "capacity" field.
+func CapacityLTE(v int) predicate.Carton {
+	return predicate.Carton(sql.FieldLTE(FieldCapacity, v))
+}
+
+// PalletIDEQ applies the EQ predicate on the "pallet_id" field.
+func PalletIDEQ(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldEQ(FieldPalletID, v))
+}
+
+// PalletIDNEQ applies the NEQ predicate on the "pallet_id" field.
+func PalletIDNEQ(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldNEQ(FieldPalletID, v))
+}
+
+// PalletIDIn applies the In predicate on the "pallet_id" field.
+func PalletIDIn(vs ...uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldIn(FieldPalletID, vs...))
+}
+
+// PalletIDNotIn applies the NotIn predicate on the "pallet_id" field.
+func PalletIDNotIn(vs ...uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldNotIn(FieldPalletID, vs...))
+}
+
+// PalletIDGT applies the GT predicate on the "pallet_id" field.
+func PalletIDGT(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldGT(FieldPalletID, v))
+}
+
+// PalletIDGTE applies the GTE predicate on the "pallet_id" field.
+func PalletIDGTE(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldGTE(FieldPalletID, v))
+}
+
+// PalletIDLT applies the LT predicate on the "pallet_id" field.
+func PalletIDLT(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldLT(FieldPalletID, v))
+}
+
+// PalletIDLTE applies the LTE predicate on the "pallet_id" field.
+func PalletIDLTE(v uuid.UUID) predicate.Carton {
+	return predicate.Carton(sql.FieldLTE(FieldPalletID, v))
+}
+
+// PalletIDIsNil applies the IsNil predicate on the "pallet_id" field.
+func PalletIDIsNil() predicate.Carton {
+	return predicate.Carton(sql.FieldIsNull(FieldPalletID))
+}
+
+// PalletIDNotNil applies the NotNil predicate on the "pallet_id" field.
+func PalletIDNotNil() predicate.Carton {
+	return predicate.Carton(sql.FieldNotNull(FieldPalletID))
 }
 
 // TotalWeightEQ applies the EQ predicate on the "total_weight" field.

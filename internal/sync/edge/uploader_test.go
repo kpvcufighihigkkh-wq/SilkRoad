@@ -169,23 +169,18 @@ func TestUploader_CollectPending_OrderedByDependency(t *testing.T) {
 	}
 }
 
-// 未接入 Center 的表不得被采集。
+// 采集顺序必须满足外键依赖：父表先于子表。
 //
-// Center 的 handleCreate 支持 lots、doffings 与 bobbins，其余表（当前仅 barrels）
-// 一律返回 "unknown table" 而被拒绝。若把 barrels 采集进来，它会被反复拒绝、
-// 累加重试次数，最终被 markExhausted 标记为 failed —— 而本仓库没有回收路径。
-// 不采集则保持 pending/retry_count=0，是「延后」而非「丢失」，等 Center 支持后
-// 仍能同步。
-//
-// doffings 已不在未支持之列：Task 6 为其补上了 handleCreate 分支与 upsertDoffing，
-// 故本用例的期望从 1 条（仅 lots）改为 2 条（lots + doffings）。
-func TestUploader_CollectPending_SkipsUnsupportedTables(t *testing.T) {
+// 这是本用例的原始意图（「未接入 Center 的表不得被采集」）在全部表接入后的
+// 形态：barrels/pallets/cartons 都必须排在 bobbins 之前，否则丝锭在 Center
+// 侧按编号解引用父行时查不到，整条记录计重试。
+func TestUploader_CollectPending_OrdersParentsBeforeChildren(t *testing.T) {
 	client := setupEdgeClient(t)
 	ctx := context.Background()
 
 	record, err := client.Lot.Create().
-		SetLotNumber("LOT-UNSUPPORTED").
-		SetProductType("FDY").
+		SetLotNumber("LOT-ORDER-SYNC").
+		SetProductType("DTY").
 		SetPlannedQuantity(100).
 		Save(ctx)
 	if err != nil {
@@ -193,12 +188,17 @@ func TestUploader_CollectPending_SkipsUnsupportedTables(t *testing.T) {
 	}
 
 	if _, err := client.Barrel.Create().
-		SetBarrelNumber("BARREL-UNSUPPORTED").
+		SetBarrelNumber("BRL-ORDER-SYNC").
 		SetLotID(record.ID).
 		Save(ctx); err != nil {
 		t.Fatalf("failed creating barrel: %v", err)
 	}
-
+	if _, err := client.Carton.Create().
+		SetCartonNumber("CTN-ORDER-SYNC").
+		SetLotID(record.ID).
+		Save(ctx); err != nil {
+		t.Fatalf("failed creating carton: %v", err)
+	}
 	if _, err := client.Doffing.Create().
 		SetSpinningLineID(uuid.New()).
 		SetSpinningPosition(1).
@@ -213,16 +213,13 @@ func TestUploader_CollectPending_SkipsUnsupportedTables(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CollectPending failed: %v", err)
 	}
+	if len(entries) != 4 {
+		t.Fatalf("收集到 %d 条，want 4（lots + doffings + barrels + cartons 各一条）", len(entries))
+	}
 
-	// lot 与 doffing 应被采集，barrel 不应
-	if len(entries) != 2 {
-		t.Fatalf("收集到 %d 条，want 2（lots + doffings；barrels 尚未被 Center 支持）", len(entries))
-	}
+	// 只断言相对顺序：批次必须最先，条数由各采集器的表内顺序决定。
 	if entries[0].Table != "lots" {
-		t.Errorf("被采集的表 = %q, want %q", entries[0].Table, "lots")
-	}
-	if entries[1].Table != "doffings" {
-		t.Errorf("第二个被采集的表 = %q, want %q", entries[1].Table, "doffings")
+		t.Errorf("第一条应为 lots，实际 %q", entries[0].Table)
 	}
 }
 

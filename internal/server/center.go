@@ -231,6 +231,36 @@ func (s *CenterServer) registerRoutes() {
 			pallets.GET("/:id", palletHandler.GetPallet)
 		}
 
+		// 落纱桶（只读）：写接口在 Edge 侧，桶由落纱工位产生。
+		barrelService := service.NewBarrelService(s.client)
+		barrelHandler := centerv1.NewCenterBarrelHandler(barrelService)
+
+		barrels := authorized.Group("/barrels")
+		{
+			barrels.GET("", barrelHandler.ListBarrels)
+			barrels.GET("/:id", barrelHandler.GetBarrel)
+		}
+
+		// 纸箱（只读）：DTY 专属环节，写接口在 Edge 侧。
+		cartonService := service.NewCartonService(s.client)
+		cartonHandler := centerv1.NewCenterCartonHandler(cartonService)
+
+		cartons := authorized.Group("/cartons")
+		{
+			cartons.GET("", cartonHandler.ListCartons)
+			cartons.GET("/:id", cartonHandler.GetCarton)
+		}
+
+		// 吊车（只读）
+		moduleService := service.NewModuleService(s.client)
+		moduleHandler := centerv1.NewCenterModuleHandler(moduleService)
+
+		modules := authorized.Group("/modules")
+		{
+			modules.GET("", moduleHandler.ListModules)
+			modules.GET("/:id", moduleHandler.GetModule)
+		}
+
 		// 报表（全部已登录角色）
 		//
 		// 不挂 requireRole：spec 2026-10-12 §6.3 的权限矩阵把报表与

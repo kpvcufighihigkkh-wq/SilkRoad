@@ -234,26 +234,32 @@ func init() {
 	carton.DefaultBobbinCount = cartonDescBobbinCount.Default.(int)
 	// carton.BobbinCountValidator is a validator for the "bobbin_count" field. It is called by the builders before save.
 	carton.BobbinCountValidator = cartonDescBobbinCount.Validators[0].(func(int) error)
+	// cartonDescCapacity is the schema descriptor for capacity field.
+	cartonDescCapacity := cartonFields[5].Descriptor()
+	// carton.DefaultCapacity holds the default value on creation for the capacity field.
+	carton.DefaultCapacity = cartonDescCapacity.Default.(int)
+	// carton.CapacityValidator is a validator for the "capacity" field. It is called by the builders before save.
+	carton.CapacityValidator = cartonDescCapacity.Validators[0].(func(int) error)
 	// cartonDescTotalWeight is the schema descriptor for total_weight field.
-	cartonDescTotalWeight := cartonFields[5].Descriptor()
+	cartonDescTotalWeight := cartonFields[7].Descriptor()
 	// carton.TotalWeightValidator is a validator for the "total_weight" field. It is called by the builders before save.
 	carton.TotalWeightValidator = cartonDescTotalWeight.Validators[0].(func(float64) error)
 	// cartonDescLabelPrinted is the schema descriptor for label_printed field.
-	cartonDescLabelPrinted := cartonFields[7].Descriptor()
+	cartonDescLabelPrinted := cartonFields[9].Descriptor()
 	// carton.DefaultLabelPrinted holds the default value on creation for the label_printed field.
 	carton.DefaultLabelPrinted = cartonDescLabelPrinted.Default.(bool)
 	// cartonDescSyncRetryCount is the schema descriptor for sync_retry_count field.
-	cartonDescSyncRetryCount := cartonFields[12].Descriptor()
+	cartonDescSyncRetryCount := cartonFields[14].Descriptor()
 	// carton.DefaultSyncRetryCount holds the default value on creation for the sync_retry_count field.
 	carton.DefaultSyncRetryCount = cartonDescSyncRetryCount.Default.(int)
 	// carton.SyncRetryCountValidator is a validator for the "sync_retry_count" field. It is called by the builders before save.
 	carton.SyncRetryCountValidator = cartonDescSyncRetryCount.Validators[0].(func(int) error)
 	// cartonDescCreatedAt is the schema descriptor for created_at field.
-	cartonDescCreatedAt := cartonFields[13].Descriptor()
+	cartonDescCreatedAt := cartonFields[15].Descriptor()
 	// carton.DefaultCreatedAt holds the default value on creation for the created_at field.
 	carton.DefaultCreatedAt = cartonDescCreatedAt.Default.(func() time.Time)
 	// cartonDescUpdatedAt is the schema descriptor for updated_at field.
-	cartonDescUpdatedAt := cartonFields[14].Descriptor()
+	cartonDescUpdatedAt := cartonFields[16].Descriptor()
 	// carton.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	carton.DefaultUpdatedAt = cartonDescUpdatedAt.Default.(func() time.Time)
 	// carton.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

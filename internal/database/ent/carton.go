@@ -26,6 +26,10 @@ type Carton struct {
 	LotID uuid.UUID `json:"lot_id,omitempty"`
 	// 纸箱内丝锭数量
 	BobbinCount int `json:"bobbin_count,omitempty"`
+	// 纸箱容量（丝锭数上限）
+	Capacity int `json:"capacity,omitempty"`
+	// 所属托盘ID
+	PalletID uuid.UUID `json:"pallet_id,omitempty"`
 	// 纸箱总重量（kg）
 	TotalWeight float64 `json:"total_weight,omitempty"`
 	// 纸箱状态
@@ -79,13 +83,13 @@ func (*Carton) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case carton.FieldTotalWeight:
 			values[i] = new(sql.NullFloat64)
-		case carton.FieldBobbinCount, carton.FieldSyncRetryCount:
+		case carton.FieldBobbinCount, carton.FieldCapacity, carton.FieldSyncRetryCount:
 			values[i] = new(sql.NullInt64)
 		case carton.FieldCartonNumber, carton.FieldStatus, carton.FieldSyncStatus:
 			values[i] = new(sql.NullString)
 		case carton.FieldPrintedAt, carton.FieldPackedAt, carton.FieldSyncedAt, carton.FieldCreatedAt, carton.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case carton.FieldID, carton.FieldEdgeID, carton.FieldLotID:
+		case carton.FieldID, carton.FieldEdgeID, carton.FieldLotID, carton.FieldPalletID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -131,6 +135,18 @@ func (_m *Carton) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field bobbin_count", values[i])
 			} else if value.Valid {
 				_m.BobbinCount = int(value.Int64)
+			}
+		case carton.FieldCapacity:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field capacity", values[i])
+			} else if value.Valid {
+				_m.Capacity = int(value.Int64)
+			}
+		case carton.FieldPalletID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field pallet_id", values[i])
+			} else if value != nil {
+				_m.PalletID = *value
 			}
 		case carton.FieldTotalWeight:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -244,6 +260,12 @@ func (_m *Carton) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("bobbin_count=")
 	builder.WriteString(fmt.Sprintf("%v", _m.BobbinCount))
+	builder.WriteString(", ")
+	builder.WriteString("capacity=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Capacity))
+	builder.WriteString(", ")
+	builder.WriteString("pallet_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.PalletID))
 	builder.WriteString(", ")
 	builder.WriteString("total_weight=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TotalWeight))

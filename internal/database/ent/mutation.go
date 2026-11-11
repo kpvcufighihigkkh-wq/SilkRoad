@@ -4457,6 +4457,9 @@ type CartonMutation struct {
 	lot_id              *uuid.UUID
 	bobbin_count        *int
 	addbobbin_count     *int
+	capacity            *int
+	addcapacity         *int
+	pallet_id           *uuid.UUID
 	total_weight        *float64
 	addtotal_weight     *float64
 	status              *carton.Status
@@ -4770,6 +4773,111 @@ func (m *CartonMutation) AddedBobbinCount() (r int, exists bool) {
 func (m *CartonMutation) ResetBobbinCount() {
 	m.bobbin_count = nil
 	m.addbobbin_count = nil
+}
+
+// SetCapacity sets the "capacity" field.
+func (m *CartonMutation) SetCapacity(i int) {
+	m.capacity = &i
+	m.addcapacity = nil
+}
+
+// Capacity returns the value of the "capacity" field in the mutation.
+func (m *CartonMutation) Capacity() (r int, exists bool) {
+	v := m.capacity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCapacity returns the old "capacity" field's value of the Carton entity.
+// If the Carton object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CartonMutation) OldCapacity(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCapacity is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCapacity requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCapacity: %w", err)
+	}
+	return oldValue.Capacity, nil
+}
+
+// AddCapacity adds i to the "capacity" field.
+func (m *CartonMutation) AddCapacity(i int) {
+	if m.addcapacity != nil {
+		*m.addcapacity += i
+	} else {
+		m.addcapacity = &i
+	}
+}
+
+// AddedCapacity returns the value that was added to the "capacity" field in this mutation.
+func (m *CartonMutation) AddedCapacity() (r int, exists bool) {
+	v := m.addcapacity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCapacity resets all changes to the "capacity" field.
+func (m *CartonMutation) ResetCapacity() {
+	m.capacity = nil
+	m.addcapacity = nil
+}
+
+// SetPalletID sets the "pallet_id" field.
+func (m *CartonMutation) SetPalletID(u uuid.UUID) {
+	m.pallet_id = &u
+}
+
+// PalletID returns the value of the "pallet_id" field in the mutation.
+func (m *CartonMutation) PalletID() (r uuid.UUID, exists bool) {
+	v := m.pallet_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPalletID returns the old "pallet_id" field's value of the Carton entity.
+// If the Carton object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CartonMutation) OldPalletID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPalletID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPalletID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPalletID: %w", err)
+	}
+	return oldValue.PalletID, nil
+}
+
+// ClearPalletID clears the value of the "pallet_id" field.
+func (m *CartonMutation) ClearPalletID() {
+	m.pallet_id = nil
+	m.clearedFields[carton.FieldPalletID] = struct{}{}
+}
+
+// PalletIDCleared returns if the "pallet_id" field was cleared in this mutation.
+func (m *CartonMutation) PalletIDCleared() bool {
+	_, ok := m.clearedFields[carton.FieldPalletID]
+	return ok
+}
+
+// ResetPalletID resets all changes to the "pallet_id" field.
+func (m *CartonMutation) ResetPalletID() {
+	m.pallet_id = nil
+	delete(m.clearedFields, carton.FieldPalletID)
 }
 
 // SetTotalWeight sets the "total_weight" field.
@@ -5313,7 +5421,7 @@ func (m *CartonMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CartonMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 16)
 	if m.carton_number != nil {
 		fields = append(fields, carton.FieldCartonNumber)
 	}
@@ -5325,6 +5433,12 @@ func (m *CartonMutation) Fields() []string {
 	}
 	if m.bobbin_count != nil {
 		fields = append(fields, carton.FieldBobbinCount)
+	}
+	if m.capacity != nil {
+		fields = append(fields, carton.FieldCapacity)
+	}
+	if m.pallet_id != nil {
+		fields = append(fields, carton.FieldPalletID)
 	}
 	if m.total_weight != nil {
 		fields = append(fields, carton.FieldTotalWeight)
@@ -5372,6 +5486,10 @@ func (m *CartonMutation) Field(name string) (ent.Value, bool) {
 		return m.LotID()
 	case carton.FieldBobbinCount:
 		return m.BobbinCount()
+	case carton.FieldCapacity:
+		return m.Capacity()
+	case carton.FieldPalletID:
+		return m.PalletID()
 	case carton.FieldTotalWeight:
 		return m.TotalWeight()
 	case carton.FieldStatus:
@@ -5409,6 +5527,10 @@ func (m *CartonMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldLotID(ctx)
 	case carton.FieldBobbinCount:
 		return m.OldBobbinCount(ctx)
+	case carton.FieldCapacity:
+		return m.OldCapacity(ctx)
+	case carton.FieldPalletID:
+		return m.OldPalletID(ctx)
 	case carton.FieldTotalWeight:
 		return m.OldTotalWeight(ctx)
 	case carton.FieldStatus:
@@ -5465,6 +5587,20 @@ func (m *CartonMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBobbinCount(v)
+		return nil
+	case carton.FieldCapacity:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCapacity(v)
+		return nil
+	case carton.FieldPalletID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPalletID(v)
 		return nil
 	case carton.FieldTotalWeight:
 		v, ok := value.(float64)
@@ -5547,6 +5683,9 @@ func (m *CartonMutation) AddedFields() []string {
 	if m.addbobbin_count != nil {
 		fields = append(fields, carton.FieldBobbinCount)
 	}
+	if m.addcapacity != nil {
+		fields = append(fields, carton.FieldCapacity)
+	}
 	if m.addtotal_weight != nil {
 		fields = append(fields, carton.FieldTotalWeight)
 	}
@@ -5563,6 +5702,8 @@ func (m *CartonMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case carton.FieldBobbinCount:
 		return m.AddedBobbinCount()
+	case carton.FieldCapacity:
+		return m.AddedCapacity()
 	case carton.FieldTotalWeight:
 		return m.AddedTotalWeight()
 	case carton.FieldSyncRetryCount:
@@ -5582,6 +5723,13 @@ func (m *CartonMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddBobbinCount(v)
+		return nil
+	case carton.FieldCapacity:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCapacity(v)
 		return nil
 	case carton.FieldTotalWeight:
 		v, ok := value.(float64)
@@ -5610,6 +5758,9 @@ func (m *CartonMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(carton.FieldLotID) {
 		fields = append(fields, carton.FieldLotID)
+	}
+	if m.FieldCleared(carton.FieldPalletID) {
+		fields = append(fields, carton.FieldPalletID)
 	}
 	if m.FieldCleared(carton.FieldTotalWeight) {
 		fields = append(fields, carton.FieldTotalWeight)
@@ -5643,6 +5794,9 @@ func (m *CartonMutation) ClearField(name string) error {
 	case carton.FieldLotID:
 		m.ClearLotID()
 		return nil
+	case carton.FieldPalletID:
+		m.ClearPalletID()
+		return nil
 	case carton.FieldTotalWeight:
 		m.ClearTotalWeight()
 		return nil
@@ -5674,6 +5828,12 @@ func (m *CartonMutation) ResetField(name string) error {
 		return nil
 	case carton.FieldBobbinCount:
 		m.ResetBobbinCount()
+		return nil
+	case carton.FieldCapacity:
+		m.ResetCapacity()
+		return nil
+	case carton.FieldPalletID:
+		m.ResetPalletID()
 		return nil
 	case carton.FieldTotalWeight:
 		m.ResetTotalWeight()

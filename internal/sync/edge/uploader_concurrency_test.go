@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/barrel"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/carton"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/sync/edge"
 )
@@ -170,31 +170,35 @@ func TestUploader_Upload_AuthFailureDoesNotCountRetry(t *testing.T) {
 	}
 }
 
-// 未被采集的表（barrels/doffings）不得因采集而改变同步状态。
+// 采集到的表必须被标记，不能有表被采集却永远停在 pending。
 //
-// 这是 item 4 的直接断言：不采集 = 保持 pending/retry_count=0，
-// 即「延后」而非「被拒绝后走向 failed」。
-func TestUploader_UncollectedTablesStayPending(t *testing.T) {
+// 原用例的前提是「存在未被采集的表」（当时是 barrels/cartons），全部表接入后
+// 该前提不复存在。这里改为正向断言：Upload 成功后，被采集的纸箱必须进入
+// synced —— 若 markSynced 的 switch 缺分支，它会停在 pending 并被反复重传。
+//
+// 批次与落纱同样被采集，这里只钉纸箱：它是本用例新增的那张表。
+func TestUploader_CollectedTablesGetMarked(t *testing.T) {
 	client := setupEdgeClient(t)
 	ctx := context.Background()
 
 	record, err := client.Lot.Create().
 		SetLotNumber("LOT-KEEP").
-		SetProductType("FDY").
+		SetProductType("DTY").
 		SetPlannedQuantity(1).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("failed creating lot: %v", err)
 	}
 
-	barrelRow, err := client.Barrel.Create().
-		SetBarrelNumber("BARREL-KEEP").
+	cartonRow, err := client.Carton.Create().
+		SetCartonNumber("CARTON-KEEP").
 		SetLotID(record.ID).
 		Save(ctx)
 	if err != nil {
-		t.Fatalf("failed creating barrel: %v", err)
+		t.Fatalf("failed creating carton: %v", err)
 	}
 
+	// 三条待同步记录（lot + carton + doffing），桩回 applied=3 以匹配批次。
 	if _, err := client.Doffing.Create().
 		SetSpinningLineID(uuid.New()).
 		SetSpinningPosition(1).
@@ -204,7 +208,7 @@ func TestUploader_UncollectedTablesStayPending(t *testing.T) {
 	}
 
 	srv, _ := newCenterStub(t, http.StatusOK, map[string]interface{}{
-		"applied": 1, "rejected": 0, "errors": []string{},
+		"applied": 3, "rejected": 0, "errors": []string{},
 	})
 
 	u := edge.NewUploader(client, "edge-001", srv.URL, "test-token")
@@ -213,15 +217,15 @@ func TestUploader_UncollectedTablesStayPending(t *testing.T) {
 		t.Fatalf("Upload failed: %v", err)
 	}
 
-	got, err := client.Barrel.Get(ctx, barrelRow.ID)
+	got, err := client.Carton.Get(ctx, cartonRow.ID)
 	if err != nil {
-		t.Fatalf("failed reloading barrel: %v", err)
+		t.Fatalf("failed reloading carton: %v", err)
 	}
-	if got.SyncStatus != barrel.SyncStatusPending {
-		t.Errorf("barrel SyncStatus = %q, want %q（不得被拒绝后走向 failed）",
-			got.SyncStatus, barrel.SyncStatusPending)
+	if got.SyncStatus != carton.SyncStatusSynced {
+		t.Errorf("carton SyncStatus = %q, want %q（被采集的表必须有标记分支）",
+			got.SyncStatus, carton.SyncStatusSynced)
 	}
 	if got.SyncRetryCount != 0 {
-		t.Errorf("barrel SyncRetryCount = %d, want 0", got.SyncRetryCount)
+		t.Errorf("carton SyncRetryCount = %d, want 0", got.SyncRetryCount)
 	}
 }

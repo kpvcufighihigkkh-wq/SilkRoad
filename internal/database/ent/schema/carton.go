@@ -47,6 +47,23 @@ func (Carton) Fields() []ent.Field {
 			NonNegative().
 			Comment("纸箱内丝锭数量"),
 
+		// 容量与装载上限
+		//
+		// DTY 装箱是「先装箱再码垛」，箱内丝锭数有物理上限；
+		// bobbin_count 是实际装载量，capacity 是上限，二者不可混用。
+		field.Int("capacity").
+			Default(12).
+			Positive().
+			Comment("纸箱容量（丝锭数上限）"),
+
+		// 所属托盘：DTY 是 8 箱/托盘，箱子装满后整箱码到托盘上。
+		//
+		// 用裸 UUID 而非 edge：托盘与纸箱都有各自的同步状态，
+		// 绑定关系按业务编号在 Center 侧解引用，不需要 Ent 关系层。
+		field.UUID("pallet_id", uuid.UUID{}).
+			Optional().
+			Comment("所属托盘ID"),
+
 		// 总重量
 		field.Float("total_weight").
 			Optional().
@@ -128,5 +145,8 @@ func (Carton) Indexes() []ent.Index {
 
 		// 来源边端设备索引
 		index.Fields("edge_id"),
+
+		// 所属托盘索引（DTY 托盘详情按 pallet_id 列盘内纸箱）
+		index.Fields("pallet_id"),
 	}
 }

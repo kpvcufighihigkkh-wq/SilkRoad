@@ -105,6 +105,47 @@ func (_u *CartonUpdate) AddBobbinCount(v int) *CartonUpdate {
 	return _u
 }
 
+// SetCapacity sets the "capacity" field.
+func (_u *CartonUpdate) SetCapacity(v int) *CartonUpdate {
+	_u.mutation.ResetCapacity()
+	_u.mutation.SetCapacity(v)
+	return _u
+}
+
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
+func (_u *CartonUpdate) SetNillableCapacity(v *int) *CartonUpdate {
+	if v != nil {
+		_u.SetCapacity(*v)
+	}
+	return _u
+}
+
+// AddCapacity adds value to the "capacity" field.
+func (_u *CartonUpdate) AddCapacity(v int) *CartonUpdate {
+	_u.mutation.AddCapacity(v)
+	return _u
+}
+
+// SetPalletID sets the "pallet_id" field.
+func (_u *CartonUpdate) SetPalletID(v uuid.UUID) *CartonUpdate {
+	_u.mutation.SetPalletID(v)
+	return _u
+}
+
+// SetNillablePalletID sets the "pallet_id" field if the given value is not nil.
+func (_u *CartonUpdate) SetNillablePalletID(v *uuid.UUID) *CartonUpdate {
+	if v != nil {
+		_u.SetPalletID(*v)
+	}
+	return _u
+}
+
+// ClearPalletID clears the value of the "pallet_id" field.
+func (_u *CartonUpdate) ClearPalletID() *CartonUpdate {
+	_u.mutation.ClearPalletID()
+	return _u
+}
+
 // SetTotalWeight sets the "total_weight" field.
 func (_u *CartonUpdate) SetTotalWeight(v float64) *CartonUpdate {
 	_u.mutation.ResetTotalWeight()
@@ -350,6 +391,11 @@ func (_u *CartonUpdate) check() error {
 			return &ValidationError{Name: "bobbin_count", err: fmt.Errorf(`ent: validator failed for field "Carton.bobbin_count": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Capacity(); ok {
+		if err := carton.CapacityValidator(v); err != nil {
+			return &ValidationError{Name: "capacity", err: fmt.Errorf(`ent: validator failed for field "Carton.capacity": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.TotalWeight(); ok {
 		if err := carton.TotalWeightValidator(v); err != nil {
 			return &ValidationError{Name: "total_weight", err: fmt.Errorf(`ent: validator failed for field "Carton.total_weight": %w`, err)}
@@ -405,6 +451,18 @@ func (_u *CartonUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedBobbinCount(); ok {
 		_spec.AddField(carton.FieldBobbinCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Capacity(); ok {
+		_spec.SetField(carton.FieldCapacity, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCapacity(); ok {
+		_spec.AddField(carton.FieldCapacity, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.PalletID(); ok {
+		_spec.SetField(carton.FieldPalletID, field.TypeUUID, value)
+	}
+	if _u.mutation.PalletIDCleared() {
+		_spec.ClearField(carton.FieldPalletID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.TotalWeight(); ok {
 		_spec.SetField(carton.FieldTotalWeight, field.TypeFloat64, value)
@@ -588,6 +646,47 @@ func (_u *CartonUpdateOne) SetNillableBobbinCount(v *int) *CartonUpdateOne {
 // AddBobbinCount adds value to the "bobbin_count" field.
 func (_u *CartonUpdateOne) AddBobbinCount(v int) *CartonUpdateOne {
 	_u.mutation.AddBobbinCount(v)
+	return _u
+}
+
+// SetCapacity sets the "capacity" field.
+func (_u *CartonUpdateOne) SetCapacity(v int) *CartonUpdateOne {
+	_u.mutation.ResetCapacity()
+	_u.mutation.SetCapacity(v)
+	return _u
+}
+
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
+func (_u *CartonUpdateOne) SetNillableCapacity(v *int) *CartonUpdateOne {
+	if v != nil {
+		_u.SetCapacity(*v)
+	}
+	return _u
+}
+
+// AddCapacity adds value to the "capacity" field.
+func (_u *CartonUpdateOne) AddCapacity(v int) *CartonUpdateOne {
+	_u.mutation.AddCapacity(v)
+	return _u
+}
+
+// SetPalletID sets the "pallet_id" field.
+func (_u *CartonUpdateOne) SetPalletID(v uuid.UUID) *CartonUpdateOne {
+	_u.mutation.SetPalletID(v)
+	return _u
+}
+
+// SetNillablePalletID sets the "pallet_id" field if the given value is not nil.
+func (_u *CartonUpdateOne) SetNillablePalletID(v *uuid.UUID) *CartonUpdateOne {
+	if v != nil {
+		_u.SetPalletID(*v)
+	}
+	return _u
+}
+
+// ClearPalletID clears the value of the "pallet_id" field.
+func (_u *CartonUpdateOne) ClearPalletID() *CartonUpdateOne {
+	_u.mutation.ClearPalletID()
 	return _u
 }
 
@@ -849,6 +948,11 @@ func (_u *CartonUpdateOne) check() error {
 			return &ValidationError{Name: "bobbin_count", err: fmt.Errorf(`ent: validator failed for field "Carton.bobbin_count": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Capacity(); ok {
+		if err := carton.CapacityValidator(v); err != nil {
+			return &ValidationError{Name: "capacity", err: fmt.Errorf(`ent: validator failed for field "Carton.capacity": %w`, err)}
+		}
+	}
 	if v, ok := _u.mutation.TotalWeight(); ok {
 		if err := carton.TotalWeightValidator(v); err != nil {
 			return &ValidationError{Name: "total_weight", err: fmt.Errorf(`ent: validator failed for field "Carton.total_weight": %w`, err)}
@@ -921,6 +1025,18 @@ func (_u *CartonUpdateOne) sqlSave(ctx context.Context) (_node *Carton, err erro
 	}
 	if value, ok := _u.mutation.AddedBobbinCount(); ok {
 		_spec.AddField(carton.FieldBobbinCount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.Capacity(); ok {
+		_spec.SetField(carton.FieldCapacity, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedCapacity(); ok {
+		_spec.AddField(carton.FieldCapacity, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.PalletID(); ok {
+		_spec.SetField(carton.FieldPalletID, field.TypeUUID, value)
+	}
+	if _u.mutation.PalletIDCleared() {
+		_spec.ClearField(carton.FieldPalletID, field.TypeUUID)
 	}
 	if value, ok := _u.mutation.TotalWeight(); ok {
 		_spec.SetField(carton.FieldTotalWeight, field.TypeFloat64, value)

@@ -157,6 +157,45 @@ func (s *EdgeServer) registerRoutes() {
 			pallets.POST("/:id/seal", palletHandler.SealPallet)  // 封托
 		}
 
+		// 落纱桶：落纱工位建桶、按锭位装锭、封桶
+		//
+		// 写接口同样只在 Edge 侧，Center 只读。
+		barrelService := service.NewBarrelService(s.client)
+		barrelHandler := edgev1.NewBarrelHandler(barrelService)
+
+		barrels := authorized.Group("/barrels")
+		{
+			barrels.POST("", barrelHandler.CreateBarrel)         // 创建桶
+			barrels.POST("/:id/load", barrelHandler.LoadBobbins) // 按锭位装锭
+			barrels.POST("/:id/seal", barrelHandler.SealBarrel)  // 封桶
+		}
+
+		// 纸箱：DTY 专属（装箱 → 封箱 → 8 箱/托盘码垛）
+		//
+		// 写接口只在 Edge 侧；POY/FDY 不走纸箱，由服务层按批次产品类型拒绝。
+		cartonService := service.NewCartonService(s.client)
+		cartonHandler := edgev1.NewCartonHandler(cartonService)
+
+		cartons := authorized.Group("/cartons")
+		{
+			cartons.POST("", cartonHandler.CreateCarton)         // 创建纸箱
+			cartons.POST("/:id/pack", cartonHandler.PackBobbins) // 丝锭装箱
+			cartons.POST("/:id/seal", cartonHandler.SealCarton)  // 封箱
+		}
+
+		// 吊车：装两个落纱桶并在工段间流转
+		//
+		// 吊车是物流载具，写接口只在 Edge 侧。
+		moduleService := service.NewModuleService(s.client)
+		moduleHandler := edgev1.NewModuleHandler(moduleService)
+
+		modules := authorized.Group("/modules")
+		{
+			modules.POST("", moduleHandler.CreateModule)            // 创建吊车
+			modules.POST("/:id/load", moduleHandler.LoadBarrels)    // 装桶
+			modules.POST("/:id/status", moduleHandler.UpdateStatus) // 更新状态
+		}
+
 		// 数据同步
 		sync := authorized.Group("/sync")
 		{

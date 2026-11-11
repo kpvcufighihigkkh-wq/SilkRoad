@@ -69,6 +69,60 @@ func TestResync_EveryCollectableTableIsResettable(t *testing.T) {
 			}
 			return row.ID
 		},
+		// 桶引用批次：先造父批次，再建 failed 的桶。
+		"barrels": func() uuid.UUID {
+			parent, err := client.Lot.Create().
+				SetLotNumber("LOT-RESYNC-BIND-BARREL").
+				SetProductType("FDY").
+				SetPlannedQuantity(1).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed parent lot: %v", err)
+			}
+			row, err := client.Barrel.Create().
+				SetBarrelNumber("BRL-RESYNC-BIND").
+				SetLotID(parent.ID).
+				SetSyncStatus("failed").
+				SetSyncRetryCount(maxRetryCount).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed barrel: %v", err)
+			}
+			return row.ID
+		},
+		// 纸箱引用批次：先造父批次，再建 failed 的纸箱。
+		"cartons": func() uuid.UUID {
+			parent, err := client.Lot.Create().
+				SetLotNumber("LOT-RESYNC-BIND-CARTON").
+				SetProductType("DTY").
+				SetPlannedQuantity(1).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed parent lot: %v", err)
+			}
+			row, err := client.Carton.Create().
+				SetCartonNumber("CTN-RESYNC-BIND").
+				SetLotID(parent.ID).
+				SetSyncStatus("failed").
+				SetSyncRetryCount(maxRetryCount).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed carton: %v", err)
+			}
+			return row.ID
+		},
+		// 吊车无外键：直接建一行 failed 记录。
+		"modules": func() uuid.UUID {
+			row, err := client.Module.Create().
+				SetModuleNumber("MDL-RESYNC-BIND").
+				SetSyncStatus("failed").
+				SetSyncRetryCount(maxRetryCount).
+				Save(ctx)
+			if err != nil {
+				t.Fatalf("seed module: %v", err)
+			}
+			return row.ID
+		},
 		// 托盘引用批次：先造父批次，再建 failed 的托盘。
 		"pallets": func() uuid.UUID {
 			parent, err := client.Lot.Create().
@@ -186,8 +240,13 @@ func TestResync_EveryCollectableTableIsResettable(t *testing.T) {
 // 无人可见。这正是 uploader.go 中 collectors() 注释立下的原则。
 //
 // 本用例从 markableTables 与 collectors() 两张活表推导「不该被接受」的集合，
-// 不硬编码 barrels：将来若某张表被移出采集，它也会落进这个集合，
+// 不硬编码具体表名：将来若某张表被移出采集，它也会落进这个集合，
 // 从而强制「移出采集」与「移出重置白名单」两件事同时发生。
+//
+// 当前两者完全重合（六张表全部采集），故本用例只剩一个断言：
+// 一旦出现「可标记但不可采集」的表，它必须被重置端点拒绝。
+// 若哪天有人把某张表移出 collectors() 却忘了移出 resync 白名单，
+// checked 会从 0 变成 1 且拒绝检查生效。
 func TestResync_RejectsNonCollectableTables(t *testing.T) {
 	client := newInternalEdgeClient(t)
 	ctx := context.Background()
@@ -199,19 +258,30 @@ func TestResync_RejectsNonCollectableTables(t *testing.T) {
 	}
 
 	opts := resetOptions{status: "failed"}
-	checked := 0
 	for _, table := range markableTables {
 		if collectable[table] {
 			continue
 		}
-		checked++
 		if _, err := u.resetByTable(ctx, table, opts); err == nil {
 			t.Errorf("%q 不被采集，重置端点却接受了它（会产生永远排不出去的积压）", table)
 		}
 	}
 
-	if checked == 0 {
-		t.Fatalf("markableTables 与 collectors() 完全重合，本用例失去意义 —— 请确认 barrels 是否被误加回采集列表")
+	// 反向：每张可采集表都必须被重置端点接受，否则该表的 failed 记录
+	// 永远没有回收路径。这一半由 TestResync_EveryCollectableTableIsResettable
+	// 实证，这里只断言两张表集合的包含关系，防止有人只改一边。
+	for _, entity := range u.collectors() {
+		found := false
+		for _, table := range markableTables {
+			if table == entity.table {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("可采集表 %q 不在 markableTables 中：其记录同步后不会被标记",
+				entity.table)
+		}
 	}
 }
 
@@ -230,6 +300,24 @@ func reloadSyncState(t *testing.T, client *ent.Client, ctx context.Context, tabl
 		row, err := client.Doffing.Get(ctx, id)
 		if err != nil {
 			t.Fatalf("reload doffings: %v", err)
+		}
+		return string(row.SyncStatus), row.SyncRetryCount
+	case "barrels":
+		row, err := client.Barrel.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("reload barrels: %v", err)
+		}
+		return string(row.SyncStatus), row.SyncRetryCount
+	case "cartons":
+		row, err := client.Carton.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("reload cartons: %v", err)
+		}
+		return string(row.SyncStatus), row.SyncRetryCount
+	case "modules":
+		row, err := client.Module.Get(ctx, id)
+		if err != nil {
+			t.Fatalf("reload modules: %v", err)
 		}
 		return string(row.SyncStatus), row.SyncRetryCount
 	case "pallets":
