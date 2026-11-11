@@ -107,11 +107,40 @@ func NewCenterServer(client *ent.Client, jwtSecret string, port int) *CenterServ
 	})
 
 	// 健康检查
+	//
+	// 只回 200 「进程活着」不够用：双机热备下备机的进程同样活着，但它连不上
+	// 数据库（副本只读、或主备未切换）时必须让负载均衡把流量挡在外面。
+	// 因此这里真查一次库，查不通返回 503 —— 探针的语义是「能提供服务」，
+	// 而不是「进程存在」。
+	//
+	// 查询用一次极轻的 Exist 而不是 SELECT 1：ent 没有暴露原生执行入口，
+	// 而 Limit(1).Exist 生成的是带 LIMIT 的 EXISTS，代价与 SELECT 1 同级。
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, api.Success(gin.H{
-			"status": "ok",
-			"time":   time.Now().Format(time.RFC3339),
-		}))
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+
+		// 测试会以 nil client 装配路由（见 real_router_test.go），
+		// 那种情况下没有可查的库，视为不就绪。
+		ready := client != nil
+		if ready {
+			if _, err := client.User.Query().Limit(1).Exist(ctx); err != nil {
+				log.Printf("⚠️  health: 数据库不可用：%v", err)
+				ready = false
+			}
+		}
+
+		body := gin.H{
+			"time": time.Now().Format(time.RFC3339),
+		}
+		status := http.StatusOK
+		if ready {
+			body["status"] = "ok"
+		} else {
+			body["status"] = "unavailable"
+			status = http.StatusServiceUnavailable
+		}
+
+		c.JSON(status, api.Success(body))
 	})
 
 	// JWT认证器
