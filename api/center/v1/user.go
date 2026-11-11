@@ -227,6 +227,45 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 	c.JSON(http.StatusOK, api.Success(user))
 }
 
+// ResetPassword godoc
+// @Summary 管理员重置他人密码
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "用户ID"
+// @Param password body service.ResetPasswordRequest true "新密码"
+// @Success 200 {object} api.Response
+// @Failure 403 {object} api.Response
+// @Router /v1/users/{id}/password/reset [put]
+//
+// 与 ChangePassword 的分工：那条路由要旧密码、供本人用；这条不要旧密码、
+// 挂在 requireRole("admin") 组内。管理员重置自己时同样走这里也没问题 ——
+// 他本来就有权限改别人的密码，重置自己只是少一道旧密码校验。
+func (h *UserHandler) ResetPassword(c *gin.Context) {
+	id := c.Param("id")
+
+	var req service.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, api.Error(api.CodeInvalidParams, err.Error()))
+		return
+	}
+
+	claims, ok := claimsFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, api.Error(api.CodeUnauthorized, "未登录"))
+		return
+	}
+
+	if err := h.userService.ResetPassword(
+		c.Request.Context(), id, primaryRole(claims), req.NewPassword,
+	); err != nil {
+		respondServiceError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, api.Success(nil))
+}
+
 // ChangePassword godoc
 // @Summary 修改密码
 // @Tags users

@@ -286,6 +286,8 @@ func (s *CenterServer) registerRoutes() {
 			users.GET("/:id", userHandler.GetUser)
 			users.PUT("/:id", userHandler.UpdateUser)
 			users.DELETE("/:id", userHandler.DeleteUser)
+			// 管理员重置他人密码：不校验旧密码，故必须留在 admin 组内。
+			users.PUT("/:id/password/reset", userHandler.ResetPassword)
 		}
 
 		// PUT /v1/users/:id/password 的允许角色是「admin 或本人」（spec 权限矩阵），

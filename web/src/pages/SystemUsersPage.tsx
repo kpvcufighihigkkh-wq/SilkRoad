@@ -19,6 +19,7 @@ import dayjs from 'dayjs'
 import {
   changePassword,
   createUser,
+  resetPassword,
   deleteUser,
   listUsers,
   updateUser,
@@ -61,8 +62,10 @@ export default function SystemUsersPage() {
   const [editing, setEditing] = useState<User | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [pwdTarget, setPwdTarget] = useState<User | null>(null)
+  const [resetTarget, setResetTarget] = useState<User | null>(null)
   const [form] = Form.useForm<UserFormValues>()
   const [pwdForm] = Form.useForm<{ old_password: string; new_password: string }>()
+  const [resetForm] = Form.useForm<{ new_password: string }>()
 
   const load = useCallback(
     async (p: number, size: number, role?: Role) => {
@@ -180,13 +183,29 @@ export default function SystemUsersPage() {
     }
   }
 
+  const submitReset = async () => {
+    const values = await resetForm.validateFields()
+    if (!resetTarget) return
+
+    try {
+      await resetPassword(resetTarget.id, values.new_password)
+      message.success(`已重置 ${resetTarget.username} 的密码`)
+      setResetTarget(null)
+      resetForm.resetFields()
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '重置密码失败')
+    }
+  }
+
   // 只能分配不高于自己的角色：后端也会拦，这里提前收敛选项避免无效操作。
   const myRank = me ? ROLE_RANK[me.role] : 1
   const assignableRoles = (Object.keys(ROLE_RANK) as Role[]).filter((r) => ROLE_RANK[r] <= myRank)
 
-  // 改自己的密码需要旧密码；改他人的只有 admin 能到这一步，且后端要求旧密码，
-  // 因此「改他人密码」实际用不了 —— 这里只对自己显示改密入口。
+  // 改密（要旧密码）只对自己显示：那是本人的操作。
+  // 管理员另有一条「重置」路径（不要旧密码），用于员工忘密码与账号交接，
+  // 因此对 admin 下所有用户都可用，包括自己。
   const canChangePassword = (u: User) => me?.id === u.id
+  const canResetPassword = () => me?.role === 'admin'
 
   const columns: ColumnsType<User> = [
     { title: '用户名', dataIndex: 'username', render: (v: string) => <span className="mono">{v}</span> },
@@ -220,6 +239,11 @@ export default function SystemUsersPage() {
           {canChangePassword(u) && (
             <Button size="small" type="link" onClick={() => setPwdTarget(u)}>
               改密
+            </Button>
+          )}
+          {canResetPassword() && (
+            <Button size="small" type="link" danger onClick={() => setResetTarget(u)}>
+              重置
             </Button>
           )}
           <Button size="small" type="link" onClick={() => void toggleActive(u)}>
@@ -360,6 +384,33 @@ export default function SystemUsersPage() {
           >
             <Input.Password autoComplete="current-password" />
           </Form.Item>
+          <Form.Item
+            name="new_password"
+            label="新密码"
+            rules={[{ required: true, min: 6, message: '密码至少 6 位' }]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Modal
+        title={`重置密码：${resetTarget?.username ?? ''}`}
+        open={!!resetTarget}
+        onOk={submitReset}
+        onCancel={() => {
+          setResetTarget(null)
+          resetForm.resetFields()
+        }}
+        okText="重置"
+        okButtonProps={{ danger: true }}
+        cancelText="取消"
+        destroyOnHidden
+      >
+        <Typography.Paragraph type="secondary">
+          管理员重置不需要旧密码。重置后请通过线下渠道把新密码告知本人，
+          并提醒其登录后自行修改。
+        </Typography.Paragraph>
+        <Form form={resetForm} layout="vertical" autoComplete="off">
           <Form.Item
             name="new_password"
             label="新密码"
