@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -286,5 +287,53 @@ func TestReportService_QualityDistribution_EmptyRange(t *testing.T) {
 	}
 	if got.TopDefects == nil {
 		t.Error("TopDefects 为 nil，应初始化为空切片")
+	}
+}
+
+// 缺陷原因是自由文本，分组数没有天然上限。
+//
+// 本用例钉住两件事：
+//  1. 超过 DefectScanCap 时结果被截在 SQL 层的上限，不会把全部分组拉进内存；
+//  2. 截断取的是计数最高的那些分组 —— 排序在 SQL 层完成，不是取前 N 行再排。
+func TestReportService_QualityDistribution_DefectScanIsCappedInSQL(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewReportService(client)
+	start, end, inside, _, _ := reportWindow()
+
+	// 造 DefectScanCap+20 种原因。全部计数为 1，只让「缺陷-000」为 5，
+	// 这样结果集很小，同时能确定唯一的第一名。
+	var seeds []gradeSeed
+	for i := 0; i < service.DefectScanCap+20; i++ {
+		reason := fmt.Sprintf("缺陷-%03d", i)
+		n := 1
+		if i == 0 {
+			n = 5
+		}
+		for k := 0; k < n; k++ {
+			seeds = append(seeds, gradeSeed{grade: "B", inspectedAt: inside, defectReason: reason})
+		}
+	}
+	seedGrades(t, client, seeds)
+
+	// top=0 表示「不按调用方限制」，此时上限只由 DefectScanCap 决定。
+	got, err := svc.QualityDistribution(context.Background(), start, end, 0)
+	if err != nil {
+		t.Fatalf("QualityDistribution: %v", err)
+	}
+
+	if len(got.TopDefects) != service.DefectScanCap {
+		t.Fatalf("len(TopDefects) = %d, want %d（应被 SQL 层上限截断）",
+			len(got.TopDefects), service.DefectScanCap)
+	}
+	// 计数最高的那个原因必须在首位：证明排序发生在截断之前。
+	if got.TopDefects[0].DefectReason != "缺陷-000" || got.TopDefects[0].Count != 5 {
+		t.Errorf("TopDefects[0] = %+v, want {缺陷-000 5}（SQL 层按计数降序后截断）", got.TopDefects[0])
+	}
+	// 单调不增：结果是整体有序的，不是随机子集。
+	for i := 1; i < len(got.TopDefects); i++ {
+		if got.TopDefects[i].Count > got.TopDefects[i-1].Count {
+			t.Fatalf("TopDefects 未按计数降序：索引 %d 为 %d，前一项为 %d",
+				i, got.TopDefects[i].Count, got.TopDefects[i-1].Count)
+		}
 	}
 }
