@@ -1133,15 +1133,27 @@ func (h *UploadHandler) upsertBobbinGrade(ctx context.Context, entry *models.Upl
 	// 一个安全相关字段朝危险方向的默认值反转。用 Nillable 版本透传：
 	// nil 时不写值，插入时落 NULL（schema 无默认值，见 schema/bobbingrade.go
 	// 的 Optional().Nillable()）。
-	_, err = h.client.BobbinGrade.Create().
+	builder := h.client.BobbinGrade.Create().
 		SetID(id).
 		SetBobbinID(parent.ID).
 		SetGrade(getString(data, "grade")).
 		SetNillableIsQualified(getBoolPtr(data, "is_qualified")).
 		SetNillableInspectorID(inspectorID).
 		SetNillableDefectReason(getStringPtr(data, "defect_reason")).
-		SetInspectedAt(getTimeOrNow(data, "inspected_at")).
-		Save(ctx)
+		SetNillableFinalScore(getFloatPtr(data, "final_score")).
+		SetInspectedAt(getTimeOrNow(data, "inspected_at"))
+
+	// scores 与 inspection_details 是可空 JSONB：只在载荷确实带了非空对象时
+	// 才写，键缺席或空 map 都保持 NULL。「未录入」与「录入了一个空对象」
+	// 必须在库里可区分，否则报表按项展开时无法判断该行有没有评分。
+	if scores := getJSONObject(data, "scores"); len(scores) > 0 {
+		builder.SetScores(scores)
+	}
+	if details := getJSONObject(data, "inspection_details"); len(details) > 0 {
+		builder.SetInspectionDetails(details)
+	}
+
+	_, err = builder.Save(ctx)
 	if err != nil {
 		return fmt.Errorf("create bobbin grade: %w", err)
 	}
@@ -1252,6 +1264,21 @@ func getBoolPtr(m map[string]interface{}, key string) *bool {
 		}
 	}
 	return nil
+}
+
+// getJSONObject 读取 JSONB 对象的载荷。
+//
+// 只接受 map 形态：Edge 侧的 ent 字段本身就是 map[string]interface{}，
+// json.Marshal 后仍是对象。收到别的类型（字符串、数组、null）说明
+// 两端对载荷的理解已经不一致，返回空 map 让调用方跳过写入，
+// 由「该条是否为质检评分」在上层自行判断 —— 这里不 panic、不写半截数据。
+func getJSONObject(m map[string]interface{}, key string) map[string]interface{} {
+	v, ok := m[key]
+	if !ok || v == nil {
+		return nil
+	}
+	obj, _ := v.(map[string]interface{})
+	return obj
 }
 
 func getTimePtr(m map[string]interface{}, key string) *time.Time {

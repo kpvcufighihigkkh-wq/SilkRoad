@@ -267,6 +267,90 @@ type InspectBobbinRequest struct {
 	// 默认值 true（见 schema/bobbingrade.go 的 Default(true)）—— 合格线
 	// 是业务决策，不由本服务推断。
 	IsQualified *bool `json:"is_qualified"`
+
+	// Scores 五项等级类型分，可选但一旦提供必须齐全（见 validateScores）。
+	Scores *InspectionScores `json:"scores"`
+	// FinalScore 综合分，可选。与 Scores 独立：现场可能只给综合分，
+	// 也可能五项齐全但另有加权公式算出的综合分。
+	FinalScore *float64 `json:"final_score"`
+	// InspectionDetails 质检项判定，可选。
+	//
+	// 键是质检项名（外观、重量、断头等），值是 pass/fail/na 三态。
+	// 用限定词表而非自由文本：报表要按项统计合格率，自由文本会让
+	// 「合格 / OK / 通过」变成三个不同的分组。
+	InspectionDetails map[string]string `json:"inspection_details"`
+}
+
+// InspectionScores 五项等级类型分。
+//
+// 键与 grade.grade_type 枚举一一对应（sorting/weight/final/vision/knitting），
+// 见 schema/grade.go。用显式结构体而非 map：现场表单少填一项时要能报错，
+// map 里少一个键无从分辨「没这项」与「漏填」。
+type InspectionScores struct {
+	Sorting  *float64 `json:"sorting"`
+	Weight   *float64 `json:"weight"`
+	Final    *float64 `json:"final"`
+	Vision   *float64 `json:"vision"`
+	Knitting *float64 `json:"knitting"`
+}
+
+// inspectionDetailVerdicts 是质检项取值的限定词表。
+var inspectionDetailVerdicts = map[string]struct{}{
+	"pass": {},
+	"fail": {},
+	"na":   {},
+}
+
+// scoreMax 是单项分与综合分的上限。
+//
+// 现场评分口径是百分制。上限存在的意义不是业务限制，而是拦住把
+// 「重量克数」误填进分数字段的输入错误。
+const scoreMax = 100
+
+// validateScores 校验五项分：要么整块缺席，要么五项齐全且各自在 [0,100]。
+//
+// 不做部分填充：少一项的分数集无法算「五维度合格率」，而缺项会被
+// SUM/AVG 当成 0，把「没评」算成「评了 0 分」。
+func validateScores(s *InspectionScores) error {
+	if s == nil {
+		return nil
+	}
+
+	fields := []struct {
+		name string
+		val  *float64
+	}{
+		{"sorting", s.Sorting},
+		{"weight", s.Weight},
+		{"final", s.Final},
+		{"vision", s.Vision},
+		{"knitting", s.Knitting},
+	}
+	for _, f := range fields {
+		if f.val == nil {
+			return &ServiceError{Code: 10001, Message: "评分缺少项：" + f.name + "（提供 scores 时五项必须齐全）"}
+		}
+		if *f.val < 0 || *f.val > scoreMax {
+			return &ServiceError{Code: 10001, Message: "评分越界：" + f.name + " 必须在 0 到 100 之间"}
+		}
+	}
+
+	return nil
+}
+
+// toScoreMap 把五项分转成落库用的 map。
+//
+// key 用 snake_case 而非枚举原值：vision/knitting 两边一致，但 weight/final
+// 是 Go 关键字之外的普通词，保持与 grade_type 同名的好处是报表可直接
+// 用 grade_type 拼键。故这里直接用枚举值。
+func (s *InspectionScores) toScoreMap() map[string]interface{} {
+	return map[string]interface{}{
+		"sorting":  *s.Sorting,
+		"weight":   *s.Weight,
+		"final":    *s.Final,
+		"vision":   *s.Vision,
+		"knitting": *s.Knitting,
+	}
 }
 
 // WeighBobbin 丝锭称重
@@ -326,6 +410,26 @@ func (s *BobbinService) InspectBobbin(ctx context.Context, id string, req *Inspe
 		defectReason = &req.DefectNote
 	}
 
+	// 评分与质检项明细：可选，但一旦提供就必须合法。
+	//
+	// 校验放在任何写库之前：InspectBobbin 会先更新 bobbin.grade 再插历史行，
+	// 若在插入时才发现评分不合法，丝饼的等级已经被改了而质检记录没有落 ——
+	// 现场看到的是「等级变了但查不到这条质检」。
+	if err := validateScores(req.Scores); err != nil {
+		return err
+	}
+	if req.FinalScore != nil && (*req.FinalScore < 0 || *req.FinalScore > scoreMax) {
+		return &ServiceError{Code: 10001, Message: "综合分必须在 0 到 100 之间"}
+	}
+	for item, verdict := range req.InspectionDetails {
+		if item == "" {
+			return &ServiceError{Code: 10001, Message: "质检项名称不能为空"}
+		}
+		if _, ok := inspectionDetailVerdicts[verdict]; !ok {
+			return &ServiceError{Code: 10001, Message: "质检项 " + item + " 的取值必须是 pass/fail/na，得到：" + verdict}
+		}
+	}
+
 	if err := b.Update().SetGrade(req.Grade).Exec(ctx); err != nil {
 		return err
 	}
@@ -335,13 +439,29 @@ func (s *BobbinService) InspectBobbin(ctx context.Context, id string, req *Inspe
 	//
 	// is_qualified 用 Nillable 版本透传现场陈述：未提供（nil）时不写值，
 	// 该列落 schema 默认值 true。
-	if _, err := s.client.BobbinGrade.Create().
+	builder := s.client.BobbinGrade.Create().
 		SetBobbinID(bobbinID).
 		SetGrade(req.Grade).
 		SetNillableIsQualified(req.IsQualified).
 		SetNillableInspectorID(inspectorID).
 		SetNillableDefectReason(defectReason).
-		Save(ctx); err != nil {
+		SetNillableFinalScore(req.FinalScore)
+
+	// 评分与质检项明细只在有值时才写：两列都是可空的 JSONB，
+	// 写入空 map 会让「未录入」变成「录入了一个空对象」，报表按项展开时
+	// 无从区分。
+	if req.Scores != nil {
+		builder.SetScores(req.Scores.toScoreMap())
+	}
+	if len(req.InspectionDetails) > 0 {
+		details := make(map[string]interface{}, len(req.InspectionDetails))
+		for k, v := range req.InspectionDetails {
+			details[k] = v
+		}
+		builder.SetInspectionDetails(details)
+	}
+
+	if _, err := builder.Save(ctx); err != nil {
 		return err
 	}
 
