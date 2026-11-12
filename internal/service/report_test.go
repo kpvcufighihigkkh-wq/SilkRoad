@@ -19,6 +19,9 @@ type gradeSeed struct {
 	inspectedAt  time.Time
 	isQualified  *bool
 	defectReason string
+	// finalScore / inspectionDetails 为 nil 表示未录入（对应列保持 NULL）。
+	finalScore        *float64
+	inspectionDetails map[string]interface{}
 }
 
 // seedGrades 按 seed 列表造质检记录。
@@ -44,6 +47,12 @@ func seedGrades(t *testing.T, client *ent.Client, seeds []gradeSeed) {
 		}
 		if s.defectReason != "" {
 			b.SetDefectReason(s.defectReason)
+		}
+		if s.finalScore != nil {
+			b.SetNillableFinalScore(s.finalScore)
+		}
+		if len(s.inspectionDetails) > 0 {
+			b.SetInspectionDetails(s.inspectionDetails)
 		}
 
 		if _, err := b.Save(ctx); err != nil {
@@ -335,5 +344,144 @@ func TestReportService_QualityDistribution_DefectScanIsCappedInSQL(t *testing.T)
 			t.Fatalf("TopDefects 未按计数降序：索引 %d 为 %d，前一项为 %d",
 				i, got.TopDefects[i].Count, got.TopDefects[i-1].Count)
 		}
+	}
+}
+
+// 平均分只统计已录入 final_score 的行，且样本数为 0 时返回 null 而非 0。
+//
+// 若把 NULL 当成 0 分拉低平均，或把「无数据」表达成 0 分，
+// 「全员 0 分」与「还没人评分」在报表上就分不开了。
+func TestReportService_QualityDistribution_AverageScore(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewReportService(client)
+	start, end, inside, _, _ := reportWindow()
+
+	s80, s90 := 80.0, 90.0
+	seedGrades(t, client, []gradeSeed{
+		{grade: "A", inspectedAt: inside, finalScore: &s80},
+		{grade: "B", inspectedAt: inside, finalScore: &s90},
+		{grade: "C", inspectedAt: inside}, // 未录入
+	})
+
+	got, err := svc.QualityDistribution(context.Background(), start, end, 10)
+	if err != nil {
+		t.Fatalf("QualityDistribution: %v", err)
+	}
+
+	if got.ScoredCount != 2 {
+		t.Errorf("scored_count = %d, want 2（未录入的行不计入样本）", got.ScoredCount)
+	}
+	if got.AverageScore == nil {
+		t.Fatal("average_score = nil, want 85")
+	}
+	if *got.AverageScore != 85 {
+		t.Errorf("average_score = %v, want 85", *got.AverageScore)
+	}
+}
+
+// 区间内没有任何评分时 average_score 为 null、scored_count 为 0。
+func TestReportService_QualityDistribution_AverageScoreEmpty(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewReportService(client)
+	start, end, inside, _, _ := reportWindow()
+
+	seedGrades(t, client, []gradeSeed{{grade: "A", inspectedAt: inside}})
+
+	got, err := svc.QualityDistribution(context.Background(), start, end, 10)
+	if err != nil {
+		t.Fatalf("QualityDistribution: %v", err)
+	}
+
+	if got.ScoredCount != 0 {
+		t.Errorf("scored_count = %d, want 0", got.ScoredCount)
+	}
+	if got.AverageScore != nil {
+		t.Errorf("average_score = %v, want null（无样本不得返回 0 分）", *got.AverageScore)
+	}
+}
+
+// 五维度合格率按 inspection_details 的键展开，na 不进分母。
+//
+// na 表示「该项未检」，把它算进分母会让「没检」拉低合格率 ——
+// 这是本指标最容易错的一处口径。
+func TestReportService_QualityDistribution_ByDimension(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewReportService(client)
+	start, end, inside, _, _ := reportWindow()
+
+	seedGrades(t, client, []gradeSeed{
+		{
+			grade: "A", inspectedAt: inside,
+			inspectionDetails: map[string]interface{}{
+				"appearance": "pass", "broken_ends": "fail",
+			},
+		},
+		{
+			grade: "B", inspectedAt: inside,
+			inspectionDetails: map[string]interface{}{
+				"appearance": "pass", "broken_ends": "na",
+			},
+		},
+		{
+			grade: "C", inspectedAt: inside,
+			inspectionDetails: map[string]interface{}{
+				"appearance": "fail", "broken_ends": "pass",
+			},
+		},
+		// 未录入质检项：不应出现在任何维度里
+		{grade: "A", inspectedAt: inside},
+	})
+
+	got, err := svc.QualityDistribution(context.Background(), start, end, 10)
+	if err != nil {
+		t.Fatalf("QualityDistribution: %v", err)
+	}
+
+	byDim := map[string]service.DimensionStat{}
+	for _, d := range got.ByDimension {
+		byDim[d.Dimension] = d
+	}
+
+	app, ok := byDim["appearance"]
+	if !ok {
+		t.Fatalf("缺少 appearance 维度: %+v", got.ByDimension)
+	}
+	if app.PassCount != 2 || app.FailCount != 1 || app.NACount != 0 {
+		t.Errorf("appearance = %+v, want pass=2 fail=1 na=0", app)
+	}
+	// 2/(2+1) = 0.667
+	if app.QualifiedRate != 0.667 {
+		t.Errorf("appearance qualified_rate = %v, want 0.667", app.QualifiedRate)
+	}
+
+	be, ok := byDim["broken_ends"]
+	if !ok {
+		t.Fatalf("缺少 broken_ends 维度")
+	}
+	if be.PassCount != 1 || be.FailCount != 1 || be.NACount != 1 {
+		t.Errorf("broken_ends = %+v, want pass=1 fail=1 na=1", be)
+	}
+	// na 不进分母：1/(1+1) = 0.5，而不是 1/3
+	if be.QualifiedRate != 0.5 {
+		t.Errorf("broken_ends qualified_rate = %v, want 0.5（na 不计入分母）", be.QualifiedRate)
+	}
+}
+
+// 空区间下 by_dimension 是空切片而非 nil。
+func TestReportService_QualityDistribution_ByDimensionEmpty(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewReportService(client)
+	start, end, _, _, _ := reportWindow()
+
+	got, err := svc.QualityDistribution(context.Background(), start, end, 10)
+	if err != nil {
+		t.Fatalf("QualityDistribution: %v", err)
+	}
+
+	if got.ByDimension == nil {
+		t.Error("by_dimension = nil, want 空切片")
+	}
+	if len(got.ByDimension) != 0 {
+		t.Errorf("by_dimension = %+v, want 空", got.ByDimension)
 	}
 }

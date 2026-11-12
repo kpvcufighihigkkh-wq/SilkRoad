@@ -86,7 +86,12 @@ Schema 里有、但**同步链两端都不携带**的字段：
   - `inspection_details`：质检项判定，取值限定 `pass`/`fail`/`na`。自由文本会让「合格 / OK / 通过」在报表里变成三个分组。
   - 校验在**任何写库之前**：`InspectBobbin` 会先改 `bobbin.grade` 再插历史行，校验若放在后面，现场会看到「等级变了但查不到这条质检」。
 - **同步**：`collectBobbinGrades` 三键按「有值才带」处理（空 map / 零值整键缺席），Center `upsertBobbinGrade` 对应写入；`final_score` 的本地字段是非指针 `float64`，按 `> 0` 判定有值。
-- **仍未做**：「五维度合格率」「平均分」两项报表指标本身（见 §6 缺口 A 的更新）。
+- **报表指标（2026-11-12）**：`quality-distribution` 响应新增三项，两项指标随之落地：
+  - `by_dimension[]`：`inspection_details` 按键展开，每项返回 pass/fail/na 计数与合格率。**分母 = pass + fail，`na` 排除**——未检不等于不合格，计入分母会拉低合格率。词表外的取值不计入任何一栏：静默归到 fail 会凭空造出不合格，归到 na 会把未知当「未检」，两者都在编造事实。
+  - `average_score`：`AVG(final_score)`，只统计已录入的行；样本为 0 时为 `null` 而非 `0`——0 分是真实可能的评分。
+  - `scored_count`：平均分的样本数。SQL 的 AVG 本就忽略 NULL，但没有这个计数就回答不了「平均分基于几条记录」。
+  - 实现取舍：JSON 列先在 SQL 层 `GROUP BY inspection_details` 再在 Go 里展开累加，而不是用 `jsonb_each_text` / `json_each` 在 SQL 里展开——后者是方言专属函数，同一段代码无法同时跑在 Postgres 与测试用的 SQLite 上。去重后的分组数是有限组合，不会把整表读进内存。
+- **仍未做**：无（缺口 A 已全部闭合）。
 
 ---
 
@@ -101,6 +106,8 @@ Schema 里有、但**同步链两端都不携带**的字段：
 | 1 | 合格率 | `is_qualified=true` 数 / 非 NULL 总数，**同时返回未设置数** |
 | 2 | 等级分布 | `GROUP BY grade` + count |
 | 3 | 缺陷原因 Top N | `GROUP BY defect_reason` + count，降序取前 N |
+| 3a | 五维度合格率 | `inspection_details` 按项展开，每项 pass/fail/na 计数；分母 = pass + fail（`na` 排除） |
+| 3b | 平均分 | `AVG(final_score)`，仅已录入的行；样本为 0 时返回 `null`，另出 `scored_count` |
 
 **看板三：机台与操作员**
 
@@ -123,7 +130,6 @@ Schema 里有、但**同步链两端都不携带**的字段：
 
 | 不做 | 理由 |
 |---|---|
-| 五维度合格率、平均分 | 字段未同步，见 §1.3 |
 | 包装单元维度统计 | 四表恒为空，见 §1.1 |
 | 实时推送 / 缓存 | spec §5.3 已裁定不做；页面进入时拉取一次 |
 | 分页 | 聚合结果行数受枚举与实体数量约束；Top N 用参数控制 |
@@ -446,7 +452,7 @@ reports := authorized.Group("/reports")
 
 | # | 缺口 | 补法 | 阻塞什么 |
 |---|---|---|---|
-| A | ~~`bobbin_grade.inspection_details` / `scores` / `final_score` 未同步~~ **录入与同步已打通（2026-11-12，见 §1.3 补记）**；仍缺的是「五维度合格率」「平均分」两项报表指标本身 | 在报表服务里按 `scores` / `inspection_details` 展开聚合 | 两项指标（字段已有数据，缺聚合） |
+| A | ~~`bobbin_grade.inspection_details` / `scores` / `final_score` 未同步~~ **已全部闭合（2026-11-12，见 §1.3 补记）**：录入、同步、报表两项指标均已落地 | — | — |
 | B | `barrel` / `module` / `pallet` / `carton` 无生产者、无同步、无端点 | 属 Edge 操作子系统，需另立 spec | spec §8 缺口 #7 整个 |
 | C | ~~Edge 侧无 `spinning_line` 消费方~~ **已闭合（2026-11-11）**：`SyncClient.DownloadData` 拉取 `spinning_lines` / `grades` 并按 Center 的 UUID 落地（同名冲突时保留本地 ID 并告警）；报表 `by_spinning_line` 新增 `spinning_line_name`，查不到时为 `null` | — | — |
 | D | ~~看板一所需的 `lot.start_time` 无生产者、不在同步载荷内~~ **已闭合（2026-11-11）**，见 §1.2 补记 | — | — |

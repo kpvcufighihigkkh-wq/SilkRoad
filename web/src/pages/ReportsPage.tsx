@@ -22,6 +22,7 @@ import {
   fetchProductionOverview,
   fetchQualityDistribution,
   type DefectCount,
+  type DimensionStat,
   type EdgeLotStat,
   type GradeCount,
   type InspectorStat,
@@ -57,6 +58,36 @@ const defectColumns: ColumnsType<DefectCount> = [
     dataIndex: 'count',
     align: 'right',
     render: (v: number) => v.toLocaleString(),
+  },
+]
+
+const dimensionColumns: ColumnsType<DimensionStat> = [
+  { title: '质检项', dataIndex: 'dimension' },
+  {
+    title: '合格',
+    dataIndex: 'pass_count',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '不合格',
+    dataIndex: 'fail_count',
+    align: 'right',
+    render: (v: number) => v.toLocaleString(),
+  },
+  {
+    title: '未检',
+    dataIndex: 'na_count',
+    align: 'right',
+    // 「未检」是中性事实，不是缺陷 —— 用弱化色，避免被读成一条不合格记录。
+    render: (v: number) => <span style={{ color: '#8c8c8c' }}>{v.toLocaleString()}</span>,
+  },
+  {
+    title: '合格率',
+    dataIndex: 'qualified_rate',
+    align: 'right',
+    // 分母不含「未检」；这里直接展示后端算好的值，不用三个计数重算。
+    render: (v: number) => `${(Math.round(v * 1000) / 10).toFixed(1)}%`,
   },
 ]
 
@@ -404,6 +435,21 @@ export default function ReportsPage() {
                   />
                 </div>
 
+                <Row gutter={16} style={{ marginBottom: 8 }}>
+                  <Col span={12}>
+                    {/* null 表示「区间内没有任何已录入评分的记录」。
+                        显示成 0 分会和「全员 0 分」混淆，故用「—」占位。 */}
+                    {quality?.average_score == null ? (
+                      <Statistic title="平均分" value="—" />
+                    ) : (
+                      <Statistic title="平均分" value={quality.average_score} precision={2} suffix="分" />
+                    )}
+                  </Col>
+                  <Col span={12}>
+                    <Statistic title="评分样本" value={quality?.scored_count ?? 0} suffix="条" />
+                  </Col>
+                </Row>
+
                 <Title level={5} style={{ marginTop: 16 }}>
                   等级分布
                 </Title>
@@ -432,6 +478,24 @@ export default function ReportsPage() {
                   />
                 ) : (
                   <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="区间内无缺陷原因记录" />
+                )}
+
+                <Title level={5} style={{ marginTop: 16 }}>
+                  质检项合格率
+                </Title>
+                {quality && quality.by_dimension.length > 0 ? (
+                  <Table<DimensionStat>
+                    rowKey="dimension"
+                    columns={dimensionColumns}
+                    dataSource={quality.by_dimension}
+                    size="small"
+                    pagination={false}
+                  />
+                ) : (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="区间内无质检项记录（Edge 未录入质检项明细）"
+                  />
                 )}
               </>
             ) : (
