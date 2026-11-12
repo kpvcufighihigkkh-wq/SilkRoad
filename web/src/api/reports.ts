@@ -33,17 +33,37 @@ export interface DefectCount {
 }
 
 /**
+ * 质检项维度的一行。
+ *
+ * qualified_rate 的分母是 pass / (pass + fail)，**不含 na**：
+ * na 表示该项未检，算进分母会让「没检」拉低合格率。
+ */
+export interface DimensionStat {
+  dimension: string
+  pass_count: number
+  fail_count: number
+  na_count: number
+  qualified_rate: number
+}
+
+/**
  * 看板二「质量分布」。
  *
  * 注意 qualified_rate 的分母排除了「未判定」，即
  * qualified / (qualified + unqualified)，不是 qualified / total。
  * 前端直接展示该字段，不得用三个计数重算 —— 重算会把 NULL 算进分母。
+ *
+ * average_score 为 null 表示区间内没有任何已录入评分的记录；
+ * 不能用 0 兜底，0 分是真实可能的评分。
  */
 export interface QualityDistribution {
   range: ReportRange
   qualified: QualifiedStats
   by_grade: GradeCount[]
   top_defects: DefectCount[]
+  average_score: number | null
+  scored_count: number
+  by_dimension: DimensionStat[]
 }
 
 export interface SpinningLineStat {

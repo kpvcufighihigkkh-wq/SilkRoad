@@ -69,12 +69,27 @@ type DefectCount struct {
 	Count        int    `json:"count"`
 }
 
+// DimensionStat 质检项维度的合格情况。
+//
+// 计数单位是质检记录行；分母排除 na —— 该项未检不等于不合格，
+// 把它算进分母会让「没检」拉低合格率。
+type DimensionStat struct {
+	Dimension     string  `json:"dimension"`
+	PassCount     int     `json:"pass_count"`
+	FailCount     int     `json:"fail_count"`
+	NACount       int     `json:"na_count"`
+	QualifiedRate float64 `json:"qualified_rate"`
+}
+
 // QualityDistributionResponse 看板二「质量分布」的响应体。
 type QualityDistributionResponse struct {
-	Range      ReportRange    `json:"range"`
-	Qualified  QualifiedStats `json:"qualified"`
-	ByGrade    []GradeCount   `json:"by_grade"`
-	TopDefects []DefectCount  `json:"top_defects"`
+	Range        ReportRange     `json:"range"`
+	Qualified    QualifiedStats  `json:"qualified"`
+	ByGrade      []GradeCount    `json:"by_grade"`
+	TopDefects   []DefectCount   `json:"top_defects"`
+	AverageScore *float64        `json:"average_score"`
+	ScoredCount  int             `json:"scored_count"`
+	ByDimension  []DimensionStat `json:"by_dimension"`
 }
 
 // SpinningLineStat 按机台汇总的一行。
@@ -426,6 +441,100 @@ func (s *ReportService) QualityDistribution(ctx context.Context, start, end time
 		defects = append(defects, DefectCount{DefectReason: r.DefectReason, Count: r.Count})
 	}
 
+	// 平均分：只统计已录入 final_score 的行。
+	//
+	// SQL 的 AVG 本就忽略 NULL，但 scored_count 必须显式过滤 —— 没有过滤时
+	// 只能拿到「平均分」，回答不了「这个平均分基于几条记录」。样本数为 0
+	// 时 average_score 返回 null 而不是 0：0 分是一个真实可能的结果，
+	// 用 0 表示「没有数据」会与「全员 0 分」混淆。
+	var scoreRows []struct {
+		Count int             `json:"count"`
+		Avg   sql.NullFloat64 `json:"avg"`
+	}
+	if err := base().
+		Where(bobbingrade.FinalScoreNotNil()).
+		Aggregate(ent.Count(), ent.Mean(bobbingrade.FieldFinalScore)).
+		Scan(ctx, &scoreRows); err != nil {
+		return nil, err
+	}
+
+	var averageScore *float64
+	scoredCount := 0
+	if len(scoreRows) > 0 {
+		scoredCount = scoreRows[0].Count
+		if scoreRows[0].Avg.Valid {
+			avg := math.Round(scoreRows[0].Avg.Float64*100) / 100
+			averageScore = &avg
+		}
+	}
+
+	// 五维度合格率：按 inspection_details 的键展开。
+	//
+	// 先 GROUP BY 整个 JSON 列再在 Go 里累加，而不是用 jsonb_each_text /
+	// json_each 在 SQL 里展开：后者是方言专属函数，同一段代码无法同时跑在
+	// Postgres 与测试用的 SQLite 上。JSON 对象是「质检项 → 判定」的有限
+	// 组合（每项三态、项数由现场模板固定），去重后分组数很小，
+	// 先聚合再展开不会把整表读进内存。
+	var detailRows []struct {
+		InspectionDetails map[string]interface{} `json:"inspection_details"`
+		Count             int                    `json:"count"`
+	}
+	if err := base().
+		Where(bobbingrade.InspectionDetailsNotNil()).
+		GroupBy(bobbingrade.FieldInspectionDetails).
+		Aggregate(ent.Count()).
+		Scan(ctx, &detailRows); err != nil {
+		return nil, err
+	}
+
+	type tally struct{ pass, fail, na int }
+	tallies := make(map[string]*tally)
+	for _, row := range detailRows {
+		for item, raw := range row.InspectionDetails {
+			verdict, ok := raw.(string)
+			if !ok {
+				continue
+			}
+			t, seen := tallies[item]
+			if !seen {
+				t = &tally{}
+				tallies[item] = t
+			}
+			switch verdict {
+			case "pass":
+				t.pass += row.Count
+			case "fail":
+				t.fail += row.Count
+			case "na":
+				t.na += row.Count
+			}
+			// 词表外的取值不计入任何一栏：录入层已限定 pass/fail/na，
+			// 出现其它值说明数据来路不明，静默归到 fail 会凭空造出不合格，
+			// 归到 na 会把未知当「未检」，两者都在编造事实。
+		}
+	}
+
+	byDimension := make([]DimensionStat, 0, len(tallies))
+	for item, t := range tallies {
+		gradedDims := t.pass + t.fail
+		dimRate := 0.0
+		if gradedDims > 0 {
+			dimRate = math.Round(float64(t.pass)/float64(gradedDims)*1000) / 1000
+		}
+		byDimension = append(byDimension, DimensionStat{
+			Dimension:     item,
+			PassCount:     t.pass,
+			FailCount:     t.fail,
+			NACount:       t.na,
+			QualifiedRate: dimRate,
+		})
+	}
+	// 按维度名升序：维度是有限枚举，顺序稳定比「按数量排」对现场更有用 ——
+	// 质检模板的项次固定，运维按项名找比按热度找快。
+	sort.Slice(byDimension, func(i, j int) bool {
+		return byDimension[i].Dimension < byDimension[j].Dimension
+	})
+
 	return &QualityDistributionResponse{
 		Range: ReportRange{
 			Start: start.UTC().Format(time.RFC3339),
@@ -438,8 +547,11 @@ func (s *ReportService) QualityDistribution(ctx context.Context, start, end time
 			TotalCount:       qualified + unqualified + unspecified,
 			QualifiedRate:    rate,
 		},
-		ByGrade:    byGrade,
-		TopDefects: defects,
+		ByGrade:      byGrade,
+		TopDefects:   defects,
+		AverageScore: averageScore,
+		ScoredCount:  scoredCount,
+		ByDimension:  byDimension,
 	}, nil
 }
 
