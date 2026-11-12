@@ -307,3 +307,77 @@ func TestDoffingService_ListDoffings_OrderAndEmptyFilter(t *testing.T) {
 
 // lot 表在本文件里被引用，避免 import 被误删导致的隐性依赖。
 var _ = lot.StatusInProgress
+
+// 质检记录详情必须带出评分与质检项，未录入时两字段为 nil。
+//
+// 录入与报表都已打通，但详情页此前拿不到这两项 —— 现场只能看到综合分，
+// 看不到是哪个质检项没过。nil 而非空对象：报表按项展开时，
+// 「未录入」与「录入了一个空对象」必须是两种可区分的事实。
+func TestGradeService_ListGrades_ExposesScoresAndDetails(t *testing.T) {
+	client := newTestClient(t)
+	svc := service.NewGradeService(client)
+	ctx := context.Background()
+
+	lotID := seedLot(t, client, "GRADE-LOT-SCORES")
+	bobbinIDs := seedBobbinsForLot(t, client, lotID, 2)
+
+	scored, err := client.BobbinGrade.Create().
+		SetBobbinID(bobbinIDs[0]).
+		SetGrade("A").
+		SetScores(map[string]interface{}{
+			"sorting": 92.0, "weight": 88.0, "final": 90.0, "vision": 85.0, "knitting": 80.0,
+		}).
+		SetInspectionDetails(map[string]interface{}{
+			"appearance": "pass", "broken_ends": "fail",
+		}).
+		SetFinalScore(87.5).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create scored grade: %v", err)
+	}
+	unscored, err := client.BobbinGrade.Create().
+		SetBobbinID(bobbinIDs[1]).
+		SetGrade("B").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create unscored grade: %v", err)
+	}
+
+	got, _, err := svc.ListGrades(ctx, 1, 20, service.GradeListFilter{LotID: lotID.String()})
+	if err != nil {
+		t.Fatalf("ListGrades: %v", err)
+	}
+
+	byID := map[string]*service.GradeResponse{}
+	for _, g := range got {
+		byID[g.ID] = g
+	}
+
+	sc, ok := byID[scored.ID.String()]
+	if !ok {
+		t.Fatalf("未返回已评分记录 %s", scored.ID)
+	}
+	if len(sc.Scores) != 5 {
+		t.Errorf("scores 项数 = %d, want 5: %+v", len(sc.Scores), sc.Scores)
+	}
+	if v, ok := sc.Scores["knitting"].(float64); !ok || v != 80 {
+		t.Errorf("scores[knitting] = %#v, want 80", sc.Scores["knitting"])
+	}
+	if len(sc.InspectionDetails) != 2 {
+		t.Errorf("inspection_details 项数 = %d, want 2", len(sc.InspectionDetails))
+	}
+	if v := sc.InspectionDetails["broken_ends"]; v != "fail" {
+		t.Errorf("inspection_details[broken_ends] = %v, want fail", v)
+	}
+
+	uns, ok := byID[unscored.ID.String()]
+	if !ok {
+		t.Fatalf("未返回未评分记录 %s", unscored.ID)
+	}
+	if uns.Scores != nil {
+		t.Errorf("未录入的 scores = %+v, want nil（json null）", uns.Scores)
+	}
+	if uns.InspectionDetails != nil {
+		t.Errorf("未录入的 inspection_details = %+v, want nil", uns.InspectionDetails)
+	}
+}
