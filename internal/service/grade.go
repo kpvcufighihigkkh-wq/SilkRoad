@@ -29,17 +29,23 @@ func NewGradeService(client *ent.Client) *GradeService {
 //
 // IsQualified 用指针保留三态：nil = 质检员未陈述结论，
 // 不能与 false（明确判定不合格）合并。
+//
+// Scores / InspectionDetails 是 JSONB 列，未录入时为 nil（JSON null）——
+// 不能用空对象代替：报表按项展开时，「未录入」与「录入了一个空对象」
+// 必须是两种可区分的事实。
 type GradeResponse struct {
-	ID           string    `json:"id"`
-	BobbinID     string    `json:"bobbin_id"`
-	InspectorID  *string   `json:"inspector_id"`
-	Grade        string    `json:"grade"`
-	FinalScore   *float64  `json:"final_score"`
-	IsQualified  *bool     `json:"is_qualified"`
-	DefectReason string    `json:"defect_reason,omitempty"`
-	Notes        string    `json:"notes,omitempty"`
-	InspectedAt  time.Time `json:"inspected_at"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                string                 `json:"id"`
+	BobbinID          string                 `json:"bobbin_id"`
+	InspectorID       *string                `json:"inspector_id"`
+	Grade             string                 `json:"grade"`
+	FinalScore        *float64               `json:"final_score"`
+	Scores            map[string]interface{} `json:"scores"`
+	InspectionDetails map[string]interface{} `json:"inspection_details"`
+	IsQualified       *bool                  `json:"is_qualified"`
+	DefectReason      string                 `json:"defect_reason,omitempty"`
+	Notes             string                 `json:"notes,omitempty"`
+	InspectedAt       time.Time              `json:"inspected_at"`
+	CreatedAt         time.Time              `json:"created_at"`
 }
 
 // GradeListFilter 质检记录筛选条件。零值表示不过滤。
@@ -123,14 +129,16 @@ func (s *GradeService) ListGrades(ctx context.Context, page, pageSize int, f Gra
 
 func toGradeResponse(g *ent.BobbinGrade) *GradeResponse {
 	resp := &GradeResponse{
-		ID:           g.ID.String(),
-		BobbinID:     g.BobbinID.String(),
-		Grade:        g.Grade,
-		IsQualified:  g.IsQualified,
-		DefectReason: g.DefectReason,
-		Notes:        g.Notes,
-		InspectedAt:  g.InspectedAt,
-		CreatedAt:    g.CreatedAt,
+		ID:                g.ID.String(),
+		BobbinID:          g.BobbinID.String(),
+		Grade:             g.Grade,
+		Scores:            g.Scores,
+		InspectionDetails: g.InspectionDetails,
+		IsQualified:       g.IsQualified,
+		DefectReason:      g.DefectReason,
+		Notes:             g.Notes,
+		InspectedAt:       g.InspectedAt,
+		CreatedAt:         g.CreatedAt,
 	}
 
 	// inspector_id 在 schema 中是 Optional() 而非 Nillable()，生成的是非指针

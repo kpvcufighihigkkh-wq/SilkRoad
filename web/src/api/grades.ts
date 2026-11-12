@@ -14,6 +14,10 @@ export interface Grade {
   inspector_id: string | null
   grade: string
   final_score: number | null
+  /** 五项等级类型分（sorting/weight/final/vision/knitting），未录入时为 null。 */
+  scores: Record<string, number> | null
+  /** 质检项判定（pass/fail/na），未录入时为 null。 */
+  inspection_details: Record<string, string> | null
   is_qualified: boolean | null
   defect_reason?: string
   notes?: string

@@ -11,6 +11,7 @@ import {
   Spin,
   Table,
   Tag,
+  Tooltip,
   message,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
@@ -225,6 +226,57 @@ export default function LotDetailPage() {
       width: 100,
       align: 'right',
       render: (v: number | null) => (v ?? '—'),
+    },
+    {
+      title: '五维评分',
+      dataIndex: 'scores',
+      // 五项分挤在一行会撑爆表格，用紧凑文本 + 悬停看全量：
+      // 列里只显示项数与首项值，回答「有没有录」；具体数值按需展开。
+      render: (v: Record<string, number> | null) => {
+        if (!v || Object.keys(v).length === 0) return '—'
+        const entries = Object.entries(v)
+        return (
+          <Tooltip
+            title={
+              <div>
+                {entries.map(([k, n]) => (
+                  <div key={k}>
+                    {k}: {n}
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <span style={{ cursor: 'help' }}>
+              {entries[0][0]} {entries[0][1]} 等 {entries.length} 项
+            </span>
+          </Tooltip>
+        )
+      },
+    },
+    {
+      title: '质检项',
+      dataIndex: 'inspection_details',
+      // fail 排在最前：一屏之内要能先看到不合格项，而不是按字典序。
+      render: (v: Record<string, string> | null) => {
+        if (!v || Object.keys(v).length === 0) return '—'
+        const order = { fail: 0, pass: 1, na: 2 } as Record<string, number>
+        const entries = Object.entries(v).sort(
+          (a, b) => (order[a[1]] ?? 9) - (order[b[1]] ?? 9),
+        )
+        return (
+          <Space size={4} wrap>
+            {entries.map(([k, verdict]) => (
+              <Tag
+                key={k}
+                color={verdict === 'fail' ? 'error' : verdict === 'pass' ? 'success' : 'default'}
+              >
+                {k}:{verdict === 'pass' ? '合格' : verdict === 'fail' ? '不合格' : '未检'}
+              </Tag>
+            ))}
+          </Space>
+        )
+      },
     },
     {
       title: '缺陷原因',
