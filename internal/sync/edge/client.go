@@ -129,9 +129,9 @@ func (c *SyncClient) fetchBaseData(ctx context.Context) (*models.BaseDataPullRes
 	}
 
 	var envelope struct {
-		Code    int                          `json:"code"`
-		Message string                       `json:"message"`
-		Data    models.BaseDataPullResponse  `json:"data"`
+		Code    int                         `json:"code"`
+		Message string                      `json:"message"`
+		Data    models.BaseDataPullResponse `json:"data"`
 	}
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, fmt.Errorf("decode base-data response: %w（body=%s）", err, string(body))

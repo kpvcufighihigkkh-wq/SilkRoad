@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/yourusername/igh-silkroad/internal/database/ent"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
 	"github.com/yourusername/igh-silkroad/internal/service"
@@ -199,4 +200,181 @@ func serviceErrorCode(t *testing.T, err error) int {
 		t.Fatalf("错误类型 = %T (%v), want *service.ServiceError", err, err)
 	}
 	return svcErr.Code
+}
+
+// 五项等级分、综合分、质检项明细必须落到 bobbin_grade 上。
+//
+// 这三列此前在 schema 里存在但全仓库无人写入，导致报表的「五维度合格率」
+// 「平均分」无数据源（报表 spec §6 缺口 A）。本用例钉住「写入并落库」。
+func TestInspectBobbin_PersistsScoresAndDetails(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+	svc := service.NewBobbinService(client)
+	bobbinRow := seedInspectBobbin(t, client, "BOBBIN-SCORE-1")
+
+	sorting, weight, final, vision, knitting := 92.0, 88.0, 90.0, 85.0, 80.0
+	finalScore := 87.5
+
+	if err := svc.InspectBobbin(ctx, bobbinRow.ID.String(), &service.InspectBobbinRequest{
+		Grade:      "A",
+		Scores:     &service.InspectionScores{Sorting: &sorting, Weight: &weight, Final: &final, Vision: &vision, Knitting: &knitting},
+		FinalScore: &finalScore,
+		InspectionDetails: map[string]string{
+			"appearance":   "pass",
+			"weight_check": "pass",
+			"broken_ends":  "fail",
+		},
+	}); err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+
+	got, err := client.BobbinGrade.Query().
+		Where(bobbingrade.BobbinIDEQ(bobbinRow.ID)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("query grade: %v", err)
+	}
+
+	if len(got.Scores) != 5 {
+		t.Fatalf("scores 项数 = %d, want 5: %+v", len(got.Scores), got.Scores)
+	}
+	// JSON 往返后数字是 float64；逐项比对键名与值。
+	wantScores := map[string]float64{
+		"sorting": 92, "weight": 88, "final": 90, "vision": 85, "knitting": 80,
+	}
+	for k, want := range wantScores {
+		v, ok := got.Scores[k].(float64)
+		if !ok {
+			t.Errorf("scores[%q] 缺失或类型错误: %v", k, got.Scores[k])
+			continue
+		}
+		if v != want {
+			t.Errorf("scores[%q] = %v, want %v", k, v, want)
+		}
+	}
+
+	if got.FinalScore != 87.5 {
+		t.Errorf("final_score = %v, want 87.5", got.FinalScore)
+	}
+
+	if len(got.InspectionDetails) != 3 {
+		t.Fatalf("inspection_details 项数 = %d, want 3: %+v", len(got.InspectionDetails), got.InspectionDetails)
+	}
+	if v := got.InspectionDetails["broken_ends"]; v != "fail" {
+		t.Errorf("inspection_details[broken_ends] = %v, want fail", v)
+	}
+}
+
+// 未提供评分时三列必须保持 NULL，而不是落成空对象或 0 分。
+//
+// 「未录入」与「录入了 0 分」在报表里是两种完全不同的样本：
+// 前者应从分母剔除，后者是真实的不合格。
+func TestInspectBobbin_LeavesScoresNullWhenOmitted(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+	svc := service.NewBobbinService(client)
+	bobbinRow := seedInspectBobbin(t, client, "BOBBIN-SCORE-NULL")
+
+	if err := svc.InspectBobbin(ctx, bobbinRow.ID.String(), &service.InspectBobbinRequest{Grade: "B"}); err != nil {
+		t.Fatalf("inspect: %v", err)
+	}
+
+	got, err := client.BobbinGrade.Query().
+		Where(bobbingrade.BobbinIDEQ(bobbinRow.ID)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("query grade: %v", err)
+	}
+	if len(got.Scores) != 0 {
+		t.Errorf("scores = %+v, want 空（未录入应保持 NULL）", got.Scores)
+	}
+	if len(got.InspectionDetails) != 0 {
+		t.Errorf("inspection_details = %+v, want 空", got.InspectionDetails)
+	}
+	if got.FinalScore != 0 {
+		t.Errorf("final_score = %v, want 0（NULL）", got.FinalScore)
+	}
+}
+
+// 五项分必须齐全：缺一项的分数集无法算「五维度合格率」，
+// 而缺项会被当成 0 分。
+func TestInspectBobbin_RejectsIncompleteScores(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+	svc := service.NewBobbinService(client)
+	bobbinRow := seedInspectBobbin(t, client, "BOBBIN-SCORE-INCOMPLETE")
+
+	sorting, weight := 90.0, 88.0
+	err := svc.InspectBobbin(ctx, bobbinRow.ID.String(), &service.InspectBobbinRequest{
+		Grade:  "A",
+		Scores: &service.InspectionScores{Sorting: &sorting, Weight: &weight},
+	})
+	svcErr, ok := err.(*service.ServiceError)
+	if !ok {
+		t.Fatalf("缺项应返回 ServiceError, got %T: %v", err, err)
+	}
+	if svcErr.Code != 10001 {
+		t.Errorf("error code = %d, want 10001", svcErr.Code)
+	}
+
+	// 校验失败不得留下半条记录，也不得改动丝饼等级。
+	if n, _ := client.BobbinGrade.Query().Where(bobbingrade.BobbinIDEQ(bobbinRow.ID)).Count(ctx); n != 0 {
+		t.Errorf("校验失败仍写入了 %d 条质检记录", n)
+	}
+	row, err := client.Bobbin.Get(ctx, bobbinRow.ID)
+	if err != nil {
+		t.Fatalf("reload bobbin: %v", err)
+	}
+	if row.Grade != "" {
+		t.Errorf("bobbin.grade = %q, want 空（校验失败不得改等级）", row.Grade)
+	}
+}
+
+// 质检项取值限定为 pass/fail/na：自由文本会让「合格 / OK / 通过」
+// 在报表里变成三个不同的分组。
+func TestInspectBobbin_RejectsUnknownVerdict(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+	svc := service.NewBobbinService(client)
+	bobbinRow := seedInspectBobbin(t, client, "BOBBIN-VERDICT")
+
+	err := svc.InspectBobbin(ctx, bobbinRow.ID.String(), &service.InspectBobbinRequest{
+		Grade:             "A",
+		InspectionDetails: map[string]string{"appearance": "合格"},
+	})
+	svcErr, ok := err.(*service.ServiceError)
+	if !ok {
+		t.Fatalf("非法取值应返回 ServiceError, got %T: %v", err, err)
+	}
+	if svcErr.Code != 10001 {
+		t.Errorf("error code = %d, want 10001", svcErr.Code)
+	}
+}
+
+// seedInspectBobbin 造一个可质检的丝饼。
+func seedInspectBobbin(t *testing.T, client *ent.Client, number string) *ent.Bobbin {
+	t.Helper()
+	ctx := context.Background()
+
+	lotRow, err := client.Lot.Create().
+		SetLotNumber("LOT-" + number).
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+
+	bobbinRow, err := client.Bobbin.Create().
+		SetBobbinNumber(number).
+		SetLotID(lotRow.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create bobbin: %v", err)
+	}
+
+	return bobbinRow
 }

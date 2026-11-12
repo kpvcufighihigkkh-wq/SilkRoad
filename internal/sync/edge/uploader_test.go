@@ -1259,3 +1259,97 @@ func TestBobbinGradePayload_IsQualifiedOmittedWhenUnstated(t *testing.T) {
 		t.Errorf("is_qualified = %#v, want true", v)
 	}
 }
+
+// 评分三字段（scores / inspection_details / final_score）有值才进载荷。
+//
+// 与 is_qualified 同理，空 map 或零值必须整键缺席：Center 若按「键存在即
+// 写入」处理，{} 会让「未录入」变成「录入了一个空对象」，报表按项展开时
+// 无从区分；final_score 的 0 也会从 NULL 变成「评了 0 分」。
+func TestBobbinGradePayload_ScoresOmittedWhenEmpty(t *testing.T) {
+	edgeClient := setupEdgeClient(t)
+	ctx := context.Background()
+
+	lotRow, err := edgeClient.Lot.Create().
+		SetLotNumber("LOT-GRADE-SCORES").
+		SetProductType("FDY").
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create lot: %v", err)
+	}
+	bobbinRow, err := edgeClient.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-GRADE-SCORES").
+		SetLotID(lotRow.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create bobbin: %v", err)
+	}
+
+	// 未录入评分
+	unscored, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("B").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create unscored grade: %v", err)
+	}
+	// 录入了完整评分
+	scored, err := edgeClient.BobbinGrade.Create().
+		SetBobbinID(bobbinRow.ID).
+		SetGrade("A").
+		SetScores(map[string]interface{}{
+			"sorting": 92.0, "weight": 88.0, "final": 90.0, "vision": 85.0, "knitting": 80.0,
+		}).
+		SetInspectionDetails(map[string]interface{}{"appearance": "pass", "broken_ends": "fail"}).
+		SetFinalScore(87.5).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create scored grade: %v", err)
+	}
+
+	u := edge.NewUploader(edgeClient, "edge-001", "http://center:8080", "token")
+	entries, err := u.CollectPending(ctx, 100)
+	if err != nil {
+		t.Fatalf("CollectPending: %v", err)
+	}
+
+	byID := map[string]models.UploadEntry{}
+	for _, e := range entries {
+		if e.Table == "bobbin_grades" {
+			byID[e.ID.String()] = e
+		}
+	}
+
+	// 未录入：三个键全部缺席
+	e, ok := byID[unscored.ID.String()]
+	if !ok {
+		t.Fatalf("未收集到未录入评分的质检记录 %s", unscored.ID)
+	}
+	for _, key := range []string{"scores", "inspection_details", "final_score"} {
+		if v, present := e.Data[key]; present {
+			t.Errorf("%s 键存在（值 %#v），want 缺席 —— 未录入不得以任何值上线", key, v)
+		}
+	}
+
+	// 已录入：三个键存在且值正确
+	e, ok = byID[scored.ID.String()]
+	if !ok {
+		t.Fatalf("未收集到已评分记录 %s", scored.ID)
+	}
+	scores, ok := e.Data["scores"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("scores 缺失或类型错误: %#v", e.Data["scores"])
+	}
+	if len(scores) != 5 {
+		t.Errorf("scores 项数 = %d, want 5", len(scores))
+	}
+	if details, ok := e.Data["inspection_details"].(map[string]interface{}); !ok || len(details) != 2 {
+		t.Errorf("inspection_details = %#v, want 2 项", e.Data["inspection_details"])
+	}
+	if v, ok := e.Data["final_score"].(float64); !ok || v != 87.5 {
+		t.Errorf("final_score = %#v, want 87.5", e.Data["final_score"])
+	}
+}

@@ -74,6 +74,20 @@ Schema 里有、但**同步链两端都不携带**的字段：
 
 （有先例：PLN-17 收尾时打通过 `doffing.operator_id`，同样是两端各加一处。故技术上可行，只是需单独决策。）
 
+**补记（2026-11-12）：录入与同步已打通，指标仍未实现。**
+
+更深一层的发现：这三列不只是「没同步」，而是**全仓库没有任何代码写它们** —— `InspectBobbin` 此前只写 `grade`/`is_qualified`/`defect_reason`。因此补同步还不够，必须先有录入。
+
+已落地（PR 待合并）：
+
+- **录入（Edge）**：`InspectBobbinRequest` 新增三项，均为可选，一旦提供即校验：
+  - `scores`：五项等级类型分，键与 `grade.grade_type` 枚举一致（sorting/weight/final/vision/knitting），**五项必须齐全**，各自 [0,100]。用显式结构体而非 map —— 少填一项要能报错，map 里少一个键无从分辨「没这项」与「漏填」。
+  - `final_score`：[0,100]。
+  - `inspection_details`：质检项判定，取值限定 `pass`/`fail`/`na`。自由文本会让「合格 / OK / 通过」在报表里变成三个分组。
+  - 校验在**任何写库之前**：`InspectBobbin` 会先改 `bobbin.grade` 再插历史行，校验若放在后面，现场会看到「等级变了但查不到这条质检」。
+- **同步**：`collectBobbinGrades` 三键按「有值才带」处理（空 map / 零值整键缺席），Center `upsertBobbinGrade` 对应写入；`final_score` 的本地字段是非指针 `float64`，按 `> 0` 判定有值。
+- **仍未做**：「五维度合格率」「平均分」两项报表指标本身（见 §6 缺口 A 的更新）。
+
 ---
 
 ## 二、范围
@@ -432,7 +446,7 @@ reports := authorized.Group("/reports")
 
 | # | 缺口 | 补法 | 阻塞什么 |
 |---|---|---|---|
-| A | `bobbin_grade.inspection_details` / `scores` / `final_score` 未同步 | 扩展 Edge 采集器 + Center `upsertBobbinGrade` | 「五维度合格率」「平均分」两项指标 |
+| A | ~~`bobbin_grade.inspection_details` / `scores` / `final_score` 未同步~~ **录入与同步已打通（2026-11-12，见 §1.3 补记）**；仍缺的是「五维度合格率」「平均分」两项报表指标本身 | 在报表服务里按 `scores` / `inspection_details` 展开聚合 | 两项指标（字段已有数据，缺聚合） |
 | B | `barrel` / `module` / `pallet` / `carton` 无生产者、无同步、无端点 | 属 Edge 操作子系统，需另立 spec | spec §8 缺口 #7 整个 |
 | C | ~~Edge 侧无 `spinning_line` 消费方~~ **已闭合（2026-11-11）**：`SyncClient.DownloadData` 拉取 `spinning_lines` / `grades` 并按 Center 的 UUID 落地（同名冲突时保留本地 ID 并告警）；报表 `by_spinning_line` 新增 `spinning_line_name`，查不到时为 `null` | — | — |
 | D | ~~看板一所需的 `lot.start_time` 无生产者、不在同步载荷内~~ **已闭合（2026-11-11）**，见 §1.2 补记 | — | — |

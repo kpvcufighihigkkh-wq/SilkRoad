@@ -339,6 +339,24 @@ func (u *Uploader) collectBobbinGrades(ctx context.Context, limit int) ([]models
 		if r.IsQualified != nil {
 			data["is_qualified"] = *r.IsQualified
 		}
+		// 评分与质检项明细：JSONB 列且可空，非空时才带键。
+		//
+		// 与 is_qualified 同理，空 map 也要整键缺席 —— Center 若按「键存在即
+		// 写入」处理，{} 会让「未录入」在 Center 变成「录入了一个空对象」，
+		// 报表按项展开时无从区分。
+		if len(r.Scores) > 0 {
+			data["scores"] = r.Scores
+		}
+		if len(r.InspectionDetails) > 0 {
+			data["inspection_details"] = r.InspectionDetails
+		}
+		// final_score 的本地字段是非指针 float64（schema 只写了 Optional()，
+		// 没加 Nillable()），「未录入」与「0 分」在 Go 侧无法区分。百分制下
+		// 0 分不是有意义的结果，故按 > 0 判定为「有值」；值为 0 时整键缺席，
+		// 让 Center 的该列保持 NULL 而不是落一个假的 0 分。
+		if r.FinalScore > 0 {
+			data["final_score"] = r.FinalScore
+		}
 		out = append(out, models.UploadEntry{
 			Table:     "bobbin_grades",
 			Operation: "create",

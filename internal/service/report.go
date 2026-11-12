@@ -14,8 +14,8 @@ import (
 	"github.com/yourusername/igh-silkroad/internal/database/ent/bobbingrade"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/doffing"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/lot"
-	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 	"github.com/yourusername/igh-silkroad/internal/database/ent/predicate"
+	"github.com/yourusername/igh-silkroad/internal/database/ent/spinningline"
 )
 
 // defectScanCap 缺陷原因分组在 SQL 层的最大取数。

@@ -1910,3 +1910,103 @@ func TestHandleUpload_SortsPalletsBeforeBobbins(t *testing.T) {
 			got.PalletID, pallet.ID)
 	}
 }
+
+// 评分类字段必须从载荷落到 Center 的 bobbin_grade。
+//
+// 这三列此前 Center 端完全不写（报表 spec §6 缺口 A 的另一半）：
+// 即便 Edge 侧录了分，落不下来报表照样是空的。本用例把「载荷 → 落库」
+// 这一段钉死，含空对象/缺键时保持 NULL 的反向断言。
+func TestUpsertBobbinGrade_PersistsScoresAndDetails(t *testing.T) {
+	client := setupTestClient(t)
+	defer client.Close()
+	ctx := context.Background()
+
+	centerLot, err := client.Lot.Create().
+		SetLotNumber("LOT-BG-SCORES").
+		SetProductType(lot.ProductType("FDY")).
+		SetPlannedQuantity(10).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("seed lot: %v", err)
+	}
+	if _, err := client.Bobbin.Create().
+		SetBobbinNumber("BOBBIN-BG-SCORES").
+		SetLotID(centerLot.ID).
+		SetSpinningPosition(1).
+		SetGrossWeight(1.5).
+		SetNetWeight(1.2).
+		Save(ctx); err != nil {
+		t.Fatalf("seed bobbin: %v", err)
+	}
+
+	scoredID := uuid.New()
+	unscoredID := uuid.New()
+
+	handler := center.NewUploadHandler(client)
+	resp, err := handler.HandleUpload(ctx, &models.UploadRequest{
+		EdgeID: edgeRowID(t, client).String(),
+		Entries: []models.UploadEntry{
+			{
+				Table: "bobbin_grades", Operation: "create", ID: scoredID,
+				Data: map[string]interface{}{
+					"id":            scoredID.String(),
+					"bobbin_number": "BOBBIN-BG-SCORES",
+					"grade":         "A",
+					"scores": map[string]interface{}{
+						"sorting": 92.0, "weight": 88.0, "final": 90.0, "vision": 85.0, "knitting": 80.0,
+					},
+					"inspection_details": map[string]interface{}{
+						"appearance": "pass", "broken_ends": "fail",
+					},
+					"final_score": 87.5,
+				},
+			},
+			{
+				// 未录入：三个键全部缺席
+				Table: "bobbin_grades", Operation: "create", ID: unscoredID,
+				Data: map[string]interface{}{
+					"id":            unscoredID.String(),
+					"bobbin_number": "BOBBIN-BG-SCORES",
+					"grade":         "B",
+				},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("HandleUpload: %v", err)
+	}
+	if resp.Applied != 2 {
+		t.Fatalf("applied = %d, want 2; errors=%v", resp.Applied, resp.Errors)
+	}
+
+	scored, err := client.BobbinGrade.Get(ctx, scoredID)
+	if err != nil {
+		t.Fatalf("get scored grade: %v", err)
+	}
+	if len(scored.Scores) != 5 {
+		t.Fatalf("scores 项数 = %d, want 5: %+v", len(scored.Scores), scored.Scores)
+	}
+	if v, ok := scored.Scores["knitting"].(float64); !ok || v != 80 {
+		t.Errorf("scores[knitting] = %#v, want 80", scored.Scores["knitting"])
+	}
+	if len(scored.InspectionDetails) != 2 {
+		t.Errorf("inspection_details 项数 = %d, want 2", len(scored.InspectionDetails))
+	}
+	if scored.FinalScore != 87.5 {
+		t.Errorf("final_score = %v, want 87.5", scored.FinalScore)
+	}
+
+	unscored, err := client.BobbinGrade.Get(ctx, unscoredID)
+	if err != nil {
+		t.Fatalf("get unscored grade: %v", err)
+	}
+	if len(unscored.Scores) != 0 {
+		t.Errorf("未录入的 scores = %+v, want 空", unscored.Scores)
+	}
+	if len(unscored.InspectionDetails) != 0 {
+		t.Errorf("未录入的 inspection_details = %+v, want 空", unscored.InspectionDetails)
+	}
+	if unscored.FinalScore != 0 {
+		t.Errorf("未录入的 final_score = %v, want 0（NULL）", unscored.FinalScore)
+	}
+}
