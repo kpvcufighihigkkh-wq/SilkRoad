@@ -14,3 +14,6 @@ edge*.db
 *.db-journal
 *.db-wal
 *.db-shm
+
+# 交付文档与截图：体积大、随交付批次变化，不入库
+docs/delivery/
