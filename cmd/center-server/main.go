@@ -20,7 +20,7 @@ func main() {
 	log.Println("🚀 Starting IGH Center Server...")
 
 	// 连接数据库
-	dsn := getEnv("DATABASE_URL", "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable")
+	dsn := getEnv("DATABASE_URL", "postgres://igh:igh_dev_password@localhost:5433/igh?sslmode=disable")
 	client, err := ent.Open(dialect.Postgres, dsn)
 	if err != nil {
 		log.Fatalf("❌ Failed connecting to database: %v", err)
@@ -58,9 +58,9 @@ func main() {
 			"主备两台 Center 必须使用同一密钥，否则设备凭证全部失效")
 	}
 
-	// 端口可配置：默认 8080，但该端口常被同机的其它服务占用（例如 Edge
-	// 或并行的开发实例），写死会让本地联调时必须改代码、重新编译。
-	port := 8080
+	// 端口可配置：V6 在本机固定使用 8201，避开 V5 的中心 8101 与边端 8080。
+	// 该端口仍可被 PORT 覆盖，但默认值必须与开发约定一致，避免同机联调串线。
+	port := 8201
 	if raw := getEnv("PORT", ""); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed <= 0 || parsed > 65535 {
@@ -80,9 +80,9 @@ func main() {
 
 	log.Printf("✅ Center server started on port %d", port)
 	log.Println("📖 API endpoints:")
-	log.Println("   - Health: http://localhost:8080/health")
-	log.Println("   - Login:  POST http://localhost:8080/v1/login")
-	log.Println("   - Lots:   http://localhost:8080/v1/lots")
+	log.Printf("   - Health: http://localhost:%d/health", port)
+	log.Printf("   - Login:  POST http://localhost:%d/v1/login", port)
+	log.Printf("   - Lots:   http://localhost:%d/v1/lots", port)
 
 	// 等待中断信号
 	quit := make(chan os.Signal, 1)

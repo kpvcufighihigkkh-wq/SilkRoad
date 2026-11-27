@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
 
 // 开发期把 /v1 与 /health 代理到本地 Center 服务，避免跨域和硬编码地址。
-// 代理目标可用 VITE_API_PROXY 覆盖，默认指向本地 8080。
-const apiTarget = process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8080'
+// 默认指向 V6 约定的中心端口 8201（V5 中心是 8101，边端是 8080）。
+const apiTarget = process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8201'
 
 export default defineConfig({
   plugins: [react()],

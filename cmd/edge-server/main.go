@@ -72,7 +72,7 @@ func main() {
 
 	centerURL := os.Getenv("CENTER_URL")
 	if centerURL == "" {
-		centerURL = "http://localhost:8080" // 默认中心端地址
+		centerURL = "http://localhost:8201" // 默认中心端地址（V6 固定 8201）
 	}
 
 	// 访问 Center 上传端点的设备凭证。

@@ -20,7 +20,7 @@ func main() {
 	// 连接数据库
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://igh:igh_dev_password@localhost:5432/igh?sslmode=disable"
+		dsn = "postgres://igh:igh_dev_password@localhost:5433/igh?sslmode=disable"
 	}
 
 	client, err := ent.Open(dialect.Postgres, dsn)
