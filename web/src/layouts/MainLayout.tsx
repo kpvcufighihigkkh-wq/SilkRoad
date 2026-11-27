@@ -76,15 +76,22 @@ export default function MainLayout() {
             { key: '/cartons', icon: <InboxOutlined />, label: '纸箱' },
             { key: '/modules', icon: <CarOutlined />, label: '吊车' },
             { key: '/reports', icon: <BarChartOutlined />, label: '报表' },
-            {
-              key: 'system',
-              icon: <SettingOutlined />,
-              label: '系统管理',
-              children: [
-                { key: '/system/users', icon: <TeamOutlined />, label: '用户' },
-                { key: '/system/edges', icon: <ClusterOutlined />, label: '设备' },
-              ],
-            },
+            // 系统管理只对管理员开放：后端 /v1/users 与 /v1/edges 为 admin-only，
+            // 其余角色点进去只会收到 403「无权访问该接口」。
+            // 菜单按角色隐藏是体验优化，真正的授权判定仍在后端。
+            ...(user?.role === 'admin'
+              ? [
+                  {
+                    key: 'system',
+                    icon: <SettingOutlined />,
+                    label: '系统管理',
+                    children: [
+                      { key: '/system/users', icon: <TeamOutlined />, label: '用户' },
+                      { key: '/system/edges', icon: <ClusterOutlined />, label: '设备' },
+                    ],
+                  },
+                ]
+              : []),
           ]}
         />
       </Sider>

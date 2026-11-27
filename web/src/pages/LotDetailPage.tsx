@@ -21,6 +21,9 @@ import { getLot, type Lot, type LotStatus } from '@/api/lots'
 import { listBobbins, BOBBIN_STATUS_LABEL, type Bobbin, type BobbinStatus } from '@/api/bobbins'
 import { listGrades, qualifiedLabel, type Grade, type QualifiedFilter } from '@/api/grades'
 import { listDoffings, DOFFING_STATUS_LABEL, type Doffing } from '@/api/doffings'
+import { listBarrels } from '@/api/barrels'
+import { listPallets } from '@/api/pallets'
+import { listCartons } from '@/api/cartons'
 
 function statusTag(status: LotStatus) {
   switch (status) {
@@ -71,6 +74,13 @@ export default function LotDetailPage() {
   const [doffings, setDoffings] = useState<Doffing[]>([])
   const [doffingTotal, setDoffingTotal] = useState(0)
   const [doffingLoading, setDoffingLoading] = useState(false)
+
+  // 包装层：桶 / 托盘 / 纸箱三类计数。只取分页的 total，不拉明细 ——
+  // 追溯链只需要「这一批出了多少个容器」，明细在各自的列表页看。
+  // 不在此汇总装载量：列表接口一次最多返回一页，累加当页装载量在容器数
+  // 超过一页（20/50/条）时会少算，而 total 是准确的。
+  const [packaging, setPackaging] = useState({ barrel: 0, pallet: 0, carton: 0 })
+  const [packagingLoading, setPackagingLoading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -147,6 +157,24 @@ export default function LotDetailPage() {
         setDoffingTotal(0)
       })
       .finally(() => setDoffingLoading(false))
+  }, [id])
+
+  // 包装层计数：三个列表端点各取 1 条（只要分页里的 total），不拉明细。
+  useEffect(() => {
+    if (!id) return
+
+    setPackagingLoading(true)
+    Promise.all([
+      listBarrels({ lot_id: id, page_size: 1 }),
+      listPallets({ lot_id: id, page_size: 1 }),
+      listCartons({ lot_id: id, page_size: 1 }),
+    ])
+      .then(([barrels, pallets, cartons]) => {
+        setPackaging({ barrel: barrels.total, pallet: pallets.total, carton: cartons.total })
+      })
+      // 包装层是「附加信息」：取不到时静默降级为 0，不打断整页加载。
+      .catch(() => setPackaging({ barrel: 0, pallet: 0, carton: 0 }))
+      .finally(() => setPackagingLoading(false))
   }, [id])
 
   // 编码搜索在客户端做：只过滤当前页，不重新请求。
@@ -498,9 +526,17 @@ export default function LotDetailPage() {
 
           <div>
             <Tag>包装</Tag>
-            <span style={{ color: '#999' }}>
-              桶 / 托盘 / 纸箱 — Center 暂无这些表的数据，待 Edge 打包环节接入
-            </span>
+            {packagingLoading ? (
+              <span style={{ color: '#999' }}>统计中…</span>
+            ) : packaging.barrel + packaging.pallet + packaging.carton === 0 ? (
+              <span>暂无包装记录</span>
+            ) : (
+              <Space size={6} wrap>
+                <Tag>落纱桶 × {packaging.barrel}</Tag>
+                <Tag>托盘 × {packaging.pallet}</Tag>
+                <Tag>纸箱 × {packaging.carton}</Tag>
+              </Space>
+            )}
           </div>
         </Space>
       </Card>
